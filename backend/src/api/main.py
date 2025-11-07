@@ -42,6 +42,7 @@ async def health():
         "api_keys_configured": {
             "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
             "openai": bool(os.getenv("OPENAI_API_KEY")),
+            "google": bool(os.getenv("GOOGLE_API_KEY")),
         }
     }
 

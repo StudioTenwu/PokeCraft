@@ -75,7 +75,7 @@ Agents use LLM reasoning directly (like AutoGPT/BabyAGI) for instant feedback.
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- OpenAI or Anthropic API key
+- API key from one of: [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or [Google AI Studio](https://makersuite.google.com/app/apikey) (for Gemini)
 
 ### Installation
 

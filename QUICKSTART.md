@@ -6,7 +6,10 @@ Get the Agent Engineering Playground running locally in 5 minutes.
 
 - Python 3.10 or higher
 - Node.js 18 or higher
-- An API key from [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
+- An API key from one of:
+  - [Anthropic](https://console.anthropic.com/) (for Claude models)
+  - [OpenAI](https://platform.openai.com/) (for GPT models)
+  - [Google AI Studio](https://makersuite.google.com/app/apikey) (for Gemini models)
 
 ## Installation
 
@@ -31,8 +34,10 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your API key:
-# ANTHROPIC_API_KEY=your_key_here
+# Edit .env and add at least one API key:
+# ANTHROPIC_API_KEY=your_anthropic_key_here
+# OPENAI_API_KEY=your_openai_key_here
+# GOOGLE_API_KEY=your_google_gemini_key_here
 ```
 
 ### 3. Frontend Setup
