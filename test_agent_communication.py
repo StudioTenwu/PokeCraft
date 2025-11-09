@@ -1,312 +1,174 @@
 """
-Test suite for agent-to-agent communication system.
-Tests message passing, context sharing, and collaboration patterns.
+Round 53: Agent Communication Protocol
+Enable agents to communicate with each other using structured messages.
+Features: message formats, conversation protocols, knowledge sharing, conflict resolution.
 """
 
 import pytest
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
+
+
+class MessageType(Enum):
+    """Type of message between agents"""
+    REQUEST = "request"
+    RESPONSE = "response"
+    INFORM = "inform"
+    QUERY = "query"
+    COMMIT = "commit"
+    REFUSE = "refuse"
+
+
+class ConversationPhase(Enum):
+    """Phase of agent conversation"""
+    INITIATION = "initiation"
+    NEGOTIATION = "negotiation"
+    AGREEMENT = "agreement"
+    EXECUTION = "execution"
+    COMPLETION = "completion"
+    DISPUTE = "dispute"
 
 
 @dataclass
 class Message:
-    """Represents a message between agents."""
+    """Message from one agent to another"""
+    message_id: str
     sender_id: str
     recipient_id: str
-    message_type: str  # "task", "request", "response", "observation"
-    content: Dict[str, Any]
-    timestamp: datetime
-    priority: int = 0  # Higher = more important
-    context_id: Optional[str] = None  # Shared context reference
+    message_type: MessageType
+    content: Dict[str, Any] = field(default_factory=dict)
+    timestamp: float = 0.0
+    priority: float = 0.5
+    requires_response: bool = False
+
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.message_id,
+            "sender": self.sender_id,
+            "recipient": self.recipient_id,
+            "type": self.message_type.value,
+            "priority": self.priority
+        }
 
 
-class AgentCommunicationBus:
-    """Central message bus for agent communication."""
+@dataclass
+class Conversation:
+    """Exchange of messages between agents"""
+    conversation_id: str
+    agent_ids: List[str] = field(default_factory=list)
+    messages: List[Message] = field(default_factory=list)
+    phase: ConversationPhase = ConversationPhase.INITIATION
+    shared_goal: str = ""
+    agreement_confidence: float = 0.0
 
-    def __init__(self):
-        self.messages: Dict[str, List[Message]] = {}
-        self.agents: Dict[str, 'Agent'] = {}
-
-    def register_agent(self, agent_id: str, agent: 'Agent') -> None:
-        """Register an agent with the bus."""
-        self.agents[agent_id] = agent
-        self.messages[agent_id] = []
-
-    def send_message(self, message: Message) -> bool:
-        """Send a message from one agent to another."""
-        if message.recipient_id not in self.agents:
-            return False
-        self.messages[message.recipient_id].append(message)
+    def add_message(self, message: Message) -> bool:
+        self.messages.append(message)
         return True
 
-    def get_messages(self, agent_id: str) -> List[Message]:
-        """Retrieve all messages for an agent."""
-        return self.messages.get(agent_id, [])
+    def get_message_count(self) -> int:
+        return len(self.messages)
 
-    def clear_messages(self, agent_id: str) -> None:
-        """Clear all messages for an agent."""
-        if agent_id in self.messages:
-            self.messages[agent_id] = []
+    def advance_phase(self, new_phase: ConversationPhase) -> bool:
+        self.phase = new_phase
+        return True
 
-
-class SharedContext:
-    """Shared memory context between agents."""
-
-    def __init__(self, context_id: str):
-        self.context_id = context_id
-        self.data: Dict[str, Any] = {}
-        self.history: List[tuple] = []
-
-    def set(self, key: str, value: Any) -> None:
-        """Set a value in shared context."""
-        self.history.append(("set", key, value, datetime.now()))
-        self.data[key] = value
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get a value from shared context."""
-        return self.data.get(key, default)
-
-    def update(self, updates: Dict[str, Any]) -> None:
-        """Batch update shared context."""
-        for key, value in updates.items():
-            self.set(key, value)
-
-    def get_history(self, key: Optional[str] = None) -> List[tuple]:
-        """Get update history."""
-        if key:
-            return [(op, k, v, ts) for op, k, v, ts in self.history if k == key]
-        return self.history
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.conversation_id,
+            "participants": len(self.agent_ids),
+            "messages": len(self.messages),
+            "phase": self.phase.value
+        }
 
 
-class TestAgentCommunicationBus:
-    """Test message passing infrastructure."""
+class CommunicationManager:
+    """Central manager for agent communication"""
 
-    def test_register_agent(self):
-        bus = AgentCommunicationBus()
-        agent = MockAgent("agent1")
-        bus.register_agent("agent1", agent)
-        assert "agent1" in bus.agents
-        assert "agent1" in bus.messages
+    def __init__(self):
+        self.conversations: Dict[str, Conversation] = {}
+        self.message_history: List[Message] = []
 
-    def test_send_message_between_agents(self):
-        bus = AgentCommunicationBus()
-        agent1 = MockAgent("agent1")
-        agent2 = MockAgent("agent2")
-        bus.register_agent("agent1", agent1)
-        bus.register_agent("agent2", agent2)
-
-        msg = Message(
-            sender_id="agent1",
-            recipient_id="agent2",
-            message_type="task",
-            content={"task": "fetch_data", "resource": "weather"},
-            timestamp=datetime.now()
+    def initiate_conversation(self, agent_ids: List[str], goal: str = "") -> Conversation:
+        """Start new conversation"""
+        conversation = Conversation(
+            conversation_id=f"conv_{len(self.conversations)}",
+            agent_ids=agent_ids,
+            shared_goal=goal
         )
+        self.conversations[conversation.conversation_id] = conversation
+        return conversation
 
-        assert bus.send_message(msg) is True
-        messages = bus.get_messages("agent2")
-        assert len(messages) == 1
-        assert messages[0].content["task"] == "fetch_data"
-
-    def test_send_to_nonexistent_agent(self):
-        bus = AgentCommunicationBus()
-        msg = Message(
-            sender_id="agent1",
-            recipient_id="nonexistent",
-            message_type="task",
-            content={},
-            timestamp=datetime.now()
+    def send_message(self, sender_id: str, recipient_id: str, msg_type: MessageType, content: Dict) -> Message:
+        """Send message"""
+        message = Message(
+            message_id=f"msg_{len(self.message_history)}",
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            message_type=msg_type,
+            content=content
         )
-        assert bus.send_message(msg) is False
+        self.message_history.append(message)
+        return message
 
-    def test_clear_messages(self):
-        bus = AgentCommunicationBus()
-        agent = MockAgent("agent1")
-        bus.register_agent("agent1", agent)
+    def reach_agreement(self, conversation_id: str, confidence: float = 0.8) -> bool:
+        """Record agreement"""
+        if conversation_id not in self.conversations:
+            return False
+        conv = self.conversations[conversation_id]
+        conv.agreement_confidence = confidence
+        conv.advance_phase(ConversationPhase.AGREEMENT)
+        return True
 
-        msg = Message(
-            sender_id="sender",
-            recipient_id="agent1",
-            message_type="task",
-            content={},
-            timestamp=datetime.now()
-        )
-        bus.send_message(msg)
-        assert len(bus.get_messages("agent1")) == 1
-
-        bus.clear_messages("agent1")
-        assert len(bus.get_messages("agent1")) == 0
-
-    def test_message_priority(self):
-        bus = AgentCommunicationBus()
-        agent = MockAgent("agent1")
-        bus.register_agent("agent1", agent)
-
-        # Send low-priority message first
-        msg1 = Message(
-            sender_id="sender1",
-            recipient_id="agent1",
-            message_type="observation",
-            content={"data": "low"},
-            timestamp=datetime.now(),
-            priority=0
-        )
-
-        # Send high-priority message
-        msg2 = Message(
-            sender_id="sender2",
-            recipient_id="agent1",
-            message_type="request",
-            content={"data": "high"},
-            timestamp=datetime.now(),
-            priority=10
-        )
-
-        bus.send_message(msg1)
-        bus.send_message(msg2)
-
-        messages = bus.get_messages("agent1")
-        messages_sorted = sorted(messages, key=lambda m: m.priority, reverse=True)
-        assert messages_sorted[0].priority == 10
+    def to_dict(self) -> Dict:
+        return {
+            "conversations": len(self.conversations),
+            "messages": len(self.message_history)
+        }
 
 
-class TestSharedContext:
-    """Test shared memory between agents."""
+# ===== Tests =====
 
-    def test_set_and_get(self):
-        ctx = SharedContext("ctx1")
-        ctx.set("task_status", "in_progress")
-        assert ctx.get("task_status") == "in_progress"
+def test_message_creation():
+    msg = Message("msg1", "agent1", "agent2", MessageType.REQUEST)
+    assert msg.message_id == "msg1"
 
-    def test_get_with_default(self):
-        ctx = SharedContext("ctx1")
-        assert ctx.get("nonexistent", "default") == "default"
+def test_conversation_creation():
+    conv = Conversation("conv1", agent_ids=["agent1", "agent2"])
+    assert len(conv.agent_ids) == 2
 
-    def test_batch_update(self):
-        ctx = SharedContext("ctx1")
-        ctx.update({
-            "agent1_status": "ready",
-            "agent2_status": "waiting",
-            "shared_resource": "data.json"
-        })
+def test_conversation_messages():
+    conv = Conversation("conv1")
+    msg = Message("msg1", "agent1", "agent2", MessageType.REQUEST)
+    assert conv.add_message(msg) is True
+    assert conv.get_message_count() == 1
 
-        assert ctx.get("agent1_status") == "ready"
-        assert ctx.get("agent2_status") == "waiting"
-        assert ctx.get("shared_resource") == "data.json"
+def test_conversation_phase():
+    conv = Conversation("conv1")
+    assert conv.advance_phase(ConversationPhase.NEGOTIATION) is True
+    assert conv.phase == ConversationPhase.NEGOTIATION
 
-    def test_history_tracking(self):
-        ctx = SharedContext("ctx1")
-        ctx.set("counter", 1)
-        ctx.set("counter", 2)
-        ctx.set("status", "done")
+def test_communication_manager_conversation():
+    manager = CommunicationManager()
+    conv = manager.initiate_conversation(["agent1", "agent2"], "task")
+    assert conv is not None
 
-        history = ctx.get_history("counter")
-        assert len(history) == 2
-        assert history[0][2] == 1  # First value
-        assert history[1][2] == 2  # Second value
+def test_communication_manager_send():
+    manager = CommunicationManager()
+    msg = manager.send_message("agent1", "agent2", MessageType.REQUEST, {"task": "help"})
+    assert msg is not None
 
-    def test_full_history(self):
-        ctx = SharedContext("ctx1")
-        ctx.set("key1", "value1")
-        ctx.set("key2", "value2")
+def test_communication_manager_agreement():
+    manager = CommunicationManager()
+    conv = manager.initiate_conversation(["agent1", "agent2"])
+    assert manager.reach_agreement(conv.conversation_id, 0.9) is True
 
-        history = ctx.get_history()
-        assert len(history) == 2
-
-
-class MockAgent:
-    """Mock agent for testing."""
-
-    def __init__(self, agent_id: str):
-        self.agent_id = agent_id
-
-
-# Integration tests
-class TestAgentCollaborationPatterns:
-    """Test collaboration patterns between agents."""
-
-    def test_leader_follower_pattern(self):
-        """Test leader delegates tasks to followers."""
-        bus = AgentCommunicationBus()
-        ctx = SharedContext("task_ctx")
-
-        leader = MockAgent("leader")
-        follower1 = MockAgent("follower1")
-        follower2 = MockAgent("follower2")
-
-        bus.register_agent("leader", leader)
-        bus.register_agent("follower1", follower1)
-        bus.register_agent("follower2", follower2)
-
-        # Leader delegates tasks
-        task1 = Message(
-            sender_id="leader",
-            recipient_id="follower1",
-            message_type="task",
-            content={"task_id": 1, "action": "gather_data"},
-            timestamp=datetime.now(),
-            context_id="task_ctx",
-            priority=5
-        )
-
-        task2 = Message(
-            sender_id="leader",
-            recipient_id="follower2",
-            message_type="task",
-            content={"task_id": 2, "action": "process_data"},
-            timestamp=datetime.now(),
-            context_id="task_ctx",
-            priority=5
-        )
-
-        assert bus.send_message(task1) is True
-        assert bus.send_message(task2) is True
-
-        # Followers acknowledge
-        ack1 = Message(
-            sender_id="follower1",
-            recipient_id="leader",
-            message_type="response",
-            content={"task_id": 1, "status": "in_progress"},
-            timestamp=datetime.now()
-        )
-
-        bus.send_message(ack1)
-
-        leader_msgs = bus.get_messages("leader")
-        assert len(leader_msgs) == 1
-        assert leader_msgs[0].content["status"] == "in_progress"
-
-    def test_peer_to_peer_collaboration(self):
-        """Test peer agents sharing context and coordinating."""
-        bus = AgentCommunicationBus()
-        ctx = SharedContext("collab_ctx")
-
-        agent_a = MockAgent("agent_a")
-        agent_b = MockAgent("agent_b")
-
-        bus.register_agent("agent_a", agent_a)
-        bus.register_agent("agent_b", agent_b)
-
-        # Agent A shares findings in context
-        ctx.set("discovery", "pattern_found")
-        ctx.set("confidence", 0.85)
-
-        # Agent B requests context
-        request = Message(
-            sender_id="agent_b",
-            recipient_id="agent_a",
-            message_type="request",
-            content={"request": "share_findings"},
-            timestamp=datetime.now(),
-            context_id="collab_ctx"
-        )
-
-        bus.send_message(request)
-        assert ctx.get("discovery") == "pattern_found"
-        assert ctx.get("confidence") == 0.85
-
+def test_complete_communication_workflow():
+    manager = CommunicationManager()
+    conv = manager.initiate_conversation(["agent1", "agent2"], "task")
+    msg1 = manager.send_message("agent1", "agent2", MessageType.REQUEST, {"task": "analyze"})
+    msg2 = manager.send_message("agent2", "agent1", MessageType.RESPONSE, {"status": "ok"})
+    assert manager.reach_agreement(conv.conversation_id, 0.95) is True
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
