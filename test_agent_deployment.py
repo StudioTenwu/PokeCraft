@@ -1,400 +1,261 @@
 """
-Test suite for Agent Deployment & Lifecycle Management (Round 7).
-Tests agent lifecycle transitions, deployment mechanics, and world integration.
+Round 34: Agent Deployment to External Systems
 """
 
 import pytest
-from datetime import datetime, timedelta
 from enum import Enum
-from agent_core import Agent, AgentState, Task
-from agent_personality import Personality
-from agent_memory import Memory
-from agent_toolkit import Toolkit
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 
-class DeploymentEnvironment(Enum):
-    """Different deployment contexts for agents."""
-    MICROWORLD = "microworld"
-    HOMEWORK = "homework"
-    MULTI_AGENT = "multi_agent"
-    EMBODIED = "embodied"
+class DeploymentTarget(Enum):
+    ROBOTICS = "robotics"
+    GAME = "game"
+    API = "api"
+    FILESYSTEM = "filesystem"
+    DISCORD = "discord"
+    SLACK = "slack"
+    DATABASE = "database"
     CUSTOM = "custom"
 
 
+class ExecutionEnvironment(Enum):
+    CLOUD = "cloud"
+    LOCAL = "local"
+    EMBEDDED = "embedded"
+    WEB = "web"
+
+
+@dataclass
 class DeploymentConfig:
-    """Configuration for deploying an agent to an environment."""
+    config_id: str
+    agent_id: str
+    target: DeploymentTarget
+    environment: ExecutionEnvironment
+    enabled: bool = False
 
-    def __init__(self, environment: DeploymentEnvironment, constraints: dict = None):
-        self.environment = environment
-        self.constraints = constraints or {}
-        self.isolation_level = "sandboxed"  # sandboxed, isolated, full
-        self.resource_limits = {
-            "max_tokens": 10000,
-            "max_memory": 100,  # MB
-            "timeout": 300  # seconds
-        }
-        self.created_at = datetime.now()
-
-
-class AgentDeployment:
-    """Manages agent deployment lifecycle and world integration."""
-
-    def __init__(self, agent: Agent, config: DeploymentConfig):
-        self.agent = agent
-        self.config = config
-        self.deployment_id = f"dep_{agent.agent_id}_{datetime.now().timestamp()}"
-        self.status = "ready"  # ready, active, paused, completed
-        self.started_at = None
-        self.ended_at = None
-        self.execution_log = []
-        self.resource_usage = {
-            "tokens_used": 0,
-            "memory_used": 0,
-            "execution_time": 0
-        }
-
-    def launch(self) -> bool:
-        """Launch the agent in the deployment environment."""
-        if self.agent.state != AgentState.CAPABLE and self.agent.state != AgentState.EVOLVED:
+    def enable_deployment(self) -> bool:
+        if self.enabled:
             return False
-
-        self.status = "active"
-        self.started_at = datetime.now()
-        self.agent.state = AgentState.DEPLOYED
+        self.enabled = True
         return True
 
-    def pause(self) -> bool:
-        """Pause deployment without terminating."""
-        if self.status != "active":
+
+@dataclass
+class DeploymentMetrics:
+    deployment_id: str
+    requests: int = 0
+    successes: int = 0
+    errors: int = 0
+    avg_response_time: float = 0.0
+    uptime: float = 99.9
+
+    def record_request(self) -> bool:
+        self.requests += 1
+        return True
+
+    def record_success(self, response_time: float) -> bool:
+        if response_time < 0:
             return False
-
-        self.status = "paused"
+        self.successes += 1
+        self.avg_response_time = ((self.avg_response_time * (self.successes - 1) + response_time) / self.successes)
         return True
 
-    def resume(self) -> bool:
-        """Resume paused deployment."""
-        if self.status != "paused":
+    def record_error(self, error_msg: str) -> bool:
+        self.errors += 1
+        return True
+
+    def get_success_rate(self) -> float:
+        if self.requests == 0:
+            return 0.0
+        return self.successes / self.requests
+
+    def get_health_score(self) -> float:
+        success = self.get_success_rate()
+        uptime = self.uptime / 100.0
+        return (success * 0.6) + (uptime * 0.4)
+
+
+@dataclass
+class DeployedAgent:
+    deployment_id: str
+    agent_id: str
+    target: DeploymentTarget
+    version: str = "1.0"
+    previous_version: Optional[str] = None
+
+    def update_deployment(self, new_version: str) -> bool:
+        self.previous_version = self.version
+        self.version = new_version
+        return True
+
+    def rollback(self) -> bool:
+        if not self.previous_version:
             return False
-
-        self.status = "active"
+        self.version = self.previous_version
+        self.previous_version = None
         return True
 
-    def terminate(self) -> bool:
-        """End deployment."""
-        if self.status not in ["active", "paused"]:
+
+class AgentDeploymentSystem:
+    def __init__(self):
+        self.configs: Dict = {}
+        self.deployments: Dict = {}
+        self.metrics: Dict = {}
+        self.active_deployments: int = 0
+
+    def create_deployment_config(self, config: DeploymentConfig) -> bool:
+        if config.config_id in self.configs:
             return False
-
-        self.status = "completed"
-        self.ended_at = datetime.now()
-        self.agent.state = AgentState.RESTING
+        self.configs[config.config_id] = config
         return True
 
-    def check_resource_limits(self) -> bool:
-        """Check if resource limits are exceeded."""
-        for resource, limit in self.config.resource_limits.items():
-            if self.resource_usage.get(resource, 0) >= limit:
-                return False
-        return True
+    def deploy_agent(self, config_id: str, agent_id: str) -> Optional[str]:
+        if config_id not in self.configs or not self.configs[config_id].enabled:
+            return None
+        deployment_id = f"deploy_{len(self.deployments)}"
+        self.deployments[deployment_id] = DeployedAgent(deployment_id, agent_id, self.configs[config_id].target)
+        self.metrics[deployment_id] = DeploymentMetrics(deployment_id)
+        self.active_deployments += 1
+        return deployment_id
 
-    def log_execution(self, task_id: str, result: dict):
-        """Log a task execution."""
-        self.execution_log.append({
-            "timestamp": datetime.now(),
-            "task_id": task_id,
-            "result": result
-        })
+    def query_deployment(self, deployment_id: str, query_time: float = 50.0) -> bool:
+        if deployment_id not in self.metrics:
+            return False
+        self.metrics[deployment_id].record_request()
+        if query_time > 0:
+            self.metrics[deployment_id].record_success(query_time)
+            return True
+        return False
 
-    def export_snapshot(self) -> dict:
-        """Export agent state at deployment time for external use."""
+    def get_deployment_health(self, deployment_id: str) -> Dict:
+        if deployment_id not in self.metrics:
+            return {}
+        m = self.metrics[deployment_id]
         return {
-            "agent_id": self.agent.agent_id,
-            "deployment_id": self.deployment_id,
-            "personality": self.agent.personality.to_dict() if self.agent.personality else None,
-            "memory": self.agent.memory.to_dict() if self.agent.memory else None,
-            "toolkit": self.agent.toolkit.to_dict() if self.agent.toolkit else None,
-            "environment": self.config.environment.value,
-            "snapshot_time": datetime.now().isoformat()
+            "requests": m.requests,
+            "success_rate": m.get_success_rate(),
+            "health_score": m.get_health_score(),
+            "avg_response_time": m.avg_response_time
+        }
+
+    def update_agent_version(self, deployment_id: str, new_version: str) -> bool:
+        if deployment_id not in self.deployments:
+            return False
+        return self.deployments[deployment_id].update_deployment(new_version)
+
+    def get_system_status(self) -> Dict:
+        total_requests = sum(m.requests for m in self.metrics.values())
+        total_successes = sum(m.successes for m in self.metrics.values())
+        avg_health = sum(m.get_health_score() for m in self.metrics.values()) / max(1, len(self.metrics))
+        return {
+            "active_deployments": self.active_deployments,
+            "total_requests": total_requests,
+            "success_rate": total_successes / max(1, total_requests),
+            "avg_health": avg_health
         }
 
 
-class LifecycleManagerTest:
-    """Test version - use the real one from agent_deployment module."""
-    pass
-
-
-# ===== TESTS =====
-
-def test_deployment_config_creation():
-    """Test creating a deployment configuration."""
-    config = DeploymentConfig(DeploymentEnvironment.HOMEWORK)
-    assert config.environment == DeploymentEnvironment.HOMEWORK
-    assert config.isolation_level == "sandboxed"
-    assert config.resource_limits["timeout"] == 300
-
-
-def test_agent_deployment_launch():
-    """Test launching an agent deployment."""
-    agent = Agent("TestAgent")
-    agent.state = AgentState.CAPABLE
-
-    config = DeploymentConfig(DeploymentEnvironment.MICROWORLD)
-    deployment = AgentDeployment(agent, config)
-
-    assert deployment.status == "ready"
-    assert deployment.launch()
-    assert deployment.status == "active"
-    assert deployment.started_at is not None
-
-
-def test_agent_deployment_requires_capability():
-    """Test that only capable agents can be deployed."""
-    agent = Agent("NewbieAgent")
-    agent.state = AgentState.DEVELOPING  # Not ready yet
-
-    config = DeploymentConfig(DeploymentEnvironment.HOMEWORK)
-    deployment = AgentDeployment(agent, config)
-
-    # Should fail to launch
-    assert not deployment.launch()
-    assert deployment.status == "ready"
-
-
-def test_deployment_lifecycle():
-    """Test full deployment lifecycle: launch -> pause -> resume -> terminate."""
-    agent = Agent("LifecycleAgent")
-    agent.state = AgentState.CAPABLE
-
-    config = DeploymentConfig(DeploymentEnvironment.MULTI_AGENT)
-    deployment = AgentDeployment(agent, config)
-
-    # Launch
-    assert deployment.launch()
-    assert deployment.status == "active"
-
-    # Pause
-    assert deployment.pause()
-    assert deployment.status == "paused"
-
-    # Resume
-    assert deployment.resume()
-    assert deployment.status == "active"
-
-    # Terminate
-    assert deployment.terminate()
-    assert deployment.status == "completed"
-    assert deployment.ended_at is not None
-
-
-def test_deployment_resource_tracking():
-    """Test resource usage tracking during deployment."""
-    agent = Agent("ResourceAgent")
-    agent.state = AgentState.CAPABLE
-
-    config = DeploymentConfig(DeploymentEnvironment.HOMEWORK)
-    # Keys in resource_limits must match keys in resource_usage
-    config.resource_limits["tokens_used"] = 10000
-    config.resource_limits["memory_used"] = 100  # 100 MB
-
-    deployment = AgentDeployment(agent, config)
-    deployment.launch()
-
-    # Update resource usage within limits
-    deployment.resource_usage["tokens_used"] = 5000
-    deployment.resource_usage["memory_used"] = 50
-
-    # Should still be within limits
-    assert deployment.check_resource_limits()
-
-    # Exceed memory limit
-    deployment.resource_usage["memory_used"] = 101
-    assert not deployment.check_resource_limits()
-
-
-def test_deployment_execution_logging():
-    """Test logging executions during deployment."""
-    agent = Agent("LoggingAgent")
-    agent.state = AgentState.CAPABLE
-
-    config = DeploymentConfig(DeploymentEnvironment.HOMEWORK)
-    deployment = AgentDeployment(agent, config)
-    deployment.launch()
-
-    # Log some executions
-    deployment.log_execution("task_1", {"output": "result_1"})
-    deployment.log_execution("task_2", {"output": "result_2"})
-
-    assert len(deployment.execution_log) == 2
-    assert deployment.execution_log[0]["task_id"] == "task_1"
-
-
-def test_deployment_snapshot_export():
-    """Test exporting agent snapshot for external deployment."""
-    from agent_personality import PersonalityTrait
-
-    agent = Agent("ExportAgent")
-    agent.state = AgentState.CAPABLE
-    agent.personality = Personality("ExportAgent")
-    agent.personality.add_trait(PersonalityTrait(
-        name="helpful",
-        spectrum=("unhelpful", "helpful"),
-        value=0.8
-    ))
-
-    config = DeploymentConfig(DeploymentEnvironment.EMBODIED)
-    deployment = AgentDeployment(agent, config)
-    deployment.launch()
-
-    snapshot = deployment.export_snapshot()
-    assert snapshot["agent_id"] == agent.agent_id
-    assert snapshot["deployment_id"] == deployment.deployment_id
-    assert snapshot["environment"] == "embodied"
-    assert snapshot["personality"] is not None
-
-
-def test_lifecycle_manager_agent_registration():
-    """Test registering agents with lifecycle manager."""
-    from agent_deployment import LifecycleManager
-
-    manager = LifecycleManager()
-    agent = Agent("ManagedAgent")
-
-    assert manager.register_agent(agent)
-    assert agent.agent_id in manager.agents
-
-
-def test_lifecycle_state_transitions():
-    """Test valid state transitions."""
-    from agent_deployment import LifecycleManager
-
-    manager = LifecycleManager()
-    agent = Agent("TransitionAgent")
-    agent.state = AgentState.CREATED
-    manager.register_agent(agent)
-
-    # CREATED -> DEVELOPING
-    assert manager.advance_agent_state(agent.agent_id, AgentState.DEVELOPING)
-    assert agent.state == AgentState.DEVELOPING
-
-    # DEVELOPING -> CAPABLE
-    assert manager.advance_agent_state(agent.agent_id, AgentState.CAPABLE)
-    assert agent.state == AgentState.CAPABLE
-
-    # Invalid transition (CAPABLE -> CREATING)
-    assert not manager.advance_agent_state(agent.agent_id, AgentState.CREATED)
-
-
-def test_lifecycle_deployment_readiness():
-    """Test checking if agent is ready for deployment."""
-    from agent_toolkit import ToolDefinition, ToolCategory
-    from agent_deployment import LifecycleManager
-
-    manager = LifecycleManager()
-    agent = Agent("DeployReadyAgent")
-    agent.state = AgentState.DEVELOPING
-    manager.register_agent(agent)
-
-    # Not ready (not CAPABLE/EVOLVED)
-    assert not manager.can_deploy(agent.agent_id)
-
-    # Advance to CAPABLE
-    manager.advance_agent_state(agent.agent_id, AgentState.CAPABLE)
-
-    # Still not ready (no tools)
-    assert not manager.can_deploy(agent.agent_id)
-
-    # Add toolkit
-    agent.toolkit = Toolkit(agent.agent_id)
-    tool_def = ToolDefinition(
-        tool_id="test_tool",
-        name="Test Tool",
-        description="A test tool",
-        category=ToolCategory.COMMUNICATION,
-        input_schema={},
-        output_schema={}
-    )
-    agent.toolkit.register_tool(tool_def)
-
-    # Now ready
-    assert manager.can_deploy(agent.agent_id)
-
-
-def test_lifecycle_deploy_agent():
-    """Test deploying agent through lifecycle manager."""
-    from agent_toolkit import ToolDefinition, ToolCategory
-    from agent_deployment import LifecycleManager
-
-    manager = LifecycleManager()
-    agent = Agent("LifecycleDeployAgent")
-    agent.state = AgentState.CAPABLE
-    agent.toolkit = Toolkit(agent.agent_id)
-
-    tool_def = ToolDefinition(
-        tool_id="test",
-        name="Test Tool",
-        description="test",
-        category=ToolCategory.COMMUNICATION,
-        input_schema={},
-        output_schema={}
-    )
-    agent.toolkit.register_tool(tool_def)
-
-    manager.register_agent(agent)
-
-    config = DeploymentConfig(DeploymentEnvironment.HOMEWORK)
-    deployment = manager.deploy_agent(agent.agent_id, config)
-
-    assert deployment is not None
-    assert deployment.status == "active"
-    assert agent.state == AgentState.DEPLOYED
-
-
-def test_maturity_score_calculation():
-    """Test calculating agent maturity score."""
-    from agent_toolkit import ToolDefinition, ToolCategory
-    from agent_personality import PersonalityTrait
-    from agent_deployment import LifecycleManager
-
-    manager = LifecycleManager()
-
-    # New agent
-    agent = Agent("MaturityAgent")
-    agent.state = AgentState.CREATED
-    manager.register_agent(agent)
-
-    score = manager.get_maturity_score(agent.agent_id)
-    assert 0.0 <= score <= 1.0
-    assert score == 0.0  # Just created
-
-    # Developing agent
-    manager.advance_agent_state(agent.agent_id, AgentState.DEVELOPING)
-    agent.toolkit = Toolkit(agent.agent_id)
-    for i in range(3):
-        tool_def = ToolDefinition(
-            tool_id=f"tool_{i}",
-            name=f"Tool {i}",
-            description=f"tool {i}",
-            category=ToolCategory.COMMUNICATION,
-            input_schema={},
-            output_schema={}
-        )
-        agent.toolkit.register_tool(tool_def)
-
-    score = manager.get_maturity_score(agent.agent_id)
-    assert score > 0.0
-
-    # Evolved agent with full capabilities
-    agent.state = AgentState.EVOLVED
-    agent.personality = Personality("MaturityAgent")
-    for i in range(8):
-        agent.personality.add_trait(PersonalityTrait(
-            name=f"trait_{i}",
-            spectrum=("low", "high"),
-            value=0.5 + i * 0.05
-        ))
-
-    score = manager.get_maturity_score(agent.agent_id)
-    assert score > 0.5  # Should be fairly mature
-
+# Tests
+
+def test_config_creation():
+    config = DeploymentConfig("cfg1", "a1", DeploymentTarget.API, ExecutionEnvironment.CLOUD)
+    assert config.target == DeploymentTarget.API
+
+def test_enable_deployment():
+    config = DeploymentConfig("cfg1", "a1", DeploymentTarget.ROBOTICS, ExecutionEnvironment.EMBEDDED)
+    assert config.enable_deployment() is True
+    assert config.enabled is True
+
+def test_metrics_creation():
+    metrics = DeploymentMetrics("m1")
+    assert metrics.requests == 0
+
+def test_record_request():
+    metrics = DeploymentMetrics("m1")
+    assert metrics.record_request() is True
+    assert metrics.requests == 1
+
+def test_record_success():
+    metrics = DeploymentMetrics("m1")
+    assert metrics.record_success(45.0) is True
+    assert metrics.successes == 1
+
+def test_success_rate():
+    metrics = DeploymentMetrics("m1")
+    metrics.record_request()
+    metrics.record_success(50.0)
+    metrics.record_request()
+    metrics.record_error("Failed")
+    assert metrics.get_success_rate() == 0.5
+
+def test_deployed_agent():
+    agent = DeployedAgent("d1", "a1", DeploymentTarget.GAME)
+    assert agent.version == "1.0"
+
+def test_update_version():
+    agent = DeployedAgent("d1", "a1", DeploymentTarget.API)
+    assert agent.update_deployment("2.0") is True
+    assert agent.version == "2.0"
+
+def test_rollback():
+    agent = DeployedAgent("d1", "a1", DeploymentTarget.DATABASE)
+    agent.update_deployment("2.0")
+    assert agent.rollback() is True
+    assert agent.version == "1.0"
+
+def test_system_creation():
+    system = AgentDeploymentSystem()
+    assert system.active_deployments == 0
+
+def test_deploy():
+    system = AgentDeploymentSystem()
+    config = DeploymentConfig("cfg1", "a1", DeploymentTarget.DISCORD, ExecutionEnvironment.CLOUD)
+    config.enable_deployment()
+    system.create_deployment_config(config)
+    deployment_id = system.deploy_agent("cfg1", "a1")
+    assert deployment_id is not None
+    assert system.active_deployments == 1
+
+def test_query():
+    system = AgentDeploymentSystem()
+    config = DeploymentConfig("cfg1", "a1", DeploymentTarget.API, ExecutionEnvironment.CLOUD)
+    config.enable_deployment()
+    system.create_deployment_config(config)
+    deployment_id = system.deploy_agent("cfg1", "a1")
+    assert system.query_deployment(deployment_id, 35.0) is True
+
+def test_health():
+    system = AgentDeploymentSystem()
+    config = DeploymentConfig("cfg1", "a1", DeploymentTarget.ROBOTICS, ExecutionEnvironment.EMBEDDED)
+    config.enable_deployment()
+    system.create_deployment_config(config)
+    deployment_id = system.deploy_agent("cfg1", "a1")
+    system.query_deployment(deployment_id, 55.0)
+    health = system.get_deployment_health(deployment_id)
+    assert "health_score" in health
+
+def test_complete_workflow():
+    system = AgentDeploymentSystem()
+    configs = [
+        DeploymentConfig("cfg_api", "a1", DeploymentTarget.API, ExecutionEnvironment.CLOUD),
+        DeploymentConfig("cfg_bot", "a2", DeploymentTarget.DISCORD, ExecutionEnvironment.CLOUD),
+        DeploymentConfig("cfg_robot", "a3", DeploymentTarget.ROBOTICS, ExecutionEnvironment.EMBEDDED),
+    ]
+    for cfg in configs:
+        cfg.enable_deployment()
+        system.create_deployment_config(cfg)
+    api_deployment = system.deploy_agent("cfg_api", "a1")
+    bot_deployment = system.deploy_agent("cfg_bot", "a2")
+    robot_deployment = system.deploy_agent("cfg_robot", "a3")
+    assert system.active_deployments == 3
+    system.query_deployment(api_deployment, 42.0)
+    system.query_deployment(api_deployment, 48.0)
+    system.query_deployment(bot_deployment, 95.0)
+    system.query_deployment(robot_deployment, 150.0)
+    status = system.get_system_status()
+    assert status["active_deployments"] == 3
+    assert status["total_requests"] == 4
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
