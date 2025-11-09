@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "quibbler": {
+      "command": "/opt/homebrew/Cellar/python@3.14/3.14.0/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "args": [
+        "-m",
+        "quibbler.cli",
+        "mcp"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/wz/.local/share/uv/tools/quibbler/lib/python3.14/site-packages"
+      }
+    }
+  }
+}

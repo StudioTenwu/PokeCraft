@@ -2,22 +2,30 @@
 
 Get the Agent Engineering Playground running locally in 5 minutes.
 
+## Current Implementation Status
+
+✅ **Fully Implemented**:
+- Backend API with Grid World engine, 8 tools, Levels 1-2
+- ReAct agent executor with Google Gemini integration
+- Frontend with Canvas grid renderer, agent config UI, reasoning trace
+- Real-time WebSocket execution
+- Complete data flow from UI → API → LLM → Grid → UI
+
 ## Prerequisites
 
 - Python 3.10 or higher
 - Node.js 18 or higher
-- An API key from one of:
-  - [Anthropic](https://console.anthropic.com/) (for Claude models)
-  - [OpenAI](https://platform.openai.com/) (for GPT models)
-  - [Google AI Studio](https://makersuite.google.com/app/apikey) (for Gemini models)
+- **Google Gemini API key** (MVP currently supports Gemini only)
+  - Get your key at [Google AI Studio](https://makersuite.google.com/app/apikey)
+  - Place it at `~/.gemini/apikey.txt`
 
 ## Installation
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/WarrenZhu050413/RLCraft.git
-cd RLCraft
+git clone https://github.com/WarrenZhu050413/AICraft.git
+cd AICraft
 ```
 
 ### 2. Backend Setup
@@ -58,10 +66,14 @@ Open two terminal windows:
 ```bash
 cd backend
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-python -m uvicorn src.api.main:app --reload
+
+# Important: Set PYTHONPATH so imports work correctly
+PYTHONPATH=./src uvicorn src.api.main:app --reload --port 8000
 ```
 
 Backend will run at `http://localhost:8000`
+
+**Note**: The backend is currently running and serving at http://localhost:8000!
 
 ### Terminal 2: Start Frontend
 

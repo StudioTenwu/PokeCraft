@@ -1,211 +1,207 @@
-# Agent Engineering Playground
+# AICraft - Agent Evolution Platform
 
-**Learn Agent Engineering Through Play**
+Interactive demonstration of how AI agents evolve from simple chat to sophisticated tool-using systems.
 
-An interactive, browser-based course where learners build and configure AI agents to solve progressively complex tasks in a Minecraft-inspired grid world.
-
-## 🎯 Vision
-
-> "Children learn the most in play, not in rote education."
-
-This project embodies a philosophy: **AI enables play-based learning** by creating infinitely varied, interactive environments and making learning artifacts visible and exportable.
-
-### What Makes This Different
-
-- **No coding required**: Design agents using natural language
-- **Immediate feedback**: See your agent think and act in real-time
-- **Progressive complexity**: From simple navigation to multi-agent systems
-- **Real-world transfer**: Export your agent to run in other environments
-
-## 🎮 Course Structure
-
-### Level 1: Hello, Agent (5 min)
-Learn to control agent behavior with natural language prompts.
-- **Environment**: Simple 5x5 grid with goal
-- **Tools**: Basic movement commands
-- **Learn**: Prompt engineering basics
-
-### Level 2: Tool Use (10 min)
-Teach agents to use tools strategically.
-- **Environment**: Resource collection (wood, stone, crafting)
-- **Tools**: `collect()`, `craft()`, `check_inventory()`
-- **Learn**: Tool selection and sequencing
-
-### Level 3: Planning & Reasoning (15 min)
-Introduce ReAct-style chain-of-thought reasoning.
-- **Environment**: Maze with locked doors, keys, pressure plates
-- **Tools**: Exploration and reasoning
-- **Learn**: How agents plan and debug their thinking
-
-### Level 4: Multi-Agent Collaboration (20 min)
-Design agents that work together.
-- **Environment**: Collaborative building tasks
-- **Tools**: Agent communication primitives
-- **Learn**: Coordination and role specialization
-
-### Level 5: Reward Shaping (15 min)
-Understand how incentives shape behavior.
-- **Environment**: Open world with multiple goals
-- **Tools**: Custom reward function designer
-- **Learn**: Alignment and unintended consequences
-
-### Level 6: Real-World Export (Capstone)
-Take your agent beyond the playground.
-- Export to Minecraft mod
-- Export to robot simulator
-- Share as API
-
-## 🏗️ Technical Architecture
-
-### Backend (Python)
-- **Agent Executor**: LLM-powered ReAct loop
-- **Environment Engine**: Grid-based world simulation
-- **API**: FastAPI server with WebSocket support
-
-### Frontend (React)
-- **Grid Renderer**: 2D pixel-art visualization
-- **Prompt Editor**: Interactive agent configuration
-- **Reasoning Trace**: Live view of agent's thoughts
-
-### No Training Required
-Agents use LLM reasoning directly (like AutoGPT/BabyAGI) for instant feedback.
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- API key from one of: [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or [Google AI Studio](https://makersuite.google.com/app/apikey) (for Gemini)
+- Python 3.8+
+- Node.js 16+
+- Anthropic API Key ([Get one here](https://console.anthropic.com/settings/keys))
 
-### Installation
+### Setup
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/RLCraft.git
-cd RLCraft
+1. **Add your API key:**
+   ```bash
+   # Edit agent-evolution/backend/.env
+   nano agent-evolution/backend/.env
+   # Add: ANTHROPIC_API_KEY=sk-ant-your-key-here
+   ```
 
-# Backend setup
-cd backend
-pip install -r requirements.txt
-cp .env.example .env
-# Add your API key to .env
+2. **Start the backend:**
+   ```bash
+   cd agent-evolution/backend
+   pip install -r requirements.txt
+   python main.py
+   ```
 
-# Frontend setup
-cd ../frontend
-npm install
+3. **Start the frontend:**
+   ```bash
+   cd agent-evolution/frontend
+   npm install
+   npm run dev
+   ```
 
-# Run development servers
-# Terminal 1 (backend)
-cd backend
-python -m uvicorn src.api.main:app --reload
+4. **Open the app:**
+   Visit [http://localhost:5190](http://localhost:5190)
 
-# Terminal 2 (frontend)
-cd frontend
-npm run dev
+## 📚 The 4 Stages of Agent Evolution
+
+### Stage 1: Basic Chat
+- Simple conversation loop with message history
+- No tool access
+- **Try it:** "Help me plan a birthday party"
+
+### Stage 2: Tool Recognition
+- Agent understands available tools
+- Can identify when tools would be useful
+- Cannot execute tools yet
+- **Try it:** "Search the web for party ideas"
+
+### Stage 3: Tool Execution
+- Agent can execute tools and process results
+- Single tool use per turn
+- **Try it:** "Find party ideas and save them to a file"
+
+### Stage 4: Multi-Tool Composition
+- Agent chains multiple tools intelligently
+- Complex multi-step reasoning
+- **Try it:** "Research party ideas, create a comprehensive plan, and organize it"
+
+## 🏗️ Architecture
+
 ```
-
-Visit `http://localhost:5173` to start learning!
-
-## 📖 Project Structure
-
-```
-RLCraft/
-├── backend/
+agent-evolution/
+├── frontend/          # React + Vite app (port 5190)
 │   ├── src/
-│   │   ├── agent/          # LLM agent executor and ReAct loop
-│   │   ├── environment/    # Grid world, entities, tools
-│   │   ├── api/            # FastAPI routes and WebSocket handlers
-│   │   └── models/         # Data models and schemas
-│   ├── tests/
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # React components (GridWorld, PromptEditor, etc.)
-│   │   ├── pages/          # Level pages
-│   │   ├── hooks/          # Custom React hooks
-│   │   └── utils/          # Helper functions
-│   ├── public/
+│   │   ├── components/
+│   │   │   ├── AgentChat.jsx      # Main chat interface
+│   │   │   ├── StageIndicator.jsx # Stage progression UI
+│   │   │   └── ToolDisplay.jsx     # Tool execution visualization
+│   │   ├── hooks/
+│   │   │   └── useAgentStream.js  # SSE streaming hook
+│   │   └── App.jsx
 │   └── package.json
-├── docs/                   # Course content and guides
-├── assets/                 # Images, sprites, sounds
-└── README.md
+│
+└── backend/           # FastAPI + Claude SDK (port 8001)
+    ├── main.py        # API server with SSE endpoints
+    ├── stages.py      # 4-stage agent implementations
+    ├── tools.py       # Tool definitions and execution
+    ├── requirements.txt
+    └── .env           # API keys
 ```
 
-## 🎨 Design Philosophy
+## 🛠️ Technologies
 
-### 1. Immediate Feedback
-Every prompt change shows new behavior in seconds. No waiting for training.
+**Frontend:**
+- React 18
+- Vite 5
+- Tailwind CSS 4
+- Server-Sent Events (SSE) for streaming
 
-### 2. Transparency
-Show the agent's reasoning trace. Learners debug by reading agent thoughts.
+**Backend:**
+- FastAPI
+- Anthropic Python SDK (AsyncAnthropic)
+- Claude 3.5 Sonnet
+- Tool execution framework
 
-### 3. Progressive Complexity
-Start with 1 tool and 1 task. End with multi-agent systems and custom rewards.
+## ⚙️ API Endpoints
 
-### 4. Open-Ended Creativity
-Later levels: "Design your own challenge." Gallery of learner creations.
+- `GET /api/stages` - Get all stage information
+- `GET /api/tools` - Get available tool definitions
+- `POST /api/chat` - Stream chat responses (SSE)
 
-### 5. Export/Transfer
-Learned patterns apply to real agent engineering. Deploy these agents in production.
+## 🔧 How It Works
 
-## 🤝 Contributing
+### Claude Agents SDK Integration
 
-This is an open-source educational project. Contributions welcome!
+The backend uses the official Anthropic Python SDK with proper async streaming:
 
-### Ways to Contribute
-- Add new levels and challenges
-- Improve environment physics
-- Design new agent architectures
-- Create export targets (new environments)
-- Enhance UI/UX
+```python
+from anthropic import AsyncAnthropic
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+client = AsyncAnthropic(api_key=api_key)
 
-## 📚 Learning Resources
+async with client.messages.stream(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=2048,
+    system=system_message,
+    messages=messages,
+    tools=TOOL_DEFINITIONS  # Stage-dependent
+) as stream:
+    async for text in stream.text_stream:
+        yield text
+```
 
-- [What is Agent Engineering?](docs/agent-engineering.md)
-- [ReAct Explained](docs/react-pattern.md)
-- [Prompt Engineering Guide](docs/prompt-guide.md)
-- [Tool Use Best Practices](docs/tool-design.md)
+### Stage-Specific Behavior
 
-## 🗺️ Roadmap
+Each stage modifies:
+1. **System prompt** - Instructions about capabilities
+2. **Tool availability** - Which tools are provided to Claude
+3. **Tool execution** - Whether tools are actually executed
+4. **Agentic loops** - How many tool-use turns are allowed
 
-### Phase 1: Core Loop (Current)
-- [ ] Basic grid environment
-- [ ] LLM-based agent executor
-- [ ] React UI with live visualization
-- [ ] Level 1 & 2 content
+### Tool Execution
 
-### Phase 2: Course Content
-- [ ] Levels 3-5 with progressive challenges
-- [ ] Hint system (LLM-generated)
-- [ ] Progress tracking
+Tools are defined using Claude's tool schema and executed with proper error handling:
 
-### Phase 3: Export & Share
-- [ ] Export agent config (JSON)
-- [ ] Gallery of solutions
-- [ ] Leaderboard (optional)
+```python
+{
+    "name": "web_search",
+    "description": "Search the web for information",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"}
+        }
+    }
+}
+```
 
-### Phase 4: Advanced Features
-- [ ] Minecraft mod integration
-- [ ] Robot simulator export
-- [ ] Multi-user collaboration
+## 📝 Adding New Tools
 
-## 📄 License
+1. Define tool in `backend/tools.py`:
+```python
+TOOL_DEFINITIONS.append({
+    "name": "your_tool",
+    "description": "What it does",
+    "input_schema": { ... }
+})
+```
 
-MIT License - See [LICENSE](LICENSE) for details.
+2. Implement execution in `ToolExecutor`:
+```python
+async def execute(self, tool_name: str, tool_input: dict):
+    if tool_name == "your_tool":
+        return await self._your_tool(tool_input)
+```
 
-## 🙏 Acknowledgments
+## 🎯 Educational Goals
 
-Built on the philosophy that **play is the natural learning interface** and **AI can make learning artifacts visible**.
+This project demonstrates:
+- How AI agents evolve from simple to complex
+- Progressive capability unlocking
+- Tool recognition vs. execution
+- Multi-step agentic reasoning
+- Real-time streaming UX
 
-Inspired by:
-- Constructionist learning theory (Seymour Papert)
-- Agent-based modeling education
-- Interactive coding environments (Scratch, Code.org)
+## 🐛 Troubleshooting
 
----
+**Chat not working?**
+- Check that `ANTHROPIC_API_KEY` is set in `backend/.env`
+- Verify backend is running on port 8001
+- Check browser console for errors
 
-**Start your agent engineering journey today!**
+**Backend won't start?**
+```bash
+# Check if port 8001 is in use
+lsof -i :8001
 
-Questions? Open an issue or reach out: [fuchengwarrenzhu@gmail.com](mailto:fuchengwarrenzhu@gmail.com)
+# Kill existing process
+lsof -ti:8001 | xargs kill -9
+```
+
+**Frontend won't connect?**
+- Ensure backend is running first
+- Check CORS settings in `backend/main.py`
+- Verify fetch URLs in frontend code
+
+## 📜 License
+
+MIT
+
+## 🙏 Credits
+
+Based on ["How to Build an Agent" by Thorsten Ball](https://thorstenball.com/)
+
+Built with [Claude](https://claude.ai) and the [Anthropic API](https://docs.anthropic.com/)

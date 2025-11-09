@@ -32,7 +32,7 @@ Thank you for your interest in contributing! This is an open-source educational 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/RLCraft.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/AICraft.git`
 3. Create a feature branch: `git checkout -b feature/your-feature-name`
 4. Make your changes
 5. Test thoroughly
@@ -72,7 +72,7 @@ Use conventional commits format:
 ## Project Structure
 
 ```
-RLCraft/
+AICraft/
 ├── backend/         # Python FastAPI backend
 ├── frontend/        # React frontend
 ├── docs/            # Documentation
