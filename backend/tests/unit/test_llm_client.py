@@ -62,7 +62,7 @@ class TestLLMClient:
             "personality_traits": ["wise", "patient"],
             "avatar_prompt": "An owl with glasses, pixel art style",
         }
-        # Simulate XML response with output tags
+        # Wrap JSON in XML output tags
         xml_response = f"<output>{json.dumps(mock_agent_data)}</output>"
 
         async def mock_query(prompt):
@@ -162,9 +162,9 @@ class TestLLMClient:
         }
 
         async def mock_query(prompt):
-            # Add extra whitespace around XML
-            xml_response = f"<output>{json.dumps(mock_data)}</output>"
-            yield MockMessage(result=f"\n\n  {xml_response}  \n\n")
+            # Add extra whitespace and wrap in XML
+            xml_response = f"<output>\n\n  {json.dumps(mock_data)}  \n\n</output>"
+            yield MockMessage(result=xml_response)
 
         with patch("llm_client.query", side_effect=mock_query):
             # Act

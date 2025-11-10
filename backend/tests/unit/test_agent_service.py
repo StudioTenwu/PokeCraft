@@ -5,19 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from agent_service import AgentService
 from models.agent import AgentData
+from models.db_models import AgentDB
 
 
 class TestAgentService:
     """Tests for AgentService class."""
 
     @pytest.fixture()
-    async def service(self, tmp_path):
-        """Create agent service instance with temporary database."""
-        # Use tmp_path for isolated test database
-        db_path = tmp_path / "test_agents.db"
-        service = AgentService(db_path=str(db_path))
-        await service.init_db()
-        return service
+    def service(self):
+        """Create agent service instance."""
+        return AgentService()
 
     @pytest.mark.asyncio()
     async def test_create_agent_with_valid_description(self, service):
@@ -97,23 +94,15 @@ class TestAgentService:
             return_value="/static/avatars/test.png",
         )
 
-        # Mock the database connection
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock()
-        mock_db.commit = AsyncMock()
-        mock_db.__aenter__ = AsyncMock(return_value=mock_db)
-        mock_db.__aexit__ = AsyncMock(return_value=None)
+        # Act
+        result = await service.create_agent(description)
 
-        with patch("aiosqlite.connect", return_value=mock_db):
-            # Act
-            await service.create_agent(description)
-
-            # Assert
-            # Verify database insert was called
-            assert mock_db.execute.called
-            call_args = mock_db.execute.call_args[0]
-            assert "INSERT INTO agents" in call_args[0]
-            assert mock_db.commit.called
+        # Assert - Verify agent was saved by retrieving it
+        saved_agent = await service.get_agent(result["id"])
+        assert saved_agent is not None
+        assert saved_agent["name"] == "RoboBot"
+        assert saved_agent["backstory"] == "A helpful robot."
+        assert saved_agent["personality_traits"] == ["helpful", "curious"]
 
     @pytest.mark.asyncio()
     async def test_create_agent_converts_personality_to_json(self, service):
@@ -143,39 +132,30 @@ class TestAgentService:
     @pytest.mark.asyncio()
     async def test_get_agent_by_id_returns_agent(self, service):
         """Should retrieve agent by ID from database."""
-        # Arrange
-        agent_id = "test-123"
+        # Arrange - First create an agent
+        description = "A brave knight"
+        mock_agent_data = AgentData(
+            name="Sir Valor",
+            backstory="A brave knight.",
+            personality_traits=["brave", "loyal"],
+            avatar_prompt="A knight in armor",
+        )
 
-        # Create mock row with dict-like access
-        class MockRow:
-            def __getitem__(self, key):
-                data = {
-                    "id": agent_id,
-                    "name": "Sir Valor",
-                    "backstory": "A brave knight.",
-                    "personality": "brave,loyal",
-                    "avatar_url": "/static/avatars/test-123.png",
-                }
-                return data[key]
+        service.llm_client.generate_agent = AsyncMock(return_value=mock_agent_data)
+        service.avatar_generator.generate_avatar = MagicMock(
+            return_value="/static/avatars/test-123.png",
+        )
 
-        mock_cursor = AsyncMock()
-        mock_cursor.fetchone = AsyncMock(return_value=MockRow())
-        mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
-        mock_cursor.__aexit__ = AsyncMock(return_value=None)
+        created_agent = await service.create_agent(description)
+        agent_id = created_agent["id"]
 
-        mock_db = AsyncMock()
-        mock_db.execute = MagicMock(return_value=mock_cursor)
-        mock_db.__aenter__ = AsyncMock(return_value=mock_db)
-        mock_db.__aexit__ = AsyncMock(return_value=None)
+        # Act
+        result = await service.get_agent(agent_id)
 
-        with patch("aiosqlite.connect", return_value=mock_db):
-            # Act
-            result = await service.get_agent(agent_id)
-
-            # Assert
-            assert result["id"] == agent_id
-            assert result["name"] == "Sir Valor"
-            assert result["personality_traits"] == ["brave", "loyal"]
+        # Assert
+        assert result["id"] == agent_id
+        assert result["name"] == "Sir Valor"
+        assert result["personality_traits"] == ["brave", "loyal"]
 
     @pytest.mark.asyncio()
     async def test_get_agent_by_id_returns_none_when_not_found(self, service):

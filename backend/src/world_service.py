@@ -1,12 +1,15 @@
 """Service for world creation and management."""
-import aiosqlite
-import uuid
 import json
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from database import async_session_factory
 from llm_world_generator import LLMWorldGenerator
+from models.db_models import WorldDB
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -22,24 +25,13 @@ class WorldService:
         logger.debug(f"WorldService initialized with database at {self.db_path}")
 
     async def init_db(self):
-        """Initialize database schema for worlds."""
+        """Initialize database schema for worlds.
+
+        Note: This method is now a no-op as database initialization
+        is handled by database.init_db(). Kept for backward compatibility.
+        """
         logger.info(f"Initializing world database schema at {self.db_path}")
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS worlds (
-                    id TEXT PRIMARY KEY,
-                    agent_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    description TEXT,
-                    grid_data TEXT NOT NULL,
-                    agent_position_x INTEGER NOT NULL,
-                    agent_position_y INTEGER NOT NULL,
-                    width INTEGER NOT NULL,
-                    height INTEGER NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            await db.commit()
+        logger.info("Database schema creation delegated to database.init_db()")
 
     async def create_world(self, agent_id: str, description: str) -> dict[str, Any]:
         """Create a new world for an agent.
@@ -63,24 +55,21 @@ class WorldService:
         # Serialize grid data to JSON
         grid_json = json.dumps(world_data.grid)
 
-        # Store in database
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute(
-                """INSERT INTO worlds (id, agent_id, name, description, grid_data, agent_position_x, agent_position_y, width, height)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    world_id,
-                    agent_id,
-                    world_data.name,
-                    world_data.description,
-                    grid_json,
-                    world_data.agent_start[0],
-                    world_data.agent_start[1],
-                    10,  # Width (always 10 for MVP)
-                    10,  # Height (always 10 for MVP)
-                )
+        # Store in database using SQLAlchemy
+        async with async_session_factory() as session:
+            db_world = WorldDB(
+                id=world_id,
+                agent_id=agent_id,
+                name=world_data.name,
+                description=world_data.description,
+                grid_data=grid_json,
+                agent_position_x=world_data.agent_start[0],
+                agent_position_y=world_data.agent_start[1],
+                width=10,  # Width (always 10 for MVP)
+                height=10,  # Height (always 10 for MVP)
             )
-            await db.commit()
+            session.add(db_world)
+            await session.commit()
 
         # Return complete world data
         return {
@@ -104,28 +93,27 @@ class WorldService:
         Returns:
             dict: World data or None if not found
         """
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM worlds WHERE id = ?", (world_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-                if row:
-                    grid_data = json.loads(row["grid_data"])
-                    agent_position = [row["agent_position_x"], row["agent_position_y"]]
+        async with async_session_factory() as session:
+            stmt = select(WorldDB).where(WorldDB.id == world_id)
+            result = await session.execute(stmt)
+            world = result.scalar_one_or_none()
 
-                    return {
-                        "id": row["id"],
-                        "agent_id": row["agent_id"],
-                        "name": row["name"],
-                        "description": row["description"],
-                        "grid": grid_data,
-                        "width": row["width"],
-                        "height": row["height"],
-                        "agent_position": agent_position,
-                        "created_at": row["created_at"]
-                    }
-                return None
+            if world:
+                grid_data = json.loads(world.grid_data)
+                agent_position = [world.agent_position_x, world.agent_position_y]
+
+                return {
+                    "id": world.id,
+                    "agent_id": world.agent_id,
+                    "name": world.name,
+                    "description": world.description,
+                    "grid": grid_data,
+                    "width": world.width,
+                    "height": world.height,
+                    "agent_position": agent_position,
+                    "created_at": world.created_at.isoformat() if world.created_at else None
+                }
+            return None
 
     async def get_worlds_by_agent_id(self, agent_id: str) -> list[dict[str, Any]]:
         """Retrieve all worlds for a specific agent.
@@ -136,27 +124,25 @@ class WorldService:
         Returns:
             list: List of world data dictionaries
         """
-        async with aiosqlite.connect(self.db_path) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(
-                "SELECT * FROM worlds WHERE agent_id = ? ORDER BY created_at DESC",
-                (agent_id,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-                worlds = []
-                for row in rows:
-                    grid_data = json.loads(row["grid_data"])
-                    agent_position = [row["agent_position_x"], row["agent_position_y"]]
+        async with async_session_factory() as session:
+            stmt = select(WorldDB).where(WorldDB.agent_id == agent_id).order_by(WorldDB.created_at.desc())
+            result = await session.execute(stmt)
+            worlds_db = result.scalars().all()
 
-                    worlds.append({
-                        "id": row["id"],
-                        "agent_id": row["agent_id"],
-                        "name": row["name"],
-                        "description": row["description"],
-                        "grid": grid_data,
-                        "width": row["width"],
-                        "height": row["height"],
-                        "agent_position": agent_position,
-                        "created_at": row["created_at"]
-                    })
-                return worlds
+            worlds = []
+            for world in worlds_db:
+                grid_data = json.loads(world.grid_data)
+                agent_position = [world.agent_position_x, world.agent_position_y]
+
+                worlds.append({
+                    "id": world.id,
+                    "agent_id": world.agent_id,
+                    "name": world.name,
+                    "description": world.description,
+                    "grid": grid_data,
+                    "width": world.width,
+                    "height": world.height,
+                    "agent_position": agent_position,
+                    "created_at": world.created_at.isoformat() if world.created_at else None
+                })
+            return worlds

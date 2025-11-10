@@ -3,15 +3,19 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import aiosqlite
 from avatar_generator import AvatarGenerator
+from database import async_session_factory
 from llm_client import LLMClient
+from models.db_models import AgentDB
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
 
 class AgentService:
     def __init__(self, db_path: str | None = None) -> None:
+        # db_path parameter kept for backward compatibility but not used
+        # SQLAlchemy engine configuration is now in database.py
         if db_path is None:
             self.db_path = str(Path(__file__).parent.parent / "agents.db")
         else:
@@ -21,27 +25,13 @@ class AgentService:
         logger.debug(f"AgentService initialized with database at {self.db_path}")
 
     async def init_db(self) -> None:
-        """Initialize database schema."""
+        """Initialize database schema.
+
+        Note: This method is now a no-op as database initialization
+        is handled by database.init_db(). Kept for backward compatibility.
+        """
         logger.info(f"Initializing database at {self.db_path}")
-        try:
-            async with aiosqlite.connect(self.db_path) as db:
-                await db.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS agents (
-                        id TEXT PRIMARY KEY,
-                        name TEXT NOT NULL,
-                        backstory TEXT,
-                        personality TEXT,
-                        avatar_url TEXT,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                """,
-                )
-                await db.commit()
-            logger.info("Database schema created successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize database: {e}", exc_info=True)
-            raise
+        logger.info("Database schema creation delegated to database.init_db()")
 
     async def create_agent(self, description: str) -> dict[str, Any]:
         """Create a new agent with LLM generation and avatar."""
@@ -61,20 +51,17 @@ class AgentService:
             )
             logger.info(f"Avatar generated: {avatar_url}")
 
-            # Store in database
-            async with aiosqlite.connect(self.db_path) as db:
-                await db.execute(
-                    """INSERT INTO agents (id, name, backstory, personality, avatar_url)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (
-                        agent_id,
-                        agent_data.name,
-                        agent_data.backstory,
-                        ",".join(agent_data.personality_traits),
-                        avatar_url,
-                    ),
+            # Store in database using SQLAlchemy
+            async with async_session_factory() as session:
+                db_agent = AgentDB(
+                    id=agent_id,
+                    name=agent_data.name,
+                    backstory=agent_data.backstory,
+                    personality=",".join(agent_data.personality_traits),
+                    avatar_url=avatar_url,
                 )
-                await db.commit()
+                session.add(db_agent)
+                await session.commit()
 
             logger.info(
                 f"Agent created successfully: {agent_data.name} (ID: {agent_id})",
@@ -98,26 +85,25 @@ class AgentService:
         logger.debug(f"Fetching agent with ID: {agent_id}")
 
         try:
-            async with aiosqlite.connect(self.db_path) as db:
-                db.row_factory = aiosqlite.Row
-                async with db.execute(
-                    "SELECT * FROM agents WHERE id = ?", (agent_id,),
-                ) as cursor:
-                    row = await cursor.fetchone()
-                    if row:
-                        logger.info(f"Agent found: {row['name']} (ID: {agent_id})")
-                        return {
-                            "id": row["id"],
-                            "name": row["name"],
-                            "backstory": row["backstory"],
-                            "personality_traits": row["personality"].split(",")
-                            if row["personality"]
-                            else [],
-                            "avatar_url": row["avatar_url"],
-                        }
-                    else:
-                        logger.warning(f"Agent not found: {agent_id}")
-                        return None
+            async with async_session_factory() as session:
+                stmt = select(AgentDB).where(AgentDB.id == agent_id)
+                result = await session.execute(stmt)
+                agent = result.scalar_one_or_none()
+
+                if agent:
+                    logger.info(f"Agent found: {agent.name} (ID: {agent_id})")
+                    return {
+                        "id": agent.id,
+                        "name": agent.name,
+                        "backstory": agent.backstory,
+                        "personality_traits": agent.personality.split(",")
+                        if agent.personality
+                        else [],
+                        "avatar_url": agent.avatar_url,
+                    }
+                else:
+                    logger.warning(f"Agent not found: {agent_id}")
+                    return None
         except Exception as e:
             logger.error(f"Error fetching agent {agent_id}: {e}", exc_info=True)
             raise
