@@ -1,9 +1,12 @@
 import json
-import re
+import logging
+import xml.etree.ElementTree as ET
 
 from claude_agent_sdk import query
 from models.agent import AgentData
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -13,24 +16,28 @@ class LLMClient:
 
     async def generate_agent(self, description: str) -> AgentData:
         """Generate agent data using Claude via Agent SDK."""
+        logger.debug(f"Generating agent from description: {description[:50]}...")
+
         prompt = f"""Create an AI companion based on this description: {description}
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no
-extra text):
+You must return your response wrapped in XML <output> tags containing a valid JSON object.
+
+Return your response in this exact format:
+<output>
 {{
     "name": "agent name",
     "backstory": "2-3 sentence backstory",
     "personality_traits": ["trait1", "trait2", "trait3"],
-    "avatar_prompt": "detailed prompt for image generation in Pokémon retro
-                     Game Boy style"
+    "avatar_prompt": "detailed prompt for image generation in Pokémon retro Game Boy style"
 }}
+</output>
 
-The avatar_prompt should describe a Pokémon-style character in retro Game Boy
-Color aesthetic.
-Keep the backstory child-friendly and engaging.
-Make personality traits single words or short phrases.
-
-Return ONLY the JSON object, nothing else."""
+Requirements:
+- The avatar_prompt should describe a Pokémon-style character in retro Game Boy Color aesthetic
+- Keep the backstory child-friendly and engaging
+- Make personality traits single words or short phrases
+- The JSON must be valid and properly formatted
+- You must wrap the entire JSON object in <output></output> tags"""
 
         try:
             # Collect the response from the Agent SDK
@@ -44,35 +51,43 @@ Return ONLY the JSON object, nothing else."""
                     response_text = message.result
                     # Continue to let generator finish naturally, don't break
 
-            print(f"[INFO] Agent SDK response: {response_text[:200]}...")
+            logger.debug(f"Agent SDK response: {response_text[:200]}...")
 
-            # Remove markdown code blocks if present
-            response_text = re.sub(r"```json\s*", "", response_text)
-            response_text = re.sub(r"```\s*$", "", response_text)
-            response_text = response_text.strip()
+            # Parse XML to extract JSON from <output> tags
+            try:
+                # Parse the XML response
+                root = ET.fromstring(response_text)
 
-            # Parse JSON from response
-            # Look for JSON in the response
-            start_idx = response_text.find("{")
-            end_idx = response_text.rfind("}") + 1
+                # Extract text from <output> tag
+                json_str = root.text.strip()
 
-            if start_idx != -1 and end_idx > start_idx:
-                json_str = response_text[start_idx:end_idx]
-                data_dict = json.loads(json_str)
+                logger.debug("Extracted JSON from <output> tags")
+            except ET.ParseError:
+                # Fallback: If XML parsing fails, try to extract content between <output> tags manually
+                start_tag = response_text.find("<output>")
+                end_tag = response_text.find("</output>")
 
-                # Validate with Pydantic - raises ValidationError if invalid
-                agent_data = AgentData(**data_dict)
-                print(f"[SUCCESS] Generated agent: {agent_data.name}")
-                return agent_data
+                if start_tag != -1 and end_tag != -1:
+                    json_str = response_text[start_tag + 8:end_tag].strip()
+                    logger.debug("Extracted JSON using manual tag search (XML parse failed)")
+                else:
+                    raise ValueError(f"No <output> tags found in response: {response_text[:200]}")
 
-            raise ValueError(f"No JSON found in response: {response_text}")
+            # Parse the JSON string
+            data_dict = json.loads(json_str)
+
+            # Validate with Pydantic - raises ValidationError if invalid
+            agent_data = AgentData(**data_dict)
+            logger.info(f"Successfully generated agent: {agent_data.name}")
+            return agent_data
 
         except ValidationError as ve:
             # Log validation errors and re-raise for debugging
-            print(f"[ERROR] LLM returned invalid data: {ve}")
+            logger.error(f"LLM returned invalid data: {ve}", exc_info=True)
             raise
         except Exception as e:
-            print(f"[ERROR] Failed to generate agent with Agent SDK: {e}")
+            logger.error(f"Failed to generate agent with Agent SDK: {e}", exc_info=True)
+            logger.warning("Returning fallback agent data due to generation failure")
             # Return validated fallback data
             return AgentData(
                 name="Pixelmon",

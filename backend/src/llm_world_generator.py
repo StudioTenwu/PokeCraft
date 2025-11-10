@@ -1,10 +1,13 @@
 """LLM-based world generator using Claude Agent SDK."""
 import json
+import logging
 import re
 
 from claude_agent_sdk import query
 from models.world import WorldData
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class LLMWorldGenerator:
@@ -38,19 +41,19 @@ class LLMWorldGenerator:
                     response_text = message.result
                     # Continue to let generator finish naturally
 
-            print(f"[INFO] World generation response: {response_text[:200]}...")
+            logger.debug(f"World generation response: {response_text[:200]}...")
 
             # Parse and validate response
             world_data = self._parse_world_response(response_text)
-            print(f"[SUCCESS] Generated world: {world_data.name}")
+            logger.info(f"Successfully generated world: {world_data.name}")
             return world_data
 
         except ValidationError as ve:
             # Log validation errors and re-raise for debugging
-            print(f"[ERROR] LLM returned invalid world data: {ve}")
+            logger.error(f"LLM returned invalid world data: {ve}", exc_info=True)
             raise
         except Exception as e:
-            print(f"[ERROR] Failed to generate world with Agent SDK: {e}")
+            logger.error(f"Failed to generate world with Agent SDK: {e}", exc_info=True)
             # Return validated fallback data
             return self._get_fallback_world(description)
 

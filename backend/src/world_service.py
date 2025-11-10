@@ -2,10 +2,13 @@
 import aiosqlite
 import uuid
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 from llm_world_generator import LLMWorldGenerator
+
+logger = logging.getLogger(__name__)
 
 
 class WorldService:
@@ -16,9 +19,11 @@ class WorldService:
             db_path = Path(__file__).parent.parent / "agents.db"
         self.db_path = str(db_path)
         self.world_generator = LLMWorldGenerator()
+        logger.debug(f"WorldService initialized with database at {self.db_path}")
 
     async def init_db(self):
         """Initialize database schema for worlds."""
+        logger.info(f"Initializing world database schema at {self.db_path}")
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS worlds (
@@ -46,8 +51,11 @@ class WorldService:
         Returns:
             dict: Complete world data including id, grid, and agent position
         """
+        logger.info(f"Creating world for agent {agent_id}: {description[:50]}...")
+
         # Generate world data using LLM
         world_data = await self.world_generator.generate_world(description)
+        logger.debug(f"Generated world: {world_data.name}")
 
         # Generate unique ID
         world_id = str(uuid.uuid4())

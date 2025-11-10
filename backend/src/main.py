@@ -7,19 +7,31 @@ from pathlib import Path
 import sys
 import json
 import asyncio
+import logging
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from agent_service import AgentService
 from world_service import WorldService
+from logging_config import setup_logging
+from config import Config
+
+# Initialize logging
+setup_logging(
+    level=Config.LOG_LEVEL,
+    log_dir=Config.LOG_DIR,
+    json_format=(Config.LOG_FORMAT == "json")
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AICraft - Pokémon Edition API")
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,8 +58,8 @@ async def startup():
     """Initialize database on startup."""
     await agent_service.init_db()
     await world_service.init_db()
-    print("✅ Database initialized")
-    print("🚀 AICraft API running on http://localhost:8000")
+    logger.info("Database initialized")
+    logger.info("AICraft API running on http://localhost:8000")
 
 @app.get("/")
 async def root():
@@ -70,7 +82,7 @@ async def create_agent(request: AgentCreateRequest):
         agent = await agent_service.create_agent(request.description)
         return agent
     except Exception as e:
-        print(f"Error creating agent: {e}")
+        logger.error(f"Error creating agent: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/agents/create/stream")
@@ -126,7 +138,7 @@ async def create_world(request: WorldCreateRequest):
         world = await world_service.create_world(request.agent_id, request.description)
         return world
     except Exception as e:
-        print(f"Error creating world: {e}")
+        logger.error(f"Error creating world: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/worlds/{world_id}")
