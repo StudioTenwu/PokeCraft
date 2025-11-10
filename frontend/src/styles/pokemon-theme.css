@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Press Start 2P', cursive;
+  background-color: #FFF4E6;
+}
+
+/* Pokémon Button Styles */
+@layer components {
+  .pokemon-button {
+    @apply px-6 py-3 font-pixel text-sm;
+    @apply bg-pokemon-gold text-black;
+    @apply border-4 border-black;
+    @apply shadow-[4px_4px_0px_0px_rgba(0,0,0,1)];
+    @apply transition-all duration-100;
+    @apply cursor-pointer;
+  }
+
+  .pokemon-button:hover:not(:disabled) {
+    @apply shadow-[6px_6px_0px_0px_rgba(0,0,0,1)];
+    @apply translate-x-[-2px] translate-y-[-2px];
+  }
+
+  .pokemon-button:active:not(:disabled) {
+    @apply shadow-[2px_2px_0px_0px_rgba(0,0,0,1)];
+    @apply translate-x-[2px] translate-y-[2px];
+  }
+
+  .pokemon-button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .pokemon-button-red {
+    @apply pokemon-button bg-pokemon-red text-white;
+  }
+
+  .pokemon-button-green {
+    @apply pokemon-button bg-pokemon-green text-white;
+  }
+
+  /* Agent Card */
+  .pokemon-card {
+    @apply bg-white p-6 rounded-lg;
+    @apply border-4 border-black;
+    @apply shadow-[8px_8px_0px_0px_rgba(0,0,0,1)];
+  }
+
+  /* Personality Badges */
+  .personality-badge {
+    @apply inline-block px-3 py-1 text-xs font-pixel;
+    @apply border-2 border-black rounded;
+    @apply shadow-[2px_2px_0px_0px_rgba(0,0,0,1)];
+  }
+
+  .personality-badge-brave {
+    @apply personality-badge bg-pokemon-red text-white;
+  }
+
+  .personality-badge-curious {
+    @apply personality-badge bg-pokemon-blue text-white;
+  }
+
+  .personality-badge-helpful {
+    @apply personality-badge bg-pokemon-green text-white;
+  }
+
+  .personality-badge-creative {
+    @apply personality-badge bg-pokemon-purple text-white;
+  }
+
+  .personality-badge-friendly {
+    @apply personality-badge bg-pokemon-gold text-black;
+  }
+
+  .personality-badge-default {
+    @apply personality-badge bg-gray-400 text-white;
+  }
+
+  /* Input Styles */
+  .pokemon-input {
+    @apply w-full px-4 py-3 font-pixel text-sm;
+    @apply border-4 border-black rounded;
+    @apply bg-white;
+    @apply focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)];
+  }
+
+  /* Container */
+  .pokemon-container {
+    @apply bg-pokemon-cream p-8 rounded-xl;
+    @apply border-4 border-black;
+    @apply shadow-[8px_8px_0px_0px_rgba(0,0,0,1)];
+  }
+}
+
+/* Pokéball Animation */
+@keyframes pokeball-spin {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-15deg); }
+  75% { transform: rotate(15deg); }
+}
+
+.pokeball-animation {
+  animation: pokeball-spin 1s ease-in-out infinite;
+}
+
+/* Pixel effect for headers */
+.pixel-header {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
