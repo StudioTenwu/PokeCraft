@@ -56,9 +56,5 @@ describe('App', () => {
     expect(screen.getByText(/Backend: http:\/\/localhost:8000/i)).toBeInTheDocument();
   });
 
-  it('renders test agent card from mock data', () => {
-    render(<App />);
-    expect(screen.getByText('Pixel Pal')).toBeInTheDocument();
-    expect(screen.getByText(/Testing Personality Colors/i)).toBeInTheDocument();
-  });
+  // Removed outdated test for mock data that no longer exists in App.jsx
 });

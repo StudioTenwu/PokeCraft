@@ -41,11 +41,7 @@ describe('App', () => {
     expect(themeButton).toBeInTheDocument()
   })
 
-  it('renders mock agent card for testing', () => {
-    render(<App />)
-    expect(screen.getByText('Pixel Pal')).toBeInTheDocument()
-    expect(screen.getByText(/brave companion born from retro gaming magic/i)).toBeInTheDocument()
-  })
+  // Removed outdated test for mock data that no longer exists
 
   it('renders AgentCreation component', () => {
     render(<App />)
@@ -204,10 +200,7 @@ describe('App', () => {
     expect(mainDiv).toHaveClass('p-4', 'sm:p-8')
   })
 
-  it('shows testing colors header', () => {
-    render(<App />)
-    expect(screen.getByText(/testing personality colors/i)).toBeInTheDocument()
-  })
+  // Removed outdated test for testing colors header that no longer exists
 
   it.skip('handles multiple agents in state', async () => {
     const user = userEvent.setup()
