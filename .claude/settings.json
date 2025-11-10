@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-phase2-world-creation /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-frontend-testing-implementation /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-phase2-world-creation /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-frontend-testing-implementation /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-phase2-world-creation /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-frontend-testing-implementation /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }

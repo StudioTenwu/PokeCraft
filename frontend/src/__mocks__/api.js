@@ -1,103 +1,122 @@
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
-// Mock implementation of createAgentStream
-export const createAgentStreamMock = vi.fn((description, callbacks = {}) => {
-  // Simulate async streaming behavior
-  setTimeout(() => {
-    callbacks.onLLMStart?.({ message: 'Dreaming up your companion...' })
-  }, 10)
+// Mock agent response
+const mockAgentResponse = {
+  id: 'mock-agent-123',
+  name: 'Mock Buddy',
+  backstory: 'A test companion for testing purposes',
+  personality_traits: ['Brave', 'Curious', 'Helpful'],
+  avatar_url: 'data:image/png;base64,mock-base64-data'
+};
 
-  setTimeout(() => {
-    callbacks.onLLMComplete?.({ agent: { id: '123', name: 'Test Bot' } })
-  }, 20)
+// Mock world response
+const mockWorldResponse = {
+  id: 'mock-world-123',
+  agent_id: 'mock-agent-123',
+  description: 'A test world',
+  grid: [
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1]
+  ],
+  agent_position: { x: 1, y: 1 }
+};
 
-  setTimeout(() => {
-    callbacks.onAvatarStart?.({ message: 'Hatching your companion...' })
-  }, 30)
-
-  setTimeout(() => {
-    callbacks.onAvatarProgress?.({ step: 1, total: 2, percent: 50, message: 'Step 1/2' })
-  }, 40)
-
-  setTimeout(() => {
-    callbacks.onAvatarProgress?.({ step: 2, total: 2, percent: 100, message: 'Step 2/2' })
-  }, 50)
-
-  setTimeout(() => {
-    callbacks.onAvatarComplete?.({ avatar_url: 'http://example.com/avatar.png' })
-  }, 60)
-
-  setTimeout(() => {
-    callbacks.onComplete?.({
-      agent: {
-        id: '123',
-        name: 'Test Bot',
-        backstory: 'A test bot',
-        personality_traits: ['Helpful', 'Brave'],
-        avatar_url: 'http://example.com/avatar.png'
-      }
-    })
-  }, 70)
-
-  // Return cleanup function
-  return vi.fn()
-})
-
-// Mock API object
+// Create mock API object
 export const api = {
   createAgent: vi.fn(async (description) => {
     return {
-      id: '123',
-      name: 'Test Bot',
-      backstory: 'A test bot',
-      personality_traits: ['Helpful', 'Brave'],
-      avatar_url: null
-    }
+      ...mockAgentResponse,
+      backstory: description
+    };
   }),
 
-  createAgentStream: createAgentStreamMock,
+  createAgentStream: vi.fn((description, callbacks = {}) => {
+    // Simulate streaming with timeouts
+    const simulate = async () => {
+      // LLM start
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onLLMStart?.({ message: 'Dreaming up your companion...' });
+
+      // LLM complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onLLMComplete?.({
+        name: mockAgentResponse.name,
+        backstory: mockAgentResponse.backstory,
+        personality_traits: mockAgentResponse.personality_traits
+      });
+
+      // Avatar start
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onAvatarStart?.({ message: 'Hatching your companion...' });
+
+      // Avatar progress - step 1
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onAvatarProgress?.({
+        message: 'Hatching... Step 1/2',
+        step: 1,
+        total: 2,
+        percent: 50
+      });
+
+      // Avatar progress - step 2
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onAvatarProgress?.({
+        message: 'Hatching... Step 2/2',
+        step: 2,
+        total: 2,
+        percent: 100
+      });
+
+      // Avatar complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onAvatarComplete?.({
+        avatar_url: mockAgentResponse.avatar_url
+      });
+
+      // Complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+      callbacks.onComplete?.({
+        agent: {
+          ...mockAgentResponse,
+          backstory: description
+        }
+      });
+    };
+
+    simulate().catch(err => {
+      callbacks.onError?.(err);
+    });
+
+    // Return cleanup function
+    return vi.fn();
+  }),
 
   getAgent: vi.fn(async (agentId) => {
-    return {
-      id: agentId,
-      name: 'Test Bot',
-      backstory: 'A test bot',
-      personality_traits: ['Helpful'],
-      avatar_url: null
-    }
+    return { ...mockAgentResponse, id: agentId };
   }),
 
   createWorld: vi.fn(async (agentId, description) => {
     return {
-      id: 'world-123',
+      ...mockWorldResponse,
       agent_id: agentId,
-      description,
-      grid_data: Array(10).fill(null).map(() => Array(10).fill(0)),
-      width: 10,
-      height: 10
-    }
+      description
+    };
   }),
 
   getWorld: vi.fn(async (worldId) => {
-    return {
-      id: worldId,
-      agent_id: '123',
-      description: 'Test world',
-      grid_data: Array(10).fill(null).map(() => Array(10).fill(0)),
-      width: 10,
-      height: 10
-    }
+    return { ...mockWorldResponse, id: worldId };
   }),
 
   getWorldsByAgent: vi.fn(async (agentId) => {
-    return []
+    return [{ ...mockWorldResponse, agent_id: agentId }];
   })
-}
+};
 
 // Export individual functions
-export const createAgent = api.createAgent
-export const createAgentStream = api.createAgentStream
-export const getAgent = api.getAgent
-export const createWorld = api.createWorld
-export const getWorld = api.getWorld
-export const getWorldsByAgent = api.getWorldsByAgent
+export const createAgent = api.createAgent;
+export const createAgentStream = api.createAgentStream;
+export const getAgent = api.getAgent;
+export const createWorld = api.createWorld;
+export const getWorld = api.getWorld;
+export const getWorldsByAgent = api.getWorldsByAgent;
