@@ -79,6 +79,31 @@ body {
     @apply personality-badge bg-gray-400 text-white;
   }
 
+  /* Additional color badges for variety */
+  .personality-badge-orange {
+    @apply personality-badge bg-pokemon-orange text-white;
+  }
+
+  .personality-badge-pink {
+    @apply personality-badge bg-pokemon-pink text-black;
+  }
+
+  .personality-badge-brown {
+    @apply personality-badge bg-pokemon-brown text-white;
+  }
+
+  .personality-badge-teal {
+    @apply personality-badge bg-pokemon-teal text-white;
+  }
+
+  .personality-badge-yellow {
+    @apply personality-badge bg-pokemon-yellow text-black;
+  }
+
+  .personality-badge-mint {
+    @apply personality-badge bg-pokemon-mint text-black;
+  }
+
   /* Input Styles */
   .pokemon-input {
     @apply w-full px-4 py-3 font-pixel text-sm;
