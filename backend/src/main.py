@@ -17,6 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from agent_service import AgentService
 from config import Config
 from logging_config import setup_logging
+from models.tool import DeployRequest, ToolCreateRequest, ToolCreateResponse, ToolResponse
+from tool_service import ToolService
 from world_service import WorldService
 
 # Initialize logging
@@ -35,13 +37,16 @@ async def lifespan(app: FastAPI):
 
     agent_service = AgentService()
     world_service = WorldService()
+    tool_service = ToolService()
 
     await agent_service.init_db()
     await world_service.init_db()
+    await tool_service.init_db()
 
     # Store in app.state for dependency injection
     app.state.agent_service = agent_service
     app.state.world_service = world_service
+    app.state.tool_service = tool_service
 
     logger.info("Database initialized")
     logger.info("AICraft API running on http://localhost:8000")
@@ -90,6 +95,10 @@ async def root():
             "create_world": "POST /api/worlds/create",
             "get_world": "GET /api/worlds/{world_id}",
             "get_worlds_by_agent": "GET /api/worlds/agent/{agent_id}",
+            "create_tool": "POST /api/tools/create",
+            "get_agent_tools": "GET /api/tools/agent/{agent_id}",
+            "delete_tool": "DELETE /api/tools/{tool_name}",
+            "deploy_agent": "POST /api/agents/deploy",
         },
     }
 
@@ -172,6 +181,87 @@ async def get_worlds_by_agent(agent_id: str, req: Request):
     """Get all worlds for a specific agent."""
     worlds = await req.app.state.world_service.get_worlds_by_agent_id(agent_id)
     return worlds
+
+# Tool endpoints
+@app.post("/api/tools/create")
+async def create_tool(request: ToolCreateRequest, req: Request):
+    """Create a new custom tool for an agent."""
+    try:
+        result = await req.app.state.tool_service.create_tool(
+            request.agent_id,
+            request.description
+        )
+        return ToolCreateResponse(**result)
+    except Exception as e:
+        logger.error(f"Error creating tool: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tools/agent/{agent_id}")
+async def get_agent_tools(agent_id: str, req: Request):
+    """Get all tools for a specific agent."""
+    try:
+        tools = await req.app.state.tool_service.get_agent_tools(agent_id)
+        return [ToolResponse(**tool) for tool in tools]
+    except Exception as e:
+        logger.error(f"Error fetching tools: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/tools/{tool_name}")
+async def delete_tool(tool_name: str, req: Request):
+    """Delete a tool by name."""
+    try:
+        success = await req.app.state.tool_service.delete_tool(tool_name)
+        if not success:
+            raise HTTPException(status_code=404, detail="Tool not found")
+        return {"message": f"Tool {tool_name} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting tool: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agents/deploy")
+async def deploy_agent(request: DeployRequest, req: Request):
+    """Deploy an agent in a world with SSE streaming (stub for now)."""
+
+    async def event_generator():
+        """Generator that yields SSE-formatted events."""
+        try:
+            # TODO: Implement full agent deployment with Claude Agent SDK
+            # For now, return mock events
+
+            # Event 1: Starting
+            yield f"event: progress\ndata: {json.dumps({'status': 'starting', 'message': 'Initializing agent...'})}\n\n"
+            await asyncio.sleep(0.5)
+
+            # Event 2: Loading tools
+            yield f"event: progress\ndata: {json.dumps({'status': 'loading_tools', 'message': 'Loading custom tools...'})}\n\n"
+            await asyncio.sleep(0.5)
+
+            # Event 3: Agent reasoning (mock)
+            yield f"event: reasoning\ndata: {json.dumps({'message': 'Analyzing the world and planning actions...'})}\n\n"
+            await asyncio.sleep(1)
+
+            # Event 4: Tool call (mock)
+            yield f"event: tool_call\ndata: {json.dumps({'tool': 'move_forward', 'args': {{'steps': 3}}, 'result': 'Moved forward 3 steps'})}\n\n"
+            await asyncio.sleep(1)
+
+            # Event 5: Completion
+            yield f"event: complete\ndata: {json.dumps({'status': 'complete', 'message': 'Goal accomplished!', 'agent_id': request.agent_id, 'world_id': request.world_id})}\n\n"
+
+        except Exception as e:
+            error_event = f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+            yield error_event
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn
