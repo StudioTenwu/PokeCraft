@@ -1,158 +1,141 @@
-**Task: Add Simple Night Mode Toggle Button**
+**Task: Implement mflux Progress Indicator with SSE Streaming**
 
-**Goal:** Add a simple toggle button to switch between light and dark mode while maintaining the Pokémon Retro aesthetic.
+**Problem:** Avatar generation takes 30-40 seconds with no visual feedback. Users see "Hatching your companion..." but don't know if it's working or how long it will take.
+
+**Goal:** Parse mflux output in real-time and stream progress updates to frontend, showing step-by-step generation progress.
 
 ## Success Criteria
-- [ ] Toggle button in header (top-right corner suggested)
-- [ ] Smooth transition between light and dark themes
-- [ ] Dark mode maintains Pokémon Retro vibe
-- [ ] Preference saved to localStorage
-- [ ] Pixel/retro styled toggle button
+- [ ] Real-time progress updates during 30-40 second avatar generation
+- [ ] User sees percentage/step counter (e.g., "Step 1/2 - 50%")
+- [ ] Animated egg emoji transitions: 🥚 → 🐣 based on progress
+- [ ] Pokémon-themed progress bar with gold/cream colors
+- [ ] Graceful fallback if mflux fails
+- [ ] All existing tests pass + new tests for streaming
 
-## Design Specifications
+## Backend Implementation
 
-### Light Mode (Current)
-- Background: Cream #FFF4E6
-- Accent: Gold #FFD700
-- Text: Dark colors
-- GB Green accents #8BC34A
+### 1. Modify `backend/src/avatar_generator.py`
+- Replace `subprocess.run()` with `subprocess.Popen()` for real-time output
+- Use: `Popen(cmd, stdout=PIPE, stderr=STDOUT, text=True, bufsize=1)`
+- Read output line-by-line: `for line in process.stdout:`
+- Parse mflux progress (discover format first by running manually)
+- Convert to generator: `def generate_avatar_stream(agent_id: str, prompt: str) -> Generator[dict, None, str]:`
+- Yield: `{"type": "progress", "step": 1, "total": 2, "percent": 50, "message": "..."}`
+- Final return: avatar URL or fallback
 
-### Dark Mode (New)
-**Pokémon Night Theme:**
-- Background: Dark navy #1A1A2E (night sky)
-- Secondary: Deep purple #16213E (twilight)
-- Accent: Bright gold #FFD700 (moon/stars)
-- Text: Cream #FFF4E6
-- Accents: Moonlight blue #4ECCA3
+### 2. Add SSE endpoint in `backend/src/main.py`
+- Create `POST /api/agents/create/stream` endpoint
+- Accept `CreateAgentRequest` body
+- Return `StreamingResponse(media_type="text/event-stream")`
+- Stream events in SSE format: `f"event: {name}\ndata: {json.dumps(data)}\n\n"`
+- Event types:
+  - `llm_start`: {"message": "Generating personality..."}
+  - `llm_complete`: {"name": "...", "backstory": "..."}
+  - `avatar_start`: {"message": "Creating avatar..."}
+  - `avatar_progress`: {"step": 1, "total": 2, "percent": 50}
+  - `avatar_complete`: {"avatar_url": "/static/avatars/..."}
+  - `complete`: {"agent": {...full agent data...}}
+  - `error`: {"message": "..."}
 
-## Implementation Plan
+### 3. Update `backend/src/agent_service.py`
+- Add `async def create_agent_stream(description: str) -> AsyncGenerator[dict, None]:`
+- Yield progress from LLM generation
+- Yield progress from avatar generation (iterate over generator)
+- Save to database after both complete
+- Yield final complete event
 
-### 1. Create Dark Mode CSS in `pokemon-theme.css`
-```css
-:root {
-  --bg-primary: #FFF4E6;
-  --bg-secondary: #FFD700;
-  --text-primary: #2C1810;
-  --text-secondary: #5C4033;
-  --accent: #8BC34A;
-}
+## Frontend Implementation
 
-[data-theme="dark"] {
-  --bg-primary: #1A1A2E;
-  --bg-secondary: #16213E;
-  --text-primary: #FFF4E6;
-  --text-secondary: #D4AF37;
-  --accent: #4ECCA3;
-}
-
-/* Update existing classes to use CSS variables */
-.bg-pokemon-cream { background-color: var(--bg-primary); }
-.text-pokemon-dark { color: var(--text-primary); }
-/* etc... */
-```
-
-### 2. Create Toggle Component
-File: `frontend/src/components/ThemeToggle.jsx`
-
+### 1. Update `frontend/src/components/AgentCreation.jsx`
+- Add EventSource API integration for SSE
+- Replace current fetch with:
 ```javascript
-import { useState, useEffect } from 'react';
+const eventSource = new EventSource(
+  `http://localhost:8000/api/agents/create/stream`,
+  { method: 'POST', body: JSON.stringify({description}) }
+)
+```
+- Note: May need to use fetch-event-source library since native EventSource doesn't support POST
+- Track progress state: `{phase: 'llm'|'avatar', step: 0, total: 2, percent: 0, message: ''}`
+- Update UI based on events
 
-export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(
-    localStorage.getItem('theme') === 'dark'
-  );
+### 2. Enhance loading state
+- Show phase-specific messages:
+  - LLM: "Dreaming up your companion..."
+  - Avatar: "Hatching your companion... (Step 1/2)"
+- Add Pokémon-themed progress bar component
+- Animate egg emoji based on progress
+- Show percentage counter
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
+## TDD Approach
 
-  return (
-    <button
-      onClick={() => setIsDark(!isDark)}
-      className="font-pixel text-xl p-2 pokemon-button"
-      aria-label="Toggle theme"
-    >
-      {isDark ? '☀️' : '🌙'}
-    </button>
-  );
-}
+**Step 1: Discover mflux output format**
+- Run `mflux-generate` manually in terminal
+- Observe stdout/stderr format
+- Document patterns to parse
+- Write regex/parsing logic
+
+**Step 2: Backend Tests (Red-Green-Refactor-Commit)**
+1. Test mflux output parsing with mock subprocess
+2. Test SSE event formatting
+3. Test generator yields correct events
+4. Test error handling (mflux fails)
+5. Test database saving after completion
+
+**Step 3: Backend Implementation**
+- Implement each component following tests
+- Commit after each Red-Green-Refactor cycle
+
+**Step 4: Frontend Tests**
+- Test EventSource connection/disconnection
+- Test progress state updates
+- Test error handling
+
+**Step 5: Frontend Implementation**
+- Implement EventSource integration
+- Implement progress UI components
+- Commit after each cycle
+
+**Step 6: E2E Manual Testing**
+- Test full flow from button click to agent display
+- Verify progress updates appear smoothly
+- Test with slow connection
+- Test error scenarios
+
+## Technical Notes
+
+**mflux Output Format** (to be discovered):
+- Look for patterns like "Step 1/2", "Progress: 50%", or progress bars
+- Parse using regex: `r"Step (\d+)/(\d+)"` or similar
+- Handle stderr vs stdout
+
+**SSE Event Format**:
+```
+event: avatar_progress
+data: {"step": 1, "total": 2, "percent": 50, "message": "Generating..."}
+
+(blank line required between events)
 ```
 
-### 3. Add Toggle to App Header
-File: `frontend/src/App.jsx`
+**Error Handling**:
+- Timeout: 60s overall
+- Graceful degradation: Use fallback avatar if mflux fails
+- Frontend: Close EventSource on complete/error
+- Backend: Ensure database save happens even on avatar failure
 
-Add ThemeToggle component to header, positioned top-right:
-
-```jsx
-<header className="flex justify-between items-center mb-12">
-  <div className="text-center flex-1">
-    <h1 className="font-pixel text-3xl sm:text-5xl text-pokemon-gold">
-      AICraft
-    </h1>
-    <p className="font-pixel text-xs text-white">Pokémon Edition</p>
-  </div>
-  <ThemeToggle />
-</header>
-```
-
-### 4. Update All Color Classes
-Systematically replace hardcoded colors with CSS variables throughout:
-- `App.jsx`
-- `AgentCard.jsx`
-- `AgentCreation.jsx`
-- `PokemonButton.jsx`
-
-## Pixel Aesthetic Toggle Button
-
-**Style Options:**
-
-**Option A: Simple Emoji Toggle** (Recommended for MVP)
-- Sun ☀️ / Moon 🌙 emoji
-- Pixel border
-- Pokémon button styling
-
-**Option B: Game Boy Style Switch**
-- Sliding toggle like Game Boy power switch
-- More implementation time
-
-**Option C: Pixel Icon Toggle**
-- Custom pixel art day/night icons
-- 16x16px sprites
-
-Choose Option A for quick implementation.
-
-## Testing
-
-**Manual Tests:**
-1. Toggle between light and dark modes
-2. Verify localStorage persistence (refresh page)
-3. Check all components in both themes
-4. Verify readability/contrast in dark mode
-5. Test responsive behavior on mobile
-
-**Accessibility:**
-- Ensure proper `aria-label` on toggle button
-- Verify keyboard navigation works
-- Check color contrast ratios (WCAG AA minimum)
+**Dependencies**:
+- Backend: No new dependencies needed
+- Frontend: May need `@microsoft/fetch-event-source` for POST support
 
 ## Files to Modify
-- `frontend/src/styles/pokemon-theme.css` (add dark mode variables)
-- `frontend/src/components/ThemeToggle.jsx` (new file)
-- `frontend/src/App.jsx` (add toggle to header)
-- Update color references in all components to use CSS variables
+- `backend/src/avatar_generator.py`
+- `backend/src/agent_service.py`
+- `backend/src/main.py`
+- `frontend/src/components/AgentCreation.jsx`
+- `frontend/src/api.js` (if exists)
+- `backend/tests/unit/test_avatar_generator.py`
+- `backend/tests/integration/test_streaming.py` (new)
 
-## Notes
-- Keep dark mode colors warm and nostalgic (not harsh blue-black)
-- Maintain pixel aesthetic in dark mode
-- Smooth transition: `transition: background-color 0.3s ease`
-- User mentioned "simple" - don't overcomplicate
+**Priority**: This is a user-visible feature blocking the user experience. Complete this BEFORE SQLAlchemy migration.
 
-**Priority**: Nice-to-have feature, lowest priority of the three tasks. Can be implemented quickly in parallel.
-
-**Working Directory**: You're in an isolated git worktree. Make changes and report completion when done.
+**Working Directory**: You're in an isolated git worktree. Make changes, test thoroughly, and report completion when done.
