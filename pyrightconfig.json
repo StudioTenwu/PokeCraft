@@ -1,0 +1,15 @@
+{
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Darwin",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.11",
+      "extraPaths": [
+        "/opt/homebrew/lib/python3.11/site-packages"
+      ]
+    }
+  ],
+  "venvPath": "/opt/homebrew",
+  "venv": "lib/python3.11"
+}
