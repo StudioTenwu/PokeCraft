@@ -7,6 +7,14 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setup.js',
+    // Limit worker threads to prevent CPU overload
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 4,  // Limit to 4 workers max
+        minForks: 1
+      }
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
