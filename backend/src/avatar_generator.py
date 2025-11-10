@@ -8,14 +8,15 @@ logger = logging.getLogger(__name__)
 class AvatarGenerator:
     def __init__(
         self,
-        model_path: str = "/Users/wz/Desktop/zPersonalProjects/AICraft/models/schnell-3bit",
-        base_url: str = "http://localhost:8000"
+        model_path: str | None = None,
+        base_url: str | None = None
     ):
-        self.model_path = model_path
-        self.base_url = base_url
+        from config import Config
+        self.model_path = model_path or Config.AVATAR_MODEL_PATH
+        self.base_url = base_url or Config.API_BASE_URL
         self.output_dir = Path(__file__).parent.parent / "static" / "avatars"
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"AvatarGenerator initialized with model at {model_path}")
+        logger.debug(f"AvatarGenerator initialized with model at {self.model_path}")
 
     def generate_avatar(self, agent_id: str, prompt: str) -> str:
         """Generate avatar using mflux and return URL path."""

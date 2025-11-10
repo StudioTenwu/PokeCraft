@@ -17,5 +17,16 @@ class Config:
     # Avatar Generation
     AVATAR_MODEL_PATH = os.getenv(
         "AVATAR_MODEL_PATH",
-        "/Users/wz/Desktop/zPersonalProjects/AICraft/models/schnell-3bit"
+        str(Path(__file__).parent.parent.parent / "models" / "schnell-3bit")
     )
+
+    # CORS Configuration
+    CORS_ORIGINS = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:5173"
+    ).split(",")
+
+    # Server Configuration
+    API_HOST = os.getenv("API_HOST", "0.0.0.0")
+    API_PORT = int(os.getenv("API_PORT", "8000"))
+    API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")

@@ -57,7 +57,7 @@ class AgentService:
                     id=agent_id,
                     name=agent_data.name,
                     backstory=agent_data.backstory,
-                    personality=",".join(agent_data.personality_traits),
+                    personality_traits=agent_data.personality_traits,
                     avatar_url=avatar_url,
                 )
                 session.add(db_agent)
@@ -129,7 +129,7 @@ class AgentService:
                     id=agent_id,
                     name=agent_data.name,
                     backstory=agent_data.backstory,
-                    personality=",".join(agent_data.personality_traits),
+                    personality_traits=agent_data.personality_traits,
                     avatar_url=avatar_url,
                 )
                 session.add(db_agent)
@@ -174,9 +174,7 @@ class AgentService:
                         "id": agent.id,
                         "name": agent.name,
                         "backstory": agent.backstory,
-                        "personality_traits": agent.personality.split(",")
-                        if agent.personality
-                        else [],
+                        "personality_traits": agent.personality_traits or [],
                         "avatar_url": agent.avatar_url,
                     }
                 else:
