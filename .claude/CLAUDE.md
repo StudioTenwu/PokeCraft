@@ -342,8 +342,255 @@ return StreamingResponse(
 
 ---
 
+## Development Setup
 
+### Prerequisites
+- **Python 3.11+** - Required for backend
+- **Node.js 18+** - Required for frontend
+- **uv** - Python package manager (install: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **mflux** - Avatar generation (install: `brew install mflux`)
+- **mflux model** - Download 3-bit Schnell model to `~/.AICraft/models/schnell-3bit/`
 
+### Initial Setup
 
+#### 1. Clone Repository
+```bash
+git clone <repository-url>
+cd AICraft
+```
+
+#### 2. Setup Backend
+```bash
+# Create virtual environment (Python 3.11)
+uv venv
+source .venv/bin/activate  # On macOS/Linux
+# or .venv\Scripts\activate on Windows
+
+# Install root package dependencies
+uv pip install -e .
+
+# Navigate to backend and install dependencies
+cd backend
+uv pip install -e ".[dev]"
+
+# Initialize database
+uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
+```
+
+#### 3. Setup Frontend
+```bash
+cd frontend
+npm install
+```
+
+### Running the Application
+
+#### Terminal 1: Backend Server
+```bash
+cd backend
+uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+Backend will be available at http://localhost:8000
+
+#### Terminal 2: Frontend Dev Server
+```bash
+cd frontend
+npm run dev
+```
+Frontend will be available at http://localhost:3000
+
+### Running Tests
+
+#### Backend Tests (111 tests)
+```bash
+cd backend
+
+# Run all tests
+uv run pytest tests/ -v
+
+# Run specific test suite
+uv run pytest tests/unit/ -v
+uv run pytest tests/integration/ -v
+
+# Run with coverage
+uv run pytest tests/ --cov=src --cov-report=html
+```
+
+#### Frontend Tests (138 tests)
+```bash
+cd frontend
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Project Structure
+```
+AICraft/
+├── backend/                 # FastAPI backend
+│   ├── src/                 # Source code
+│   │   ├── main.py          # FastAPI app entry point
+│   │   ├── config.py        # Configuration
+│   │   ├── database.py      # SQLAlchemy async setup
+│   │   ├── agent_service.py # Agent CRUD operations
+│   │   ├── world_service.py # World CRUD operations
+│   │   ├── agent_deployer.py # Phase 3: Agent deployment
+│   │   ├── llm_*.py         # Claude Agent SDK clients
+│   │   ├── avatar_generator.py # mflux integration
+│   │   └── models/          # Pydantic & SQLAlchemy models
+│   ├── tests/               # Test suite (111 tests)
+│   │   ├── unit/            # Unit tests
+│   │   └── integration/     # Integration tests
+│   ├── static/avatars/      # Generated avatar images
+│   └── pyproject.toml       # Python dependencies
+│
+├── frontend/                # React + Vite frontend
+│   ├── src/
+│   │   ├── App.jsx          # Main app component
+│   │   ├── api.js           # Backend API client
+│   │   ├── components/      # React components
+│   │   │   ├── AgentCreation.jsx    # Phase 1: Agent creation
+│   │   │   ├── WorldCreation.jsx    # Phase 2: World creation
+│   │   │   ├── WorldCanvas.jsx      # PixiJS world renderer
+│   │   │   ├── ToolCreator.jsx      # Phase 3: Tool creation
+│   │   │   ├── ToolLibrary.jsx      # Phase 3: Tool management
+│   │   │   └── AgentRunner.jsx      # Phase 3: Agent deployment UI
+│   │   └── __tests__/       # Test suite (138 tests)
+│   ├── package.json         # Node dependencies
+│   └── vite.config.js       # Vite configuration
+│
+├── .orchestra/              # Designer agent workspace
+│   ├── designer.md          # Task planning document
+│   └── docs/                # Project documentation
+├── pyproject.toml           # Root package config
+└── README.md                # Project README
+```
+
+### Environment Configuration
+
+#### Backend Environment Variables
+Create `backend/.env`:
+```bash
+# Database
+DATABASE_URL=sqlite+aiosqlite:///agents.db
+
+# Avatar Generation
+AVATAR_MODEL_PATH=/Users/your-username/.AICraft/models/schnell-3bit
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/aicraft.log
+
+# CORS (for development)
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+### Common Development Tasks
+
+#### Add New Python Dependency
+```bash
+cd backend
+uv pip install <package-name>
+# Update pyproject.toml manually or:
+uv pip freeze > requirements.txt  # if needed
+```
+
+#### Add New Frontend Dependency
+```bash
+cd frontend
+npm install <package-name>
+```
+
+#### Database Migrations
+```bash
+cd backend
+# The database auto-initializes on first run
+# To reset database:
+rm agents.db
+uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
+```
+
+#### View API Documentation
+With backend running, visit:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Troubleshooting
+
+#### Backend won't start
+```bash
+# Check Python version
+python --version  # Should be 3.11+
+
+# Reinstall dependencies
+cd backend
+rm -rf .venv
+uv venv
+uv pip install -e ".[dev]"
+```
+
+#### Frontend won't start
+```bash
+# Clear cache and reinstall
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### Tests failing
+```bash
+# Backend: Ensure database is initialized
+cd backend
+uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
+
+# Frontend: Clear test cache
+cd frontend
+rm -rf coverage .vitest
+npm test
+```
+
+#### Avatar generation errors
+```bash
+# Check mflux installation
+which mflux-generate
+
+# Verify model path
+ls ~/.AICraft/models/schnell-3bit/
+
+# Test mflux directly
+mflux-generate --model schnell --path ~/.AICraft/models/schnell-3bit --prompt "test" --steps 2
+```
+
+### Development Workflow
+
+1. **Create feature branch**: `git checkout -b feature-name`
+2. **Write tests first** (TDD): Add tests in appropriate `tests/` directory
+3. **Implement feature**: Follow coding standards above
+4. **Run tests**: Ensure all tests pass (backend + frontend)
+5. **Manual testing**: Test in browser at http://localhost:3000
+6. **Commit**: Use conventional commit messages
+7. **Create PR**: Submit for review
+
+### Quick Start Commands
+
+**Full stack in one go:**
+```bash
+# Terminal 1: Backend
+cd backend && uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2: Frontend
+cd frontend && npm run dev
+
+# Terminal 3: Run tests
+cd backend && uv run pytest tests/ -q && cd ../frontend && npm test
+```
+
+---
 
 @orchestra.md

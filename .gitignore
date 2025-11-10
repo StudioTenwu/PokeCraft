@@ -57,6 +57,19 @@ htmlcov/
 logs/
 *.log
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated images
+image_*.png
+image.png
+
+# Virtual environments
+.venv/
+venv/
+
 # React build
 frontend/build/
 frontend/dist/

@@ -1,8 +1,15 @@
 [project]
 name = "aicraft"
 version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.14"
+description = "AICraft - Pokémon-themed AI agent creation platform"
+requires-python = ">=3.11"
 dependencies = [
     "pydrive2>=1.21.3",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []  # Root is not a Python package
