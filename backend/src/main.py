@@ -24,7 +24,6 @@ from world_service import WorldService
 setup_logging(
     level=Config.LOG_LEVEL,
     log_dir=Config.LOG_DIR,
-    json_format=(Config.LOG_FORMAT == "json"),
 )
 
 logger = logging.getLogger(__name__)
@@ -107,14 +106,14 @@ async def create_agent(request: AgentCreateRequest, req: Request):
         logger.error(f"Error creating agent: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/agents/create/stream")
-async def create_agent_stream(request: AgentCreateRequest, req: Request):
+@app.get("/api/agents/create/stream")
+async def create_agent_stream(description: str, req: Request):
     """Create a new AI agent with real-time progress streaming via SSE."""
 
     async def event_generator():
         """Generator that yields SSE-formatted events."""
         try:
-            async for event in req.app.state.agent_service.create_agent_stream(request.description):
+            async for event in req.app.state.agent_service.create_agent_stream(description):
                 event_name = event.get("event", "message")
                 event_data = event.get("data", {})
 
