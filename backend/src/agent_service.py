@@ -80,6 +80,84 @@ class AgentService:
             logger.error(f"Failed to create agent: {e}", exc_info=True)
             raise
 
+    async def create_agent_stream(self, description: str):
+        """Create agent with streaming progress updates (async generator)."""
+        logger.info(f"Creating agent (streaming) from: {description[:50]}...")
+
+        try:
+            # Yield start event
+            yield {
+                "event": "progress",
+                "data": {"status": "started", "message": "Hatching your companion..."}
+            }
+
+            # Step 1: Generate agent data with LLM
+            yield {
+                "event": "progress",
+                "data": {"status": "generating", "message": "Consulting with Claude..."}
+            }
+
+            agent_data = await self.llm_client.generate_agent(description)
+            logger.debug(f"LLM generated: {agent_data.name}")
+
+            yield {
+                "event": "progress",
+                "data": {"status": "generated", "message": f"Meet {agent_data.name}!"}
+            }
+
+            # Step 2: Generate avatar
+            agent_id = str(uuid.uuid4())
+
+            yield {
+                "event": "progress",
+                "data": {"status": "avatar", "message": "Creating avatar..."}
+            }
+
+            avatar_url = self.avatar_generator.generate_avatar(
+                agent_id, agent_data.avatar_prompt
+            )
+            logger.info(f"Avatar generated: {avatar_url}")
+
+            # Step 3: Save to database
+            yield {
+                "event": "progress",
+                "data": {"status": "saving", "message": "Saving to Pokédex..."}
+            }
+
+            async with async_session_factory() as session:
+                db_agent = AgentDB(
+                    id=agent_id,
+                    name=agent_data.name,
+                    backstory=agent_data.backstory,
+                    personality=",".join(agent_data.personality_traits),
+                    avatar_url=avatar_url,
+                )
+                session.add(db_agent)
+                await session.commit()
+
+            logger.info(f"Agent created: {agent_data.name} (ID: {agent_id})")
+
+            # Step 4: Yield complete event
+            yield {
+                "event": "complete",
+                "data": {
+                    "agent": {
+                        "id": agent_id,
+                        "name": agent_data.name,
+                        "backstory": agent_data.backstory,
+                        "personality_traits": agent_data.personality_traits,
+                        "avatar_url": avatar_url,
+                    }
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to create agent (streaming): {e}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {"message": str(e)}
+            }
+
     async def get_agent(self, agent_id: str) -> dict[str, Any] | None:
         """Retrieve agent by ID."""
         logger.debug(f"Fetching agent with ID: {agent_id}")
