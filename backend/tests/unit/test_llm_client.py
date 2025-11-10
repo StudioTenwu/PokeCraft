@@ -34,9 +34,10 @@ class TestLLMClient:
             "avatar_prompt": "A knight in shining armor, Game Boy Color style",
         }
 
-        # Mock the Agent SDK query function
+        # Mock the Agent SDK query function with XML format
         async def mock_query(prompt):
-            yield MockMessage(result=json.dumps(mock_response))
+            xml_response = f"<output>{json.dumps(mock_response)}</output>"
+            yield MockMessage(result=xml_response)
 
         with patch("llm_client.query", side_effect=mock_query):
             # Act
@@ -52,7 +53,7 @@ class TestLLMClient:
 
     @pytest.mark.asyncio()
     async def test_generate_agent_with_markdown_json_response(self, client):
-        """Should parse JSON from markdown code blocks."""
+        """Should parse JSON from XML output tags."""
         # Arrange
         description = "A wise owl"
         mock_agent_data = {
@@ -61,11 +62,11 @@ class TestLLMClient:
             "personality_traits": ["wise", "patient"],
             "avatar_prompt": "An owl with glasses, pixel art style",
         }
-        # Simulate markdown response
-        markdown_response = f"```json\n{json.dumps(mock_agent_data)}\n```"
+        # Simulate XML response with output tags
+        xml_response = f"<output>{json.dumps(mock_agent_data)}</output>"
 
         async def mock_query(prompt):
-            yield MockMessage(result=markdown_response)
+            yield MockMessage(result=xml_response)
 
         with patch("llm_client.query", side_effect=mock_query):
             # Act
@@ -132,7 +133,8 @@ class TestLLMClient:
             nonlocal message_count
             # Simulate multiple messages
             yield MockMessage(result=None)  # SystemMessage
-            yield MockMessage(result=json.dumps(mock_response))  # ResultMessage
+            xml_response = f"<output>{json.dumps(mock_response)}</output>"
+            yield MockMessage(result=xml_response)  # ResultMessage
             message_count += 1
             yield MockMessage(result=None)  # Final message
             message_count += 1
@@ -160,8 +162,9 @@ class TestLLMClient:
         }
 
         async def mock_query(prompt):
-            # Add extra whitespace
-            yield MockMessage(result=f"\n\n  {json.dumps(mock_data)}  \n\n")
+            # Add extra whitespace around XML
+            xml_response = f"<output>{json.dumps(mock_data)}</output>"
+            yield MockMessage(result=f"\n\n  {xml_response}  \n\n")
 
         with patch("llm_client.query", side_effect=mock_query):
             # Act

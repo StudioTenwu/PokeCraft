@@ -27,101 +27,112 @@ export const api = {
    * @param {Function} callbacks.onError - Called on error
    * @returns {Function} Cleanup function to close the stream
    */
-  createAgentStream(description, callbacks = {}) {
+  async createAgentStream(description, callbacks = {}) {
     const controller = new AbortController()
-    const signal = controller.signal
 
-    // Use fetch API for POST with streaming response
-    fetch(`${API_BASE}/api/agents/create/stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description }),
-      signal
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            // Decode chunk and add to buffer
-            buffer += decoder.decode(value, { stream: true })
-
-            // Process complete SSE messages (separated by \n\n)
-            const messages = buffer.split('\n\n')
-            buffer = messages.pop() || '' // Keep incomplete message in buffer
-
-            for (const message of messages) {
-              if (!message.trim()) continue
-
-              // Parse SSE message format: "event: name\ndata: json"
-              const lines = message.split('\n')
-              let eventName = 'message'
-              let eventData = null
-
-              for (const line of lines) {
-                if (line.startsWith('event:')) {
-                  eventName = line.substring(6).trim()
-                } else if (line.startsWith('data:')) {
-                  const dataStr = line.substring(5).trim()
-                  try {
-                    eventData = JSON.parse(dataStr)
-                  } catch (e) {
-                    console.error('Failed to parse SSE data:', dataStr, e)
-                  }
-                }
-              }
-
-              // Dispatch to appropriate callback
-              if (eventData) {
-                switch (eventName) {
-                  case 'llm_start':
-                    callbacks.onLLMStart?.(eventData)
-                    break
-                  case 'llm_complete':
-                    callbacks.onLLMComplete?.(eventData)
-                    break
-                  case 'avatar_start':
-                    callbacks.onAvatarStart?.(eventData)
-                    break
-                  case 'avatar_progress':
-                    callbacks.onAvatarProgress?.(eventData)
-                    break
-                  case 'avatar_complete':
-                    callbacks.onAvatarComplete?.(eventData)
-                    break
-                  case 'complete':
-                    callbacks.onComplete?.(eventData)
-                    break
-                  case 'error':
-                    callbacks.onError?.(new Error(eventData.message || 'Unknown error'))
-                    break
-                }
-              }
-            }
-          }
-        } catch (error) {
-          if (error.name !== 'AbortError') {
-            callbacks.onError?.(error)
-          }
-        }
+    try {
+      const response = await fetch(`${API_BASE}/api/agents/create/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+        signal: controller.signal
       })
-      .catch((error) => {
-        if (error.name !== 'AbortError') {
-          callbacks.onError?.(error)
-        }
-      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Process Server-Sent Events stream
+      await this._consumeSSEStream(response.body, callbacks)
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        callbacks.onError?.(error)
+      }
+    }
 
     // Return cleanup function
     return () => controller.abort()
+  },
+
+  /**
+   * Helper to parse and consume SSE stream.
+   * @private
+   */
+  async _consumeSSEStream(body, callbacks) {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      // Extract complete SSE messages (separated by \n\n)
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || '' // Keep incomplete message in buffer
+
+      for (const rawMessage of parts) {
+        if (!rawMessage.trim()) continue
+
+        const event = this._parseSSEMessage(rawMessage)
+        if (event) {
+          this._dispatchSSEEvent(event, callbacks)
+        }
+      }
+    }
+  },
+
+  /**
+   * Parse a single SSE message.
+   * @private
+   * @returns {{event: string, data: any} | null}
+   */
+  _parseSSEMessage(rawMessage) {
+    const lines = rawMessage.split('\n')
+    let eventName = 'message'
+    let eventData = null
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.substring(6).trim()
+      } else if (line.startsWith('data:')) {
+        const dataStr = line.substring(5).trim()
+        try {
+          eventData = JSON.parse(dataStr)
+        } catch (e) {
+          console.error('Failed to parse SSE data:', dataStr, e)
+          return null
+        }
+      }
+    }
+
+    return eventData ? { event: eventName, data: eventData } : null
+  },
+
+  /**
+   * Dispatch SSE event to appropriate callback.
+   * @private
+   */
+  _dispatchSSEEvent({ event, data }, callbacks) {
+    const eventMap = {
+      'llm_start': 'onLLMStart',
+      'llm_complete': 'onLLMComplete',
+      'avatar_start': 'onAvatarStart',
+      'avatar_progress': 'onAvatarProgress',
+      'avatar_complete': 'onAvatarComplete',
+      'complete': 'onComplete'
+    }
+
+    if (event === 'error') {
+      callbacks.onError?.(new Error(data.message || 'Unknown error'))
+    } else {
+      const callbackName = eventMap[event]
+      if (callbackName) {
+        callbacks[callbackName]?.(data)
+      }
+    }
   },
 
   async getAgent(agentId) {
