@@ -1,7 +1,7 @@
 """LLM-based world generator using Claude Agent SDK."""
 import json
 import logging
-import re
+import xml.etree.ElementTree as ET
 
 from claude_agent_sdk import query
 from models.world import WorldData
@@ -61,7 +61,11 @@ class LLMWorldGenerator:
         """Build the prompt for world generation."""
         return f"""Create a 2D grid world based on this description: {description}
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no extra text):
+You must return your response wrapped in XML <output> tags with CDATA
+containing a valid JSON object.
+
+Return your response in this exact format:
+<output><![CDATA[
 {{
     "name": "world name",
     "description": "brief description of the world",
@@ -72,6 +76,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
     ],
     "agent_start": [x, y]
 }}
+]]></output>
 
 REQUIREMENTS:
 - Grid must be EXACTLY 10x10 (10 rows, 10 columns)
@@ -80,38 +85,44 @@ REQUIREMENTS:
 - Place exactly ONE "goal" tile somewhere in the world
 - Create a logical layout that matches the description
 - Make sure there's a path from agent_start to the goal
+- Wrap the entire JSON in <output><![CDATA[...]]></output> tags
 
-Example grid layout:
-- "grass": open ground, walkable
-- "wall": obstacles, not walkable
-- "water": bodies of water, not walkable
-- "path": clear paths for walking
-- "goal": the destination (only one)
-
-Keep it child-friendly and fun! Return ONLY the JSON object, nothing else."""
+Keep it child-friendly and fun!"""
 
     def _parse_world_response(self, response_text: str) -> WorldData:
-        """Parse and validate LLM response into WorldData.
+        """Parse and validate LLM response into WorldData using XML parsing.
 
-        This method is separated to make it testable with real LLM responses.
+        This method matches the approach in llm_client.py for consistency.
         """
-        # Remove markdown code blocks if present
-        response_text = re.sub(r"```json\s*", "", response_text)
-        response_text = re.sub(r"```\s*$", "", response_text)
-        response_text = response_text.strip()
+        try:
+            # Try XML parsing with CDATA first (preferred method)
+            root = ET.fromstring(response_text)
+            json_str = root.text.strip()
+            logger.debug("Extracted JSON from <output> CDATA tags")
+        except ET.ParseError:
+            # Fallback: Manual tag extraction (backward compatibility)
+            logger.debug("XML parse failed, trying manual tag extraction")
+            start_tag = "<output>"
+            end_tag = "</output>"
 
-        # Extract JSON from response
-        start_idx = response_text.find("{")
-        end_idx = response_text.rfind("}") + 1
+            start_idx = response_text.find(start_tag)
+            end_idx = response_text.find(end_tag)
 
-        if start_idx != -1 and end_idx > start_idx:
-            json_str = response_text[start_idx:end_idx]
-            data_dict = json.loads(json_str)
+            if start_idx != -1 and end_idx != -1:
+                json_str = response_text[start_idx + len(start_tag):end_idx].strip()
+                # Remove CDATA markers if present
+                json_str = (
+                    json_str.replace("<![CDATA[", "").replace("]]>", "").strip()
+                )
+            else:
+                msg = f"No <output> tags found in response: {response_text[:100]}"
+                raise ValueError(msg) from None
 
-            # Validate with Pydantic - raises ValidationError if invalid
-            return WorldData(**data_dict)
+        # Parse the JSON string
+        data_dict = json.loads(json_str)
 
-        raise ValueError(f"No JSON found in response: {response_text}")
+        # Validate with Pydantic - raises ValidationError if invalid
+        return WorldData(**data_dict)
 
     def _get_fallback_world(self, description: str) -> WorldData:
         """Return a valid fallback world when generation fails."""
