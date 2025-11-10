@@ -5,41 +5,46 @@ Interactive demonstration of how AI agents evolve from simple chat to sophistica
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.11+
 - Node.js 16+
+- **uv** - Fast Python package manager ([Install guide](https://docs.astral.sh/uv/getting-started/installation/))
 - Anthropic API Key ([Get one here](https://console.anthropic.com/settings/keys))
 
 ### Setup
 
-1. **Add your API key:**
+> **Full installation guide**: See [INSTALLATION.md](./INSTALLATION.md) for complete instructions
+
+**Quick start:**
+
+1. **Install uv** (if not already installed):
    ```bash
-   # Edit agent-evolution/backend/.env
-   nano agent-evolution/backend/.env
-   # Add: ANTHROPIC_API_KEY=sk-ant-your-key-here
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-2. **Start the backend:**
+2. **Backend setup:**
    ```bash
-   cd agent-evolution/backend
+   cd backend
+   uv venv
+   source .venv/bin/activate
+   uv pip install -e ".[dev]"
 
-   # Modern approach (recommended)
-   pip install -e ".[dev]"
+   # Configure API key
+   cp .env.example .env
+   nano .env  # Add: ANTHROPIC_API_KEY=sk-ant-...
 
-   # OR legacy approach
-   pip install -r requirements.txt
-
-   python main.py
+   # Start server
+   python src/main.py
    ```
 
-3. **Start the frontend:**
+3. **Frontend setup** (new terminal):
    ```bash
-   cd agent-evolution/frontend
+   cd frontend
    npm install
    npm run dev
    ```
 
 4. **Open the app:**
-   Visit [http://localhost:5190](http://localhost:5190)
+   Visit [http://localhost:5173](http://localhost:5173)
 
 ## 📚 The 4 Stages of Agent Evolution
 
