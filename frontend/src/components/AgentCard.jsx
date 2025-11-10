@@ -1,12 +1,22 @@
 export default function AgentCard({ agent }) {
-  const getBadgeClass = (trait) => {
-    const traitLower = trait.toLowerCase()
-    if (traitLower.includes('brave')) return 'personality-badge-brave'
-    if (traitLower.includes('curious')) return 'personality-badge-curious'
-    if (traitLower.includes('helpful')) return 'personality-badge-helpful'
-    if (traitLower.includes('creative')) return 'personality-badge-creative'
-    if (traitLower.includes('friendly')) return 'personality-badge-friendly'
-    return 'personality-badge-default'
+  // Pokémon-themed color palette for personality badges
+  const PERSONALITY_COLORS = [
+    'personality-badge-brave',    // Red (Charizard)
+    'personality-badge-curious',  // Blue (Squirtle)
+    'personality-badge-yellow',   // Yellow (Pikachu)
+    'personality-badge-helpful',  // Green (Bulbasaur)
+    'personality-badge-creative', // Purple (Gengar)
+    'personality-badge-orange',   // Orange (Charmander)
+    'personality-badge-pink',     // Pink (Jigglypuff)
+    'personality-badge-brown',    // Brown (Eevee)
+    'personality-badge-teal',     // Teal variant
+    'personality-badge-mint',     // Mint variant
+    'personality-badge-friendly', // Gold
+  ]
+
+  const getBadgeClass = (trait, index) => {
+    // Cycle through colors based on index
+    return PERSONALITY_COLORS[index % PERSONALITY_COLORS.length]
   }
 
   return (
@@ -47,7 +57,7 @@ export default function AgentCard({ agent }) {
               <p className="font-pixel text-xs mb-2">Personality:</p>
               <div className="flex flex-wrap gap-2">
                 {agent.personality_traits.map((trait, i) => (
-                  <span key={i} className={getBadgeClass(trait)}>
+                  <span key={i} className={getBadgeClass(trait, i)}>
                     {trait}
                   </span>
                 ))}

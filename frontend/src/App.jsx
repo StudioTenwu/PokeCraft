@@ -1,7 +1,29 @@
 import { useState } from 'react'
 import AgentCreation from './components/AgentCreation'
+import AgentCard from './components/AgentCard'
 
 function App() {
+  // Mock agent for testing personality colors
+  const mockAgent = {
+    name: "Pixel Pal",
+    backstory: "A brave companion born from retro gaming magic, ready to explore the digital world with curiosity and creativity!",
+    personality_traits: [
+      "Brave",
+      "Curious",
+      "Helpful",
+      "Creative",
+      "Friendly",
+      "Energetic",
+      "Loyal",
+      "Playful",
+      "Clever",
+      "Kind",
+      "Adventurous",
+      "Patient"
+    ],
+    avatar_url: null
+  }
+
   const [agents, setAgents] = useState([])
 
   return (
@@ -27,7 +49,13 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Test Agent Card */}
+        <div>
+          <h2 className="font-pixel text-sm mb-4 text-center">🎨 Testing Personality Colors</h2>
+          <AgentCard agent={mockAgent} />
+        </div>
+
         <div className="pokemon-container">
           <AgentCreation
             onAgentCreated={(newAgent) => {
