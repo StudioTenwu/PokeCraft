@@ -1,116 +1,129 @@
-Implement Phase 2: World Creation
+Implement comprehensive testing for the AICraft React frontend.
 
-## Goal
-Allow children to describe a world in natural language, LLM generates a 2D grid layout, render it with PixiJS/Canvas, and place the agent (who can't move yet - no tools).
+## Current State
 
-## Requirements from designer.md
-- Child describes world → LLM generates grid layout
-- 2D top-down rendering (PixiJS/Canvas) 
-- Agent appears in world but can't move (no tools taught yet)
-- Follow Pokémon Retro aesthetic (cream #FFF4E6, gold #FFD700, GB green #8BC34A)
-- Minimum features - keep it simple for MVP
+The frontend has 8 React components with **zero tests**:
+- `frontend/src/App.jsx` - Main app with state management
+- `frontend/src/components/AgentCreation.jsx` - Agent creation with SSE streaming
+- `frontend/src/components/AgentCard.jsx` - Agent display with personality badges
+- `frontend/src/components/WorldCreation.jsx` - World generation form
+- `frontend/src/components/WorldCanvas.jsx` - PixiJS canvas rendering
+- `frontend/src/components/PokemonButton.jsx` - Styled button
+- `frontend/src/components/ThemeToggle.jsx` - Dark/light mode toggle
 
-## Technical Spec
+## Your Task
 
-### Backend (/backend/src/)
+Implement a complete testing suite with 80%+ code coverage:
 
-1. **world_service.py** - New service for world generation
-   - `async def create_world(agent_id: str, description: str) -> dict[str, Any]`
-   - Returns: `{ id, name, grid (2D array), width, height, agent_position }`
-
-2. **llm_world_generator.py** - LLM world generation
-   - Use Anthropic SDK to generate world from description
-   - Output JSON: `{ name, description, grid: [[tile_type]], agent_start: [x, y] }`
-   - Tile types: "grass", "wall", "water", "path", "goal"
-   - Grid size: 10x10 for MVP (keep simple)
-
-3. **main.py** - Add endpoints
-   - `POST /api/worlds/create` - Create world for agent
-   - `GET /api/worlds/{world_id}` - Get world data
-
-4. **Database** - Add worlds table
-   ```sql
-   CREATE TABLE worlds (
-     id TEXT PRIMARY KEY,
-     agent_id TEXT,
-     name TEXT,
-     description TEXT,
-     grid_data TEXT,  -- JSON string
-     width INTEGER,
-     height INTEGER,
-     created_at DATETIME
-   )
+### Phase 1: Testing Infrastructure
+1. Install dependencies in `frontend/package.json`:
+   ```bash
+   npm install -D vitest @vitejs/plugin-react jsdom
+   npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event
+   npm install -D msw@latest
    ```
 
-### Frontend (/frontend/src/)
+2. Create `frontend/vitest.config.js`:
+   - Configure React plugin
+   - Set up jsdom environment
+   - Configure coverage thresholds (80% minimum)
 
-1. **components/WorldCanvas.jsx** - PixiJS renderer
-   - Use @pixi/react or raw PixiJS
-   - Render 2D grid with top-down view
-   - Tile sprites for each type (grass, wall, water, etc.)
-   - Agent sprite at starting position
-   - Pixel-perfect rendering (`image-rendering: pixelated`)
+3. Add test scripts to `frontend/package.json`:
+   - `"test": "vitest"`
+   - `"test:ui": "vitest --ui"`
+   - `"test:coverage": "vitest --coverage"`
 
-2. **components/WorldCreation.jsx** - World creation UI
-   - Text input for world description
-   - "Create World" button
-   - Shows loading state while LLM generates
-   - Displays WorldCanvas when ready
+4. Create `frontend/src/__tests__/setup.js`:
+   - Import `@testing-library/jest-dom`
+   - Mock localStorage
+   - Set up test environment
 
-3. **Update App.jsx**
-   - Add world creation flow after agent creation
-   - Show agent card + world creation input
-   - When world created, show WorldCanvas with agent in it
+### Phase 2: Test Utilities
+Create `frontend/src/__tests__/test-utils.jsx`:
+- Custom render function
+- Mock fixtures (sample agents, worlds)
+- Helper functions for async operations
 
-4. **Sprites/Assets** - Simple pixel art tiles
-   - Use emoji or simple colored squares for MVP
-   - Grass: 🟩 or green square
-   - Wall: 🟫 or brown square
-   - Water: 🟦 or blue square
-   - Agent: Use created avatar or 😊 emoji
+Create `frontend/src/__mocks__/api.js`:
+- Mock all API functions
+- Simulate SSE streaming with callbacks
+- Mock progress indicators
 
-## Implementation Approach (TDD)
+### Phase 3: Component Tests
 
-1. **Write tests first** (backend/tests/)
-   - test_llm_world_generator.py - Test LLM world generation
-   - test_world_service.py - Test world creation and retrieval
-   - test_world_endpoints.py - Test API endpoints
+Create these test files in `frontend/src/components/__tests__/`:
 
-2. **Implement backend**
-   - Create llm_world_generator.py with Claude integration
-   - Create world_service.py with database operations
-   - Add endpoints to main.py
-   - Run tests, iterate until passing
+**PokemonButton.test.jsx** (Start here - simplest):
+- Renders with different variants (default, red, green)
+- Click handlers work
+- Disabled state works
 
-3. **Implement frontend**
-   - Create WorldCanvas with PixiJS (or Canvas if simpler)
-   - Create WorldCreation UI component
-   - Wire up API calls
-   - Manual browser testing
+**ThemeToggle.test.jsx**:
+- Toggles theme on click
+- Updates localStorage
+- Updates CSS variables
+- Icon changes (🌙 ↔️ ☀️)
 
-4. **End-to-end test**
-   - Write Playwright test: create agent → create world → see world rendered
+**AgentCard.test.jsx**:
+- Renders agent name, backstory, personality traits
+- Personality badges cycle through colors correctly
+- Shows fallback emoji when no avatar
+- Renders HTTP and data URI avatars
 
-## Key Constraints
-- Keep grid size small (10x10) for MVP
-- Use simple tile types (5 max: grass, wall, water, path, goal)
-- Agent can't move yet (Phase 3 adds movement tools)
-- Focus on minimum viable feature - just render the world
+**WorldCreation.test.jsx**:
+- Form validation (empty description)
+- API integration with mocked responses
+- Loading states
+- Error handling
+- Success rendering with WorldCanvas
+
+**AgentCreation.test.jsx**:
+- Form validation (empty description)
+- API streaming with progress callbacks
+- Phase transitions (LLM → Avatar)
+- Progress bar updates (0% → 100%)
+- Egg → Hatching emoji animation
+- Success screen with AgentCard
+- Example button clicks populate description
+- "Hatch Another" reset flow
+- Error handling
+
+**App.test.jsx**:
+- Renders header and components
+- State management (agents list)
+- Agent selection flow
+- World creation for selected agent
+
+### Phase 4: MSW Setup (API Mocking)
+Create `frontend/src/__mocks__/handlers.js`:
+- Mock POST `/api/agents/create`
+- Mock POST `/api/worlds/create`
+- Simulate streaming responses
+
+### Phase 5: Coverage & Documentation
+- Run `npm run test:coverage`
+- Ensure 80%+ coverage
+- Create `frontend/src/__tests__/README.md` with testing guide
 
 ## Success Criteria
-- [ ] User enters world description
-- [ ] LLM generates 10x10 grid layout
-- [ ] World saved to database
-- [ ] PixiJS/Canvas renders 2D top-down view
-- [ ] Agent appears at starting position
-- [ ] Pokémon Retro aesthetic maintained
-- [ ] All backend tests passing
-- [ ] E2E test passes
+- ✅ All components have unit tests
+- ✅ Tests pass with `npm test`
+- ✅ 80%+ code coverage
+- ✅ Tests run fast (<5 seconds)
+- ✅ Follow React Testing Library best practices (test behavior, not implementation)
+- ✅ MSW properly mocks API calls
 
-## Notes
-- Follow existing patterns from Phase 1 (Pydantic models, SSE for progress if needed)
-- Keep prompts similar style to agent generation
-- Type hints required for all Python code
-- Use the existing Pokemon theme CSS
+## Constraints
+- Don't modify existing component code
+- Use React Testing Library queries (avoid test IDs unless necessary)
+- Mock external dependencies (PixiJS, SSE)
+- Follow TDD - write failing tests first
 
-Start by writing backend tests, then implement backend, then frontend. Report back when ready to merge.
+## Testing Best Practices
+- Query by role, label, text (not test IDs)
+- Test user behavior, not implementation
+- Use `waitFor` for async operations
+- Mock API calls with MSW
+- Keep tests isolated and independent
+
+Start with PokemonButton (simplest), then ThemeToggle, then AgentCard, then complex components (AgentCreation, WorldCreation, App).
