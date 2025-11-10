@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { createWorld } from '../api'
 import WorldCanvas from './WorldCanvas'
 
-export default function WorldCreation({ agent }) {
+export default function WorldCreation({ agent, onWorldCreated }) {
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [world, setWorld] = useState(null)
@@ -19,6 +20,11 @@ export default function WorldCreation({ agent }) {
       const worldData = await createWorld(agent.id, description)
       setWorld(worldData)
       setDescription('') // Clear input after success
+
+      // Call callback if provided
+      if (onWorldCreated) {
+        onWorldCreated(worldData)
+      }
     } catch (err) {
       setError(err.message || 'Failed to create world')
       console.error('Error creating world:', err)
@@ -99,4 +105,9 @@ export default function WorldCreation({ agent }) {
       )}
     </div>
   )
+}
+
+WorldCreation.propTypes = {
+  agent: PropTypes.object.isRequired,
+  onWorldCreated: PropTypes.func
 }
