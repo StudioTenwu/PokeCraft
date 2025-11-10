@@ -16,6 +16,7 @@ from agent_service import AgentService
 from world_service import WorldService
 from logging_config import setup_logging
 from config import Config
+from database import init_db
 
 # Initialize logging
 setup_logging(
@@ -56,8 +57,7 @@ class WorldCreateRequest(BaseModel):
 @app.on_event("startup")
 async def startup():
     """Initialize database on startup."""
-    await agent_service.init_db()
-    await world_service.init_db()
+    await init_db()
     logger.info("Database initialized")
     logger.info("AICraft API running on http://localhost:8000")
 

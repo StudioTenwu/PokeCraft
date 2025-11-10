@@ -1,7 +1,7 @@
 """Integration tests for world API endpoints."""
 import json
 import pytest
-from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from main import app
 from models.world import WorldData
@@ -29,8 +29,7 @@ def mock_world_data():
     )
 
 
-@pytest.mark.asyncio
-async def test_create_world_endpoint(mock_world_data):
+def test_create_world_endpoint(mock_world_data):
     """Test POST /api/worlds/create endpoint."""
     # Mock the world generator
     async def mock_query_generator(*args, **kwargs):
@@ -46,14 +45,14 @@ async def test_create_world_endpoint(mock_world_data):
         yield mock_message
 
     with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/worlds/create",
-                json={
-                    "agent_id": "test-agent-123",
-                    "description": "a peaceful meadow with a pond"
-                }
-            )
+        client = TestClient(app)
+        response = client.post(
+            "/api/worlds/create",
+            json={
+                "agent_id": "test-agent-123",
+                "description": "a peaceful meadow with a pond"
+            }
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -68,21 +67,21 @@ async def test_create_world_endpoint(mock_world_data):
     assert len(data["grid"][0]) == 10
 
 
-@pytest.mark.asyncio
-async def test_create_world_endpoint_missing_fields():
+
+def test_create_world_endpoint_missing_fields():
     """Test that endpoint validates required fields."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        # Missing description
-        response = await client.post(
-            "/api/worlds/create",
-            json={"agent_id": "test-agent"}
-        )
+    client = TestClient(app)
+    # Missing description
+    response = client.post(
+        "/api/worlds/create",
+        json={"agent_id": "test-agent"}
+    )
 
     assert response.status_code == 422  # Validation error
 
 
-@pytest.mark.asyncio
-async def test_get_world_endpoint(mock_world_data):
+
+def test_get_world_endpoint(mock_world_data):
     """Test GET /api/worlds/{world_id} endpoint."""
     # First create a world
     async def mock_query_generator(*args, **kwargs):
@@ -98,19 +97,19 @@ async def test_get_world_endpoint(mock_world_data):
         yield mock_message
 
     with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Create world
-            create_response = await client.post(
-                "/api/worlds/create",
-                json={
-                    "agent_id": "test-agent-456",
-                    "description": "test world"
-                }
-            )
-            world_id = create_response.json()["id"]
+        client = TestClient(app)
+        # Create world
+        create_response = client.post(
+            "/api/worlds/create",
+            json={
+                "agent_id": "test-agent-456",
+                "description": "test world"
+            }
+        )
+        world_id = create_response.json()["id"]
 
-            # Get world
-            get_response = await client.get(f"/api/worlds/{world_id}")
+        # Get world
+        get_response = client.get(f"/api/worlds/{world_id}")
 
     assert get_response.status_code == 200
     data = get_response.json()
@@ -118,17 +117,17 @@ async def test_get_world_endpoint(mock_world_data):
     assert data["agent_id"] == "test-agent-456"
 
 
-@pytest.mark.asyncio
-async def test_get_world_endpoint_not_found():
+
+def test_get_world_endpoint_not_found():
     """Test GET /api/worlds/{world_id} returns 404 for non-existent world."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.get("/api/worlds/non-existent-id")
+    client = TestClient(app)
+    response = client.get("/api/worlds/non-existent-id")
 
     assert response.status_code == 404
 
 
-@pytest.mark.asyncio
-async def test_get_worlds_by_agent_endpoint(mock_world_data):
+
+def test_get_worlds_by_agent_endpoint(mock_world_data):
     """Test GET /api/worlds/agent/{agent_id} endpoint."""
     agent_id = "test-agent-multi"
 
@@ -145,19 +144,19 @@ async def test_get_worlds_by_agent_endpoint(mock_world_data):
         yield mock_message
 
     with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            # Create multiple worlds for same agent
-            await client.post(
-                "/api/worlds/create",
-                json={"agent_id": agent_id, "description": "world 1"}
-            )
-            await client.post(
-                "/api/worlds/create",
-                json={"agent_id": agent_id, "description": "world 2"}
-            )
+        client = TestClient(app)
+        # Create multiple worlds for same agent
+        client.post(
+            "/api/worlds/create",
+            json={"agent_id": agent_id, "description": "world 1"}
+        )
+        client.post(
+            "/api/worlds/create",
+            json={"agent_id": agent_id, "description": "world 2"}
+        )
 
-            # Get all worlds for agent
-            response = await client.get(f"/api/worlds/agent/{agent_id}")
+        # Get all worlds for agent
+        response = client.get(f"/api/worlds/agent/{agent_id}")
 
     assert response.status_code == 200
     data = response.json()
@@ -165,22 +164,22 @@ async def test_get_worlds_by_agent_endpoint(mock_world_data):
     assert all(w["agent_id"] == agent_id for w in data)
 
 
-@pytest.mark.asyncio
-async def test_create_world_endpoint_error_handling(mock_world_data):
+
+def test_create_world_endpoint_error_handling(mock_world_data):
     """Test that endpoint handles errors gracefully."""
     # Mock generator to raise exception
     async def mock_query_error(*args, **kwargs):
         raise Exception("LLM Error")
 
     with patch('src.llm_world_generator.query', side_effect=mock_query_error):
-        async with AsyncClient(app=app, base_url="http://test") as client:
-            response = await client.post(
-                "/api/worlds/create",
-                json={
-                    "agent_id": "test-agent",
-                    "description": "test"
-                }
-            )
+        client = TestClient(app)
+        response = client.post(
+            "/api/worlds/create",
+            json={
+                "agent_id": "test-agent",
+                "description": "test"
+            }
+        )
 
     # Should still return 200 with fallback world
     assert response.status_code == 200

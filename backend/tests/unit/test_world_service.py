@@ -1,6 +1,5 @@
 """Unit tests for world service."""
 import pytest
-import aiosqlite
 from pathlib import Path
 from unittest.mock import AsyncMock, patch, MagicMock
 from world_service import WorldService
@@ -8,12 +7,9 @@ from models.world import WorldData
 
 
 @pytest.fixture
-async def world_service(tmp_path):
-    """Create a world service with temporary database."""
-    db_path = tmp_path / "test_worlds.db"
-    service = WorldService(db_path=str(db_path))
-    await service.init_db()
-    return service
+def world_service():
+    """Create a world service instance."""
+    return WorldService()
 
 
 @pytest.fixture
@@ -30,13 +26,21 @@ def mock_world_data():
 @pytest.mark.asyncio
 async def test_init_db_creates_table(world_service):
     """Test that init_db creates the worlds table."""
-    # Check table exists by querying it
-    async with aiosqlite.connect(world_service.db_path) as db:
-        async with db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='worlds'"
-        ) as cursor:
-            result = await cursor.fetchone()
-            assert result is not None
+    # Verify that we can create a world (table exists)
+    from models.world import WorldData
+
+    mock_world_data = WorldData(
+        name="Test Init",
+        description="Testing table creation",
+        grid=[["grass"] * 10 for _ in range(10)],
+        agent_start=[5, 5]
+    )
+
+    with patch.object(world_service.world_generator, 'generate_world',
+                     return_value=mock_world_data):
+        world = await world_service.create_world("test-agent", "test")
+        assert world is not None
+        assert world["name"] == "Test Init"
 
 
 @pytest.mark.asyncio
@@ -72,16 +76,11 @@ async def test_create_world_stores_in_database(world_service, mock_world_data):
                      return_value=mock_world_data):
         world = await world_service.create_world(agent_id, description)
 
-    # Verify stored in database
-    async with aiosqlite.connect(world_service.db_path) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM worlds WHERE id = ?", (world["id"],)
-        ) as cursor:
-            row = await cursor.fetchone()
-            assert row is not None
-            assert row["agent_id"] == agent_id
-            assert row["name"] == "Test World"
+    # Verify stored in database by retrieving it
+    retrieved_world = await world_service.get_world(world["id"])
+    assert retrieved_world is not None
+    assert retrieved_world["agent_id"] == agent_id
+    assert retrieved_world["name"] == "Test World"
 
 
 @pytest.mark.asyncio
@@ -159,8 +158,8 @@ async def test_create_world_stores_grid_as_json(world_service, mock_world_data):
 @pytest.mark.asyncio
 async def test_get_worlds_by_agent_id(world_service, mock_world_data):
     """Test retrieving all worlds for a specific agent."""
-    agent_id = "test-agent-multi"
-    other_agent_id = "other-agent"
+    agent_id = "test-agent-multi-unit"  # Unique ID to avoid collision with integration tests
+    other_agent_id = "other-agent-unit"
 
     # Create multiple worlds for the same agent
     with patch.object(world_service.world_generator, 'generate_world',
