@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { api } from '../api'
 import AgentCard from './AgentCard'
 import PokemonButton from './PokemonButton'
@@ -9,7 +9,18 @@ export default function AgentCreation({ onAgentCreated }) {
   const [agent, setAgent] = useState(null)
   const [error, setError] = useState(null)
 
-  const handleCreate = async () => {
+  // Progress tracking state
+  const [progress, setProgress] = useState({
+    phase: null,  // 'llm' | 'avatar' | null
+    message: '',
+    avatarStep: 0,
+    avatarTotal: 2,
+    avatarPercent: 0
+  })
+
+  const cleanupRef = useRef(null)
+
+  const handleCreate = () => {
     if (!description.trim()) {
       setError('Please describe your companion!')
       return
@@ -17,17 +28,73 @@ export default function AgentCreation({ onAgentCreated }) {
 
     setLoading(true)
     setError(null)
+    setProgress({
+      phase: null,
+      message: '',
+      avatarStep: 0,
+      avatarTotal: 2,
+      avatarPercent: 0
+    })
 
-    try {
-      const newAgent = await api.createAgent(description)
-      setAgent(newAgent)
-      if (onAgentCreated) onAgentCreated(newAgent)
-    } catch (err) {
-      setError('Failed to hatch your companion. Make sure the backend is running!')
-      console.error(err)
-    } finally {
-      setLoading(false)
+    // Clean up any existing stream
+    if (cleanupRef.current) {
+      cleanupRef.current()
     }
+
+    // Start streaming agent creation
+    cleanupRef.current = api.createAgentStream(description, {
+      onLLMStart: (data) => {
+        setProgress(prev => ({
+          ...prev,
+          phase: 'llm',
+          message: data.message || 'Dreaming up your companion...'
+        }))
+      },
+
+      onLLMComplete: (data) => {
+        console.log('LLM complete:', data)
+      },
+
+      onAvatarStart: (data) => {
+        setProgress(prev => ({
+          ...prev,
+          phase: 'avatar',
+          message: data.message || 'Hatching your companion...',
+          avatarStep: 0,
+          avatarTotal: 2,
+          avatarPercent: 0
+        }))
+      },
+
+      onAvatarProgress: (data) => {
+        setProgress(prev => ({
+          ...prev,
+          phase: 'avatar',
+          message: data.message || `Hatching... Step ${data.step}/${data.total}`,
+          avatarStep: data.step || 0,
+          avatarTotal: data.total || 2,
+          avatarPercent: data.percent || 0
+        }))
+      },
+
+      onAvatarComplete: (data) => {
+        console.log('Avatar complete:', data.avatar_url)
+      },
+
+      onComplete: (data) => {
+        setAgent(data.agent)
+        setLoading(false)
+        if (onAgentCreated) onAgentCreated(data.agent)
+        cleanupRef.current = null
+      },
+
+      onError: (err) => {
+        setError('Failed to hatch your companion. Make sure the backend is running!')
+        console.error(err)
+        setLoading(false)
+        cleanupRef.current = null
+      }
+    })
   }
 
   if (agent) {
@@ -100,10 +167,41 @@ export default function AgentCreation({ onAgentCreated }) {
       <div className="text-center">
         {loading ? (
           <div className="space-y-4">
-            <div className="text-6xl pokeball-animation">⚽</div>
+            {/* Animated egg emoji based on progress */}
+            <div className="text-6xl">
+              {progress.phase === 'llm' && '🥚'}
+              {progress.phase === 'avatar' && progress.avatarPercent < 50 && '🥚'}
+              {progress.phase === 'avatar' && progress.avatarPercent >= 50 && '🐣'}
+            </div>
+
+            {/* Progress message */}
             <p className="font-pixel text-sm text-pokemon-gold">
-              Hatching your companion...
+              {progress.message || 'Hatching your companion...'}
             </p>
+
+            {/* Progress bar for avatar generation */}
+            {progress.phase === 'avatar' && (
+              <div className="max-w-md mx-auto space-y-2">
+                {/* Step counter */}
+                <p className="font-pixel text-xs text-black">
+                  Step {progress.avatarStep}/{progress.avatarTotal} - {progress.avatarPercent}%
+                </p>
+
+                {/* Pokémon-themed progress bar */}
+                <div className="w-full h-6 bg-pokemon-cream border-4 border-black relative overflow-hidden">
+                  <div
+                    className="h-full bg-pokemon-gold transition-all duration-300 ease-out"
+                    style={{ width: `${progress.avatarPercent}%` }}
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="font-pixel text-xs text-black mix-blend-difference">
+                        {progress.avatarPercent}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <PokemonButton

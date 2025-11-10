@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Edit",
+      "Glob",
+      "Grep",
+      "LS",
+      "MultiEdit",
+      "Read",
+      "Write",
+      "Bash(cat:*)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(mkdir:*)",
+      "Bash(pwd:*)",
+      "Bash(rg:*)",
+      "Bash(tail:*)",
+      "Bash(tree:*)",
+      "mcp__orchestra-mcp"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "orchestra-hook AICraft-mflux-progress-indicator /Users/wz/Desktop/zPersonalProjects/AICraft"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "orchestra-hook AICraft-mflux-progress-indicator /Users/wz/Desktop/zPersonalProjects/AICraft"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "orchestra-hook AICraft-mflux-progress-indicator /Users/wz/Desktop/zPersonalProjects/AICraft"
+          }
+        ]
+      }
+    ]
+  }
+}
