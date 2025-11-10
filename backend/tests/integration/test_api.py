@@ -13,7 +13,8 @@ class TestAgentAPI:
     @pytest.fixture()
     def client(self):
         """Create test client for FastAPI app."""
-        return TestClient(app)
+        with TestClient(app) as test_client:
+            yield test_client
 
     def test_root_endpoint_returns_api_info(self, client):
         """Should return API information at root endpoint."""
@@ -36,8 +37,7 @@ class TestAgentAPI:
         assert response.status_code == HTTPStatus.OK
         assert response.json() == {"status": "healthy"}
 
-    @patch("agent_service.AgentService.create_agent")
-    def test_create_agent_endpoint_with_valid_description(self, mock_create, client):
+    def test_create_agent_endpoint_with_valid_description(self, client):
         """Should create agent with valid description."""
         # Arrange
         mock_agent = {
@@ -47,18 +47,19 @@ class TestAgentAPI:
             "personality_traits": ["brave", "loyal"],
             "avatar_url": "/static/avatars/test-123.png",
         }
-        mock_create.return_value = mock_agent
 
-        # Act
-        response = client.post(
-            "/api/agents/create", json={"description": "A brave knight"},
-        )
+        # Mock after the app has started up (services are in app.state)
+        with patch.object(client.app.state.agent_service, 'create_agent', return_value=mock_agent):
+            # Act
+            response = client.post(
+                "/api/agents/create", json={"description": "A brave knight"},
+            )
 
-        # Assert
-        assert response.status_code == HTTPStatus.OK
-        data = response.json()
-        assert data["name"] == "Sir Valor"
-        assert data["id"] == "test-123"
+            # Assert
+            assert response.status_code == HTTPStatus.OK
+            data = response.json()
+            assert data["name"] == "Sir Valor"
+            assert data["id"] == "test-123"
 
     def test_create_agent_endpoint_requires_description(self, client):
         """Should return 422 when description is missing."""
@@ -68,21 +69,18 @@ class TestAgentAPI:
         # Assert
         assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
-    @patch("agent_service.AgentService.create_agent")
-    def test_create_agent_endpoint_handles_service_error(self, mock_create, client):
+    def test_create_agent_endpoint_handles_service_error(self, client):
         """Should return 500 when service raises exception."""
         # Arrange
-        mock_create.side_effect = Exception("LLM service unavailable")
+        with patch.object(client.app.state.agent_service, 'create_agent', side_effect=Exception("LLM service unavailable")):
+            # Act
+            response = client.post("/api/agents/create", json={"description": "A wizard"})
 
-        # Act
-        response = client.post("/api/agents/create", json={"description": "A wizard"})
+            # Assert
+            assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+            assert "detail" in response.json()
 
-        # Assert
-        assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-        assert "detail" in response.json()
-
-    @patch("agent_service.AgentService.get_agent")
-    def test_get_agent_endpoint_returns_agent(self, mock_get, client):
+    def test_get_agent_endpoint_returns_agent(self, client):
         """Should retrieve agent by ID."""
         # Arrange
         mock_agent = {
@@ -92,28 +90,26 @@ class TestAgentAPI:
             "personality_traits": ["wise", "patient"],
             "avatar_url": "/static/avatars/agent-456.png",
         }
-        mock_get.return_value = mock_agent
 
-        # Act
-        response = client.get("/api/agents/agent-456")
+        with patch.object(client.app.state.agent_service, 'get_agent', return_value=mock_agent):
+            # Act
+            response = client.get("/api/agents/agent-456")
 
-        # Assert
-        assert response.status_code == HTTPStatus.OK
-        data = response.json()
-        assert data["name"] == "Merlin"
+            # Assert
+            assert response.status_code == HTTPStatus.OK
+            data = response.json()
+            assert data["name"] == "Merlin"
 
-    @patch("agent_service.AgentService.get_agent")
-    def test_get_agent_endpoint_returns_404_when_not_found(self, mock_get, client):
+    def test_get_agent_endpoint_returns_404_when_not_found(self, client):
         """Should return 404 when agent doesn't exist."""
         # Arrange
-        mock_get.return_value = None
+        with patch.object(client.app.state.agent_service, 'get_agent', return_value=None):
+            # Act
+            response = client.get("/api/agents/nonexistent")
 
-        # Act
-        response = client.get("/api/agents/nonexistent")
-
-        # Assert
-        assert response.status_code == HTTPStatus.NOT_FOUND
-        assert "detail" in response.json()
+            # Assert
+            assert response.status_code == HTTPStatus.NOT_FOUND
+            assert "detail" in response.json()
 
     def test_cors_headers_allow_frontend_origin(self, client):
         """Should include CORS headers for frontend."""
@@ -125,8 +121,7 @@ class TestAgentAPI:
         # CORS headers should be present
         assert "access-control-allow-origin" in response.headers
 
-    @patch("agent_service.AgentService.create_agent")
-    def test_create_agent_endpoint_returns_all_fields(self, mock_create, client):
+    def test_create_agent_endpoint_returns_all_fields(self, client):
         """Should return all required agent fields."""
         # Arrange
         mock_agent = {
@@ -136,18 +131,18 @@ class TestAgentAPI:
             "personality_traits": ["friendly", "helpful", "curious"],
             "avatar_url": "/static/avatars/full-test.png",
         }
-        mock_create.return_value = mock_agent
 
-        # Act
-        response = client.post(
-            "/api/agents/create", json={"description": "A detailed test agent"},
-        )
+        with patch.object(client.app.state.agent_service, 'create_agent', return_value=mock_agent):
+            # Act
+            response = client.post(
+                "/api/agents/create", json={"description": "A detailed test agent"},
+            )
 
-        # Assert
-        data = response.json()
-        assert "id" in data
-        assert "name" in data
-        assert "backstory" in data
-        assert "personality_traits" in data
-        assert "avatar_url" in data
-        assert isinstance(data["personality_traits"], list)
+            # Assert
+            data = response.json()
+            assert "id" in data
+            assert "name" in data
+            assert "backstory" in data
+            assert "personality_traits" in data
+            assert "avatar_url" in data
+            assert isinstance(data["personality_traits"], list)
