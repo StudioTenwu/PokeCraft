@@ -17,7 +17,7 @@ class Config:
     # Avatar Generation
     AVATAR_MODEL_PATH = os.getenv(
         "AVATAR_MODEL_PATH",
-        str(Path(__file__).parent.parent.parent / "models" / "schnell-3bit")
+        str(Path.home() / ".AICraft" / "models" / "schnell-3bit")
     )
 
     # CORS Configuration
