@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from agent_service import AgentService
 from config import Config
+from database import init_db
 from logging_config import setup_logging
 from world_service import WorldService
 
@@ -30,7 +31,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    # Startup: Initialize services
+    # Startup: Initialize database schema
+    logger.info("Initializing database schema...")
+    await init_db()
+
+    # Initialize services
     logger.info("Initializing services...")
 
     agent_service = AgentService()
