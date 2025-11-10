@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon Hand-Drawn Avatar Comparison</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            text-align: center;
+            color: #FFD700;
+            margin-bottom: 40px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 30px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        .avatar-card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .avatar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(255,215,0,0.3);
+        }
+        .avatar-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .avatar-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #fff;
+        }
+        .avatar-description {
+            font-size: 14px;
+            color: #bbb;
+            line-height: 1.6;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 6px;
+        }
+        .prompt-label {
+            color: #FFD700;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Pokemon Hand-Drawn Style Avatar Variations</h1>
+
+    <div class="container">
+        <div class="avatar-card">
+            <div class="avatar-title">Sugimori Official Art Style</div>
+            <img src="avatars/pokemon_v1_sugimori.png" alt="Sugimori Style" class="avatar-img">
+            <div class="avatar-description">
+                <span class="prompt-label">Style:</span>
+                Ken Sugimori art style, official Pokemon artwork, hand-drawn illustration, soft watercolor, vibrant colors, friendly cute character, frontal view, clean white background
+                <br><br>
+                <span class="prompt-label">Notes:</span>
+                Official Pokemon artist style - classic watercolor look
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">Pokemon Anime Style</div>
+            <img src="avatars/pokemon_v2_anime.png" alt="Anime Style" class="avatar-img">
+            <div class="avatar-description">
+                <span class="prompt-label">Style:</span>
+                Pokemon anime style, hand-painted cel animation, soft rounded shapes, big expressive eyes, cute and friendly, frontal portrait, pastel colors, wholesome aesthetic
+                <br><br>
+                <span class="prompt-label">Notes:</span>
+                Inspired by the Pokemon TV show - soft, rounded, friendly
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">Pokemon Trading Card Style</div>
+            <img src="avatars/pokemon_v3_card.png" alt="Card Style" class="avatar-img">
+            <div class="avatar-description">
+                <span class="prompt-label">Style:</span>
+                Pokemon trading card illustration, hand-drawn digital art, glossy finish, vibrant saturated colors, cute character design, centered composition, professional game art
+                <br><br>
+                <span class="prompt-label">Notes:</span>
+                Trading card game aesthetic - vibrant, professional, glossy
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; background: #2a2a2a; border-radius: 8px; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <h2 style="color: #FFD700; margin-bottom: 15px;">Results Summary</h2>
+        <p style="color: #bbb; line-height: 1.6;">
+            ✓ Successfully generated 3 Pokemon hand-drawn style variations<br>
+            All focus on: cute, hand-drawn aesthetic, frontal view, friendly characters
+        </p>
+    </div>
+</body>
+</html>

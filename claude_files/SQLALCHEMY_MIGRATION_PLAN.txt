@@ -1,0 +1,278 @@
+# SQLAlchemy Active Record-ish Migration Plan
+
+<summary>
+Migration plan to replace raw SQL (aiosqlite) with SQLAlchemy async ORM using Active Record-ish pattern. This provides type safety, easier maintenance, and eliminates SQL injection risks while keeping the architecture simple.
+</summary>
+
+<context>
+## Current State
+- **File**: `backend/src/agent_service.py`
+- **Database**: SQLite with raw SQL via `aiosqlite`
+- **Operations**: CREATE, INSERT, SELECT for agents table
+- **Schema**: agents (id, name, backstory, personality, avatar_url, created_at)
+
+## Target Architecture (Active Record-ish)
+```
+backend/src/
+  db/
+    __init__.py           # Exports for easy imports
+    models.py             # Agent SQLAlchemy model
+    database.py           # Engine, session factory, init_db()
+  services/
+    agent_service.py      # Business logic + direct ORM usage
+    avatar_generator.py   # (unchanged)
+    llm_client.py         # (unchanged)
+```
+
+## Why Active Record-ish?
+- ✅ Simple and direct - service uses ORM models directly
+- ✅ No extra repository layer needed at this stage
+- ✅ Type-safe with SQLAlchemy models
+- ✅ Easy to test with session mocking
+- ✅ Can evolve to Repository pattern later if needed
+</context>
+
+<details>
+## Step-by-Step Implementation
+
+### Step 1: Create db/ Directory Structure
+**File**: `backend/src/db/__init__.py`
+```python
+"""Database models and utilities."""
+from .models import Agent, Base
+from .database import get_session, init_db, engine
+
+__all__ = ["Agent", "Base", "get_session", "init_db", "engine"]
+```
+
+### Step 2: Create SQLAlchemy Models
+**File**: `backend/src/db/models.py`
+```python
+from sqlalchemy import String, DateTime, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from datetime import datetime
+import uuid
+
+class Base(DeclarativeBase):
+    """Base class for all models."""
+    pass
+
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    backstory: Mapped[str] = mapped_column(Text, nullable=True)
+    personality: Mapped[str] = mapped_column(Text, nullable=True)  # Comma-separated traits
+    avatar_url: Mapped[str] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary with personality traits parsed."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "backstory": self.backstory,
+            "personality_traits": self.personality.split(",") if self.personality else [],
+            "avatar_url": self.avatar_url,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+```
+
+**Key Features:**
+- ✅ Type hints with `Mapped[]` for type safety
+- ✅ UUID generation built-in
+- ✅ `to_dict()` helper for API responses
+- ✅ Matches existing schema exactly
+
+### Step 3: Create Database Session Management
+**File**: `backend/src/db/database.py`
+```python
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from pathlib import Path
+from .models import Base
+
+# Database path
+DB_PATH = Path(__file__).parent.parent.parent / "agents.db"
+DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+
+# Create async engine
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,  # Set to False in production
+    future=True
+)
+
+# Session factory
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+async def get_session() -> AsyncSession:
+    """Get a database session (context manager)."""
+    async with async_session_maker() as session:
+        yield session
+
+async def init_db():
+    """Initialize database schema."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+```
+
+**Key Features:**
+- ✅ Async engine with `aiosqlite` driver
+- ✅ Session factory for dependency injection
+- ✅ `init_db()` creates tables automatically
+- ✅ Same DB path as current implementation
+
+### Step 4: Refactor agent_service.py
+**File**: `backend/src/services/agent_service.py`
+```python
+from pathlib import Path
+from sqlalchemy import select
+from ..db import Agent, async_session_maker
+from .llm_client import LLMClient
+from .avatar_generator import AvatarGenerator
+
+class AgentService:
+    def __init__(self):
+        self.llm_client = LLMClient()
+        self.avatar_generator = AvatarGenerator()
+
+    async def create_agent(self, description: str) -> dict:
+        """Create a new agent with LLM generation and avatar."""
+        # Generate agent data using LLM
+        agent_data = await self.llm_client.generate_agent(description)
+
+        # Create ORM object
+        agent = Agent(
+            name=agent_data["name"],
+            backstory=agent_data["backstory"],
+            personality=",".join(agent_data["personality_traits"]),
+        )
+
+        # Generate avatar (uses agent.id which is auto-generated)
+        agent.avatar_url = self.avatar_generator.generate_avatar(
+            agent.id,
+            agent_data.get("avatar_prompt", "cute AI companion")
+        )
+
+        # Save to database
+        async with async_session_maker() as session:
+            session.add(agent)
+            await session.commit()
+            await session.refresh(agent)  # Get DB-generated fields
+
+        return agent.to_dict()
+
+    async def get_agent(self, agent_id: str) -> dict | None:
+        """Retrieve agent by ID."""
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Agent).where(Agent.id == agent_id)
+            )
+            agent = result.scalar_one_or_none()
+            return agent.to_dict() if agent else None
+```
+
+**Changes from Old Code:**
+- ❌ No raw SQL strings
+- ✅ Type-safe ORM objects
+- ✅ Cleaner async context managers
+- ✅ Uses SQLAlchemy select() for queries
+- ✅ Same API surface (return dict)
+
+### Step 5: Update Dependencies
+**File**: `backend/requirements.txt` (or `pyproject.toml`)
+```txt
+# Add these:
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.19.0
+
+# Remove (if standalone):
+# aiosqlite  # Now pulled in via sqlalchemy[asyncio]
+```
+
+**Or in pyproject.toml:**
+```toml
+[project]
+dependencies = [
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.19.0",
+]
+```
+
+### Step 6: Update App Startup
+**File**: `backend/src/main.py` (or wherever FastAPI app is initialized)
+```python
+from fastapi import FastAPI
+from .db import init_db
+
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup."""
+    await init_db()
+    print("✅ Database initialized")
+
+# ... rest of your routes
+```
+
+**Alternative** (if using lifespan):
+```python
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_db()
+    print("✅ Database initialized")
+    yield
+    # Shutdown (if needed)
+
+app = FastAPI(lifespan=lifespan)
+```
+
+### Step 7: Testing Checklist
+- [ ] Run `pip install sqlalchemy[asyncio] aiosqlite`
+- [ ] Delete old `agents.db` to start fresh
+- [ ] Start backend server
+- [ ] Test agent creation via API
+- [ ] Verify avatar generation still works
+- [ ] Test agent retrieval by ID
+- [ ] Check database file contains expected data
+- [ ] Verify no SQL injection possible (try `'; DROP TABLE agents; --` in description)
+</details>
+
+<next-steps>
+## Migration Steps (In Order)
+
+1. **Install dependencies**: `pip install sqlalchemy[asyncio] aiosqlite`
+2. **Create db/ directory**: `mkdir backend/src/db`
+3. **Create files in order**:
+   - `backend/src/db/__init__.py`
+   - `backend/src/db/models.py`
+   - `backend/src/db/database.py`
+4. **Refactor**: Update `agent_service.py`
+5. **Update startup**: Modify `main.py` to call `init_db()`
+6. **Test**: Run end-to-end agent creation flow
+7. **Clean up**: Remove old `aiosqlite` code if not used elsewhere
+
+## Benefits After Migration
+- ✅ **Type safety**: IDE autocomplete, catch errors early
+- ✅ **No SQL injection**: Parameterized queries by default
+- ✅ **Easy migrations**: Can use Alembic later
+- ✅ **Maintainable**: Change schema in Python, not SQL strings
+- ✅ **Testable**: Mock sessions easily
+- ✅ **Scalable**: Add relationships, complex queries easily
+
+## Future Enhancements (Not Now)
+- Add Alembic for database migrations
+- Add more models (Memory, Interaction, Skills)
+- Add relationships between models (Agent.memories)
+- Consider Repository pattern when you have 5+ models
+- Add caching layer (Redis) if performance becomes an issue
+</next-steps>

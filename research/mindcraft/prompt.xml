@@ -1,0 +1,13 @@
+<background>
+https://github.com/mindcraft-bots/mindcraft/blob/stable/minecollab.md has information about the minecollab benchmark.
+
+I personally find the minecollab benchmark really interesting because it situates multi-agent collaboration and the difficulties there into such a familiar environment. Mindcraft is also such a nice environment to let a person see how their ways of customizing the agent has really payed off.
+</background>
+
+<YourTask>
+Your task is really simple. I want a way to easily deploy a set of agents into Minecraft and for the user to be able to inspect their behaviors in the collaborative settings of Minecollab. 
+
+I am not exactly sure what this will look like, so the world is your oyster!
+
+You should first explore MineCollab. First deploy MineCollab by itself. And then try to deploy custom agents. Build a small interface on top of the mindcraft repository to make it easy to customize these agents.
+</YourTask>

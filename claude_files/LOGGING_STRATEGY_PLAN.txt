@@ -1,0 +1,581 @@
+# Professional Logging Strategy for AICraft
+
+<summary>
+Replace print statements with structured logging using Python's logging module. Implement proper log levels, formatters, handlers, and context for debugging, monitoring, and production support.
+</summary>
+
+<context>
+## Why Replace Print Statements?
+
+### Problems with print()
+- ❌ No log levels (can't filter by severity)
+- ❌ No timestamps or context
+- ❌ Goes to stdout (mixed with other output)
+- ❌ Can't route to files or monitoring systems
+- ❌ No structured data for analysis
+- ❌ Hard to debug in production
+
+### Benefits of Proper Logging
+- ✅ **Log levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- ✅ **Contextual info**: Timestamps, module names, line numbers
+- ✅ **Multiple outputs**: Console, files, external services
+- ✅ **Filtering**: Show only what you need
+- ✅ **Structured logs**: JSON format for parsing
+- ✅ **Performance**: Can disable debug logs in production
+- ✅ **Monitoring**: Integrate with tools like Sentry, CloudWatch
+
+## Current Usage in Codebase
+Search results will show where print() is used:
+- Database initialization: `print("✅ Database initialized")`
+- Avatar generation: likely has prints
+- LLM client: error handling probably prints
+- Agent service: debugging outputs
+</context>
+
+<details>
+## Logging Architecture
+
+### 1. Log Levels Strategy
+
+**DEBUG** (Development only)
+```python
+logger.debug(f"Agent data received: {agent_data}")
+logger.debug(f"SQL query: {query}")
+```
+- Detailed diagnostic info
+- Variable values, function entry/exit
+- Database queries
+- Only in development
+
+**INFO** (Important events)
+```python
+logger.info(f"Agent created successfully: {agent.name} (ID: {agent.id})")
+logger.info(f"Database initialized at {db_path}")
+logger.info(f"Avatar generated: {avatar_url}")
+```
+- Successful operations
+- Application startup/shutdown
+- Key milestones
+
+**WARNING** (Potential issues)
+```python
+logger.warning(f"Agent {agent_id} not found in database")
+logger.warning(f"API rate limit approaching: {remaining_calls} calls left")
+logger.warning(f"Avatar generation failed, using default")
+```
+- Unexpected but handled situations
+- Fallback behavior triggered
+- Resource constraints
+
+**ERROR** (Failed operations)
+```python
+logger.error(f"Failed to create agent: {e}", exc_info=True)
+logger.error(f"Database connection failed: {e}")
+logger.error(f"LLM API returned error: {response.status}")
+```
+- Operation failures
+- Exceptions (but caught)
+- Data validation errors
+
+**CRITICAL** (System failures)
+```python
+logger.critical(f"Database corrupted, cannot start application")
+logger.critical(f"Out of memory, shutting down")
+```
+- System-level failures
+- Application cannot continue
+- Requires immediate attention
+
+### 2. Logger Configuration
+
+**File**: `backend/src/logging_config.py`
+```python
+import logging
+import logging.handlers
+from pathlib import Path
+import sys
+from typing import Optional
+
+def setup_logging(
+    level: str = "INFO",
+    log_dir: Optional[Path] = None,
+    json_format: bool = False
+) -> None:
+    """
+    Configure application-wide logging.
+
+    Args:
+        level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_dir: Directory for log files (None = no file logging)
+        json_format: Use JSON format for structured logging
+    """
+    # Root logger configuration
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, level.upper()))
+
+    # Remove existing handlers
+    root_logger.handlers.clear()
+
+    # Console handler (pretty format for development)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.DEBUG)
+
+    if json_format:
+        console_formatter = JsonFormatter()
+    else:
+        console_formatter = logging.Formatter(
+            fmt='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+    console_handler.setFormatter(console_formatter)
+    root_logger.addHandler(console_handler)
+
+    # File handlers (if log_dir specified)
+    if log_dir:
+        log_dir = Path(log_dir)
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        # General application log (rotates daily, keeps 30 days)
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            filename=log_dir / "aicraft.log",
+            when='midnight',
+            interval=1,
+            backupCount=30,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(console_formatter)
+        root_logger.addHandler(file_handler)
+
+        # Error log (only errors and critical)
+        error_handler = logging.handlers.RotatingFileHandler(
+            filename=log_dir / "errors.log",
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5,
+            encoding='utf-8'
+        )
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(console_formatter)
+        root_logger.addHandler(error_handler)
+
+    # Silence noisy third-party loggers
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)  # SQL queries
+
+    # Log startup
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized at level {level}")
+    if log_dir:
+        logger.info(f"Logs will be written to {log_dir}")
+
+
+class JsonFormatter(logging.Formatter):
+    """Format logs as JSON for structured logging."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        import json
+        from datetime import datetime
+
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "function": record.funcName,
+            "line": record.lineno,
+            "message": record.getMessage(),
+        }
+
+        # Include exception info if present
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+
+        # Include extra fields (see context example below)
+        if hasattr(record, 'agent_id'):
+            log_data['agent_id'] = record.agent_id
+        if hasattr(record, 'user_id'):
+            log_data['user_id'] = record.user_id
+
+        return json.dumps(log_data)
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger for a specific module."""
+    return logging.getLogger(name)
+```
+
+### 3. Usage in Services
+
+**File**: `backend/src/services/agent_service.py`
+```python
+import logging
+from pathlib import Path
+from sqlalchemy import select
+from ..db import Agent, async_session_maker
+from .llm_client import LLMClient
+from .avatar_generator import AvatarGenerator
+
+logger = logging.getLogger(__name__)  # Creates logger named 'services.agent_service'
+
+class AgentService:
+    def __init__(self):
+        self.llm_client = LLMClient()
+        self.avatar_generator = AvatarGenerator()
+        logger.debug("AgentService initialized")
+
+    async def create_agent(self, description: str) -> dict:
+        """Create a new agent with LLM generation and avatar."""
+        logger.info(f"Creating agent from description: {description[:50]}...")
+
+        try:
+            # Generate agent data using LLM
+            agent_data = await self.llm_client.generate_agent(description)
+            logger.debug(f"LLM generated agent data: {agent_data}")
+
+            # Create ORM object
+            agent = Agent(
+                name=agent_data["name"],
+                backstory=agent_data["backstory"],
+                personality=",".join(agent_data["personality_traits"]),
+            )
+            logger.debug(f"Agent ORM object created with ID: {agent.id}")
+
+            # Generate avatar
+            agent.avatar_url = self.avatar_generator.generate_avatar(
+                agent.id,
+                agent_data.get("avatar_prompt", "cute AI companion")
+            )
+            logger.info(f"Avatar generated: {agent.avatar_url}")
+
+            # Save to database
+            async with async_session_maker() as session:
+                session.add(agent)
+                await session.commit()
+                await session.refresh(agent)
+                logger.info(
+                    f"Agent created successfully: {agent.name} (ID: {agent.id})",
+                    extra={"agent_id": agent.id, "agent_name": agent.name}  # Structured context
+                )
+
+            return agent.to_dict()
+
+        except Exception as e:
+            logger.error(f"Failed to create agent: {e}", exc_info=True)
+            raise
+
+    async def get_agent(self, agent_id: str) -> dict | None:
+        """Retrieve agent by ID."""
+        logger.debug(f"Fetching agent with ID: {agent_id}")
+
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(Agent).where(Agent.id == agent_id)
+                )
+                agent = result.scalar_one_or_none()
+
+                if agent:
+                    logger.info(f"Agent found: {agent.name} (ID: {agent_id})")
+                    return agent.to_dict()
+                else:
+                    logger.warning(f"Agent not found: {agent_id}")
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error fetching agent {agent_id}: {e}", exc_info=True)
+            raise
+```
+
+**File**: `backend/src/db/database.py`
+```python
+import logging
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from pathlib import Path
+from .models import Base
+
+logger = logging.getLogger(__name__)
+
+# Database path
+DB_PATH = Path(__file__).parent.parent.parent / "agents.db"
+DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+
+# Create async engine
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,  # Don't echo SQL (we log it ourselves if needed)
+    future=True
+)
+
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+async def init_db():
+    """Initialize database schema."""
+    logger.info(f"Initializing database at {DB_PATH}")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database schema created successfully")
+    except Exception as e:
+        logger.critical(f"Failed to initialize database: {e}", exc_info=True)
+        raise
+```
+
+**File**: `backend/src/llm_client.py` (example)
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+class LLMClient:
+    async def generate_agent(self, description: str) -> dict:
+        """Generate agent configuration from description."""
+        logger.debug(f"Generating agent from description: {description}")
+
+        try:
+            # ... LLM API call ...
+            logger.info("Agent generation successful")
+            return agent_data
+        except RateLimitError as e:
+            logger.warning(f"LLM rate limit hit: {e}")
+            # Retry logic
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}", exc_info=True)
+            raise
+```
+
+### 4. Application Startup
+
+**File**: `backend/src/main.py`
+```python
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+from fastapi import FastAPI
+from .logging_config import setup_logging
+from .db import init_db
+
+# Setup logging FIRST (before any other imports that might log)
+LOG_DIR = Path(__file__).parent.parent / "logs"
+setup_logging(
+    level="DEBUG",  # Use env var in production: os.getenv("LOG_LEVEL", "INFO")
+    log_dir=LOG_DIR,
+    json_format=False  # Set to True for production
+)
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting AICraft backend...")
+    try:
+        await init_db()
+        logger.info("Application startup complete")
+    except Exception as e:
+        logger.critical(f"Failed to start application: {e}", exc_info=True)
+        raise
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down AICraft backend...")
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+async def root():
+    logger.debug("Root endpoint called")
+    return {"message": "AICraft API"}
+
+@app.post("/agents")
+async def create_agent(description: str):
+    logger.info(f"POST /agents called with description length: {len(description)}")
+    # ... rest of handler
+```
+
+### 5. Environment-Based Configuration
+
+**File**: `backend/.env.example`
+```bash
+# Logging configuration
+LOG_LEVEL=INFO
+LOG_DIR=/var/log/aicraft
+LOG_FORMAT=json  # or 'text'
+```
+
+**File**: `backend/src/config.py`
+```python
+import os
+from pathlib import Path
+
+class Config:
+    # Logging
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_DIR = Path(os.getenv("LOG_DIR", Path(__file__).parent.parent / "logs"))
+    LOG_FORMAT = os.getenv("LOG_FORMAT", "text")  # 'text' or 'json'
+
+    # Database
+    DB_PATH = Path(os.getenv("DB_PATH", Path(__file__).parent.parent / "agents.db"))
+```
+
+**Updated main.py:**
+```python
+from .config import Config
+from .logging_config import setup_logging
+
+setup_logging(
+    level=Config.LOG_LEVEL,
+    log_dir=Config.LOG_DIR,
+    json_format=(Config.LOG_FORMAT == "json")
+)
+```
+
+### 6. Advanced: Contextual Logging
+
+**For tracking requests across services:**
+```python
+import logging
+from contextvars import ContextVar
+
+# Thread-safe context storage
+request_id_var: ContextVar[str] = ContextVar('request_id', default='')
+
+class ContextFilter(logging.Filter):
+    """Add contextual information to all logs."""
+
+    def filter(self, record):
+        record.request_id = request_id_var.get('')
+        return True
+
+# In logging_config.py, add filter to handlers:
+console_handler.addFilter(ContextFilter())
+
+# In FastAPI middleware:
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request_id_var.set(request_id)
+    logger.info(f"Request started", extra={"request_id": request_id})
+
+    response = await call_next(request)
+
+    logger.info(f"Request completed", extra={"request_id": request_id})
+    return response
+```
+
+Now all logs within the same request will have the same `request_id`.
+
+### 7. Log Analysis Examples
+
+**Find all errors in the last hour:**
+```bash
+grep "ERROR" logs/aicraft.log | tail -100
+```
+
+**Find all agent creations:**
+```bash
+grep "Agent created successfully" logs/aicraft.log
+```
+
+**Parse JSON logs with jq:**
+```bash
+cat logs/aicraft.log | jq 'select(.level=="ERROR")'
+cat logs/aicraft.log | jq 'select(.agent_id=="abc-123")'
+```
+</details>
+
+<next-steps>
+## Implementation Steps
+
+### Phase 1: Basic Logging (Start Here)
+1. **Create logging configuration**
+   - File: `backend/src/logging_config.py`
+   - Functions: `setup_logging()`, `get_logger()`
+
+2. **Update main.py**
+   - Call `setup_logging()` at startup
+   - Replace print() with logger.info()
+
+3. **Update database.py**
+   - Add logger at top: `logger = logging.getLogger(__name__)`
+   - Replace prints with logger.info/error
+
+4. **Update agent_service.py**
+   - Add logger at top
+   - Log key operations (create, fetch)
+   - Log errors with `exc_info=True`
+
+5. **Test**
+   - Run application
+   - Check console output has proper format
+   - Trigger error, verify stack trace logged
+
+### Phase 2: File Logging
+6. **Enable file logging**
+   - Create `backend/logs/` directory
+   - Add to `.gitignore`: `logs/*.log`
+   - Pass `log_dir` to `setup_logging()`
+
+7. **Test log rotation**
+   - Generate lots of logs
+   - Verify files rotate properly
+
+### Phase 3: Structured Logging (Production)
+8. **Enable JSON format**
+   - Set `json_format=True` in production
+   - Test with log aggregation tools (optional)
+
+9. **Add contextual logging**
+   - Implement request_id tracking
+   - Add extra fields to important logs
+
+### Phase 4: Full Migration (Clean Up)
+10. **Search and replace all print()**
+    ```bash
+    # Find all print statements
+    grep -r "print(" backend/src/
+
+    # Replace with appropriate log level
+    # print("Success") -> logger.info("Success")
+    # print(f"Debug: {var}") -> logger.debug(f"Debug: {var}")
+    ```
+
+11. **Add .gitignore entries**
+    ```gitignore
+    # Logs
+    logs/
+    *.log
+    ```
+
+## Quick Reference
+
+### When to use each level:
+- **DEBUG**: Variable values, function calls, SQL queries
+- **INFO**: Successful operations, milestones, startup
+- **WARNING**: Fallbacks, unexpected but handled, deprecations
+- **ERROR**: Failed operations, caught exceptions
+- **CRITICAL**: System failures, cannot continue
+
+### Best Practices:
+- ✅ Always use `logger.error(..., exc_info=True)` for exceptions
+- ✅ Use f-strings for lazy evaluation: `logger.debug(f"Value: {x}")`
+- ✅ Add structured context: `extra={"agent_id": id}`
+- ✅ Log before risky operations: "Attempting to..."
+- ✅ Log after success: "Successfully completed..."
+- ❌ Don't log sensitive data (passwords, tokens, PII)
+- ❌ Don't log in tight loops (use DEBUG sparingly)
+- ❌ Don't concatenate strings: use f-strings or lazy %
+
+### Production Configuration:
+```python
+setup_logging(
+    level="INFO",  # Don't use DEBUG in production
+    log_dir=Path("/var/log/aicraft"),
+    json_format=True  # For log aggregation
+)
+```
+</next-steps>

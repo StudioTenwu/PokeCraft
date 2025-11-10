@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avatar Prompt Comparison</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            text-align: center;
+            color: #FFD700;
+            margin-bottom: 40px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        .avatar-card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .avatar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(255,215,0,0.3);
+        }
+        .avatar-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .avatar-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #fff;
+        }
+        .avatar-description {
+            font-size: 13px;
+            color: #bbb;
+            line-height: 1.5;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 6px;
+        }
+        .prompt-label {
+            color: #FFD700;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Avatar Prompt Variations Comparison</h1>
+
+    <div class="container">
+        <div class="avatar-card">
+            <div class="avatar-title">V1: Current (Baseline)</div>
+            <img src="avatars/test_v1_current.png" alt="V1 Current" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                Game Boy Color style, retro pixel art, colorful, nostalgic 90s gaming aesthetic
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V2: Frontal Retro</div>
+            <img src="avatars/test_v2_frontal_retro.png" alt="V2 Frontal Retro" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                frontal view portrait, retro pixel art style, 16-bit era, vibrant colors, character sprite, centered composition, clean background
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V3: Cool Retro</div>
+            <img src="avatars/test_v3_cool_retro.png" alt="V3 Cool Retro" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                super cool character portrait, frontal view, 90s retro aesthetic, pixel art vibes, bold colors, facing camera directly, iconic pose
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V4: Vintage Game</div>
+            <img src="avatars/test_v4_vintage_game.png" alt="V4 Vintage Game" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                vintage video game character, face forward, retro gaming art style, pixel-inspired, colorful palette, easy to read silhouette, centered portrait
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V5: Modern Retro</div>
+            <img src="avatars/test_v5_modern_retro.png" alt="V5 Modern Retro" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                modern pixel art style, frontal character portrait, retro-futuristic, vibrant neon colors, clean geometric shapes, perfectly centered, cool and stylish
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V6: Simple Retro</div>
+            <img src="avatars/test_v6_simple_retro.png" alt="V6 Simple Retro" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                simple retro character design, direct frontal view, flat colors, 80s-90s aesthetic, bold outlines, minimalist cool style, head-on perspective
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V7: Pokemon Style</div>
+            <img src="avatars/test_v7_pokemon_style.png" alt="V7 Pokemon Style" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                Pokemon trading card art style, frontal character view, retro gaming aesthetic, bright colors, friendly and approachable, clean composition
+            </div>
+        </div>
+
+        <div class="avatar-card">
+            <div class="avatar-title">V8: Arcade Style</div>
+            <img src="avatars/test_v8_arcade_style.png" alt="V8 Arcade Style" class="avatar-img">
+            <div class="avatar-description">
+                <div class="prompt-label">Enhancement:</div>
+                retro arcade game character, straight-on frontal view, 16-bit pixel art aesthetic, vibrant color palette, iconic character design, perfectly centered
+            </div>
+        </div>
+    </div>
+</body>
+</html>
