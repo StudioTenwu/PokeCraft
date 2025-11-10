@@ -17,10 +17,11 @@ class AvatarGenerator:
         """Generate avatar using mflux and return URL path."""
         output_path = self.output_dir / f"{agent_id}.png"
 
-        # Enhance prompt for Pokémon retro aesthetic
+        # Enhance prompt for Pokemon Trading Card hand-drawn aesthetic
         enhanced_prompt = (
-            f"{prompt}, Game Boy Color style, retro pixel art, "
-            "colorful, nostalgic 90s gaming aesthetic"
+            f"{prompt}, Pokemon trading card illustration, hand-drawn digital art, "
+            "glossy finish, vibrant saturated colors, cute character design, "
+            "centered composition, professional game art"
         )
 
         try:
