@@ -100,3 +100,30 @@ class TestToolRegistry:
         # Should handle gracefully and return empty list or raise informative error
         with pytest.raises(Exception):  # Exact exception type depends on implementation
             get_available_tools("test-agent", str(invalid_file))
+
+    def test_append_tool_to_file(self) -> None:
+        """Test appending tool code to tools file."""
+        from src.tool_registry import append_tool_to_file
+
+        # Create a temporary tools file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write('"""Auto-generated tool storage."""\n')
+            f.write("from typing import Any\n")
+            tools_file = Path(f.name)
+
+        # Append a tool
+        tool_code = """@tool("new_tool", "A new tool", {})
+async def new_tool(args: dict[str, Any]) -> dict[str, Any]:
+    return {"content": [{"type": "text", "text": "New tool"}]}"""
+
+        append_tool_to_file(tool_code, str(tools_file))
+
+        # Verify the tool was appended
+        with open(tools_file, "r") as f:
+            content = f.read()
+            assert "new_tool" in content
+            assert "@tool" in content
+            assert 'return {"content"' in content
+
+        # Clean up
+        tools_file.unlink()
