@@ -1,180 +1,194 @@
-"""Unit tests for LLM world generation."""
+"""Unit tests for LLMWorldGenerator."""
 import json
+from unittest.mock import patch, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from llm_world_generator import LLMWorldGenerator
 from models.world import WorldData
 from pydantic import ValidationError
 
 
-@pytest.fixture
-def world_generator():
-    """Create a world generator instance for testing."""
-    return LLMWorldGenerator()
+class MockMessage:
+    """Mock message from Agent SDK."""
+    def __init__(self, result=None):
+        self.result = result
 
 
-@pytest.mark.asyncio
-async def test_generate_world_success(world_generator):
-    """Test successful world generation with valid LLM response."""
-    description = "a peaceful meadow with a small pond"
+class TestLLMWorldGenerator:
+    """Tests for LLMWorldGenerator class."""
 
-    # Mock Agent SDK response
-    mock_response = {
-        "name": "Peaceful Meadow",
-        "description": "A tranquil meadow with soft grass and a sparkling pond",
-        "grid": [
-            ["grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "grass", "grass", "water", "water", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "path", "grass", "water", "water", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "path", "grass", "grass", "grass", "grass", "wall", "wall", "grass", "grass"],
-            ["grass", "path", "path", "path", "grass", "grass", "wall", "wall", "grass", "grass"],
-            ["grass", "grass", "grass", "path", "grass", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "grass", "grass", "path", "grass", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "grass", "grass", "path", "path", "grass", "grass", "grass", "grass", "grass"],
-            ["grass", "grass", "grass", "grass", "path", "grass", "grass", "grass", "grass", "goal"],
-            ["grass", "grass", "grass", "grass", "path", "path", "path", "path", "path", "path"]
-        ],
-        "agent_start": [1, 1]
-    }
+    @pytest.fixture()
+    def generator(self):
+        """Create world generator instance."""
+        return LLMWorldGenerator()
 
-    # Mock the query function from Agent SDK
-    async def mock_query_generator(*args, **kwargs):
-        mock_message = MagicMock()
-        json_str = json.dumps(mock_response)
-        mock_message.result = f"```json\n{json_str}\n```"
-        yield mock_message
+    @pytest.mark.asyncio()
+    async def test_generate_world_with_xml_cdata_response(self, generator):
+        """Should parse world data from XML CDATA output tags."""
+        # Arrange
+        description = "A forest maze with a goal"
+        mock_world = {
+            "name": "Forest Maze",
+            "description": "A dense forest with winding paths",
+            "grid": [
+                ["grass"] * 10 for _ in range(9)
+            ] + [["grass"] * 9 + ["goal"]],
+            "agent_start": [0, 0]
+        }
 
-    with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        world_data = await world_generator.generate_world(description)
+        # XML response with CDATA
+        xml_response = f"<output><![CDATA[{json.dumps(mock_world)}]]></output>"
 
-    # Assertions
-    assert isinstance(world_data, WorldData)
-    assert world_data.name == "Peaceful Meadow"
-    assert len(world_data.grid) == 10
-    assert len(world_data.grid[0]) == 10
-    assert world_data.agent_start == [1, 1]
-    assert all(tile in ["grass", "wall", "water", "path", "goal"] for row in world_data.grid for tile in row)
+        async def mock_query(prompt):
+            yield MockMessage(result=xml_response)
 
+        with patch("llm_world_generator.query", side_effect=mock_query):
+            # Act
+            result = await generator.generate_world(description)
 
-@pytest.mark.asyncio
-async def test_generate_world_validates_grid_size(world_generator):
-    """Test that world generator validates 10x10 grid requirement."""
-    description = "a small world"
+            # Assert
+            assert isinstance(result, WorldData)
+            assert result.name == "Forest Maze"
+            assert len(result.grid) == 10
+            assert len(result.grid[0]) == 10
 
-    # Mock invalid response with wrong grid size
-    invalid_response = {
-        "name": "Too Small",
-        "description": "A world that's too small",
-        "grid": [
-            ["grass", "grass"],
-            ["grass", "grass"]
-        ],
-        "agent_start": [0, 0]
-    }
+    @pytest.mark.asyncio()
+    async def test_generate_world_without_cdata_fallback(self, generator):
+        """Should handle XML without CDATA (backward compatibility)."""
+        # Arrange
+        description = "A simple world"
+        mock_world = {
+            "name": "Simple World",
+            "description": "A basic world",
+            "grid": [["grass"] * 10 for _ in range(10)],
+            "agent_start": [5, 5]
+        }
 
-    async def mock_query_generator(*args, **kwargs):
-        mock_message = MagicMock()
-        json_str = json.dumps(invalid_response)
-        mock_message.result = f"```json\n{json_str}\n```"
-        yield mock_message
+        # XML without CDATA
+        xml_response = f"<output>{json.dumps(mock_world)}</output>"
 
-    with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        with pytest.raises(ValidationError):
-            await world_generator.generate_world(description)
+        async def mock_query(prompt):
+            yield MockMessage(result=xml_response)
 
+        with patch("llm_world_generator.query", side_effect=mock_query):
+            # Act
+            result = await generator.generate_world(description)
 
-@pytest.mark.asyncio
-async def test_generate_world_validates_tile_types(world_generator):
-    """Test that world generator validates tile types."""
-    description = "a world with invalid tiles"
+            # Assert
+            assert isinstance(result, WorldData)
+            assert result.name == "Simple World"
 
-    # Mock response with invalid tile type
-    invalid_response = {
-        "name": "Invalid World",
-        "description": "A world with wrong tiles",
-        "grid": [
-            ["invalid_tile"] * 10 for _ in range(10)
-        ],
-        "agent_start": [0, 0]
-    }
+    @pytest.mark.asyncio()
+    async def test_generate_world_validates_grid_size(self, generator):
+        """Test that world generator validates 10x10 grid requirement."""
+        description = "a small world"
 
-    async def mock_query_generator(*args, **kwargs):
-        mock_message = MagicMock()
-        json_str = json.dumps(invalid_response)
-        mock_message.result = f"```json\n{json_str}\n```"
-        yield mock_message
+        # Mock invalid response with wrong grid size
+        invalid_response = {
+            "name": "Too Small",
+            "description": "A world that's too small",
+            "grid": [
+                ["grass", "grass"],
+                ["grass", "grass"]
+            ],
+            "agent_start": [0, 0]
+        }
 
-    with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        with pytest.raises(ValidationError):
-            await world_generator.generate_world(description)
+        xml_response = f"<output><![CDATA[{json.dumps(invalid_response)}]]></output>"
 
+        async def mock_query(prompt):
+            yield MockMessage(result=xml_response)
 
-@pytest.mark.asyncio
-async def test_generate_world_validates_agent_start_position(world_generator):
-    """Test that agent start position is within grid bounds."""
-    description = "a world"
+        with patch('llm_world_generator.query', side_effect=mock_query):
+            with pytest.raises(ValidationError):
+                await generator.generate_world(description)
 
-    # Mock response with invalid agent start position
-    invalid_response = {
-        "name": "Bad Start",
-        "description": "Agent starts outside grid",
-        "grid": [["grass"] * 10 for _ in range(10)],
-        "agent_start": [15, 15]  # Out of bounds
-    }
+    @pytest.mark.asyncio()
+    async def test_generate_world_validates_tile_types(self, generator):
+        """Test that world generator validates tile types."""
+        description = "a world with invalid tiles"
 
-    async def mock_query_generator(*args, **kwargs):
-        mock_message = MagicMock()
-        json_str = json.dumps(invalid_response)
-        mock_message.result = f"```json\n{json_str}\n```"
-        yield mock_message
+        # Mock response with invalid tile type
+        invalid_response = {
+            "name": "Invalid World",
+            "description": "A world with wrong tiles",
+            "grid": [
+                ["invalid_tile"] * 10 for _ in range(10)
+            ],
+            "agent_start": [0, 0]
+        }
 
-    with patch('llm_world_generator.query', side_effect=mock_query_generator):
-        with pytest.raises(ValidationError):
-            await world_generator.generate_world(description)
+        xml_response = f"<output><![CDATA[{json.dumps(invalid_response)}]]></output>"
 
+        async def mock_query(prompt):
+            yield MockMessage(result=xml_response)
 
-@pytest.mark.asyncio
-async def test_generate_world_fallback_on_error(world_generator):
-    """Test that generator returns fallback world on error."""
-    description = "a test world"
+        with patch('llm_world_generator.query', side_effect=mock_query):
+            with pytest.raises(ValidationError):
+                await generator.generate_world(description)
 
-    # Mock SDK to raise exception
-    async def mock_query_error(*args, **kwargs):
-        raise Exception("SDK Error")
+    @pytest.mark.asyncio()
+    async def test_generate_world_validates_agent_start_position(self, generator):
+        """Test that agent start position is within grid bounds."""
+        description = "a world"
 
-    with patch('llm_world_generator.query', side_effect=mock_query_error):
-        world_data = await world_generator.generate_world(description)
+        # Mock response with invalid agent start position
+        invalid_response = {
+            "name": "Bad Start",
+            "description": "Agent starts outside grid",
+            "grid": [["grass"] * 10 for _ in range(10)],
+            "agent_start": [15, 15]  # Out of bounds
+        }
 
-    # Should return valid fallback world
-    assert isinstance(world_data, WorldData)
-    assert len(world_data.grid) == 10
-    assert len(world_data.grid[0]) == 10
+        xml_response = f"<output><![CDATA[{json.dumps(invalid_response)}]]></output>"
 
+        async def mock_query(prompt):
+            yield MockMessage(result=xml_response)
 
-@pytest.mark.asyncio
-async def test_generate_world_prompt_includes_description(world_generator):
-    """Test that the prompt includes user's description."""
-    description = "a magical forest with ancient trees"
+        with patch('llm_world_generator.query', side_effect=mock_query):
+            with pytest.raises(ValidationError):
+                await generator.generate_world(description)
 
-    mock_response = {
-        "name": "Test World",
-        "description": "A test world for prompt validation",
-        "grid": [["grass"] * 10 for _ in range(10)],
-        "agent_start": [0, 0]
-    }
+    @pytest.mark.asyncio()
+    async def test_generate_world_fallback_on_error(self, generator):
+        """Test that generator returns fallback world on error."""
+        description = "a test world"
 
-    captured_prompt = None
+        # Mock SDK to raise exception
+        async def mock_query_error(*args, **kwargs):
+            raise Exception("SDK Error")
 
-    async def mock_query_capture(*args, **kwargs):
-        nonlocal captured_prompt
-        captured_prompt = kwargs.get('prompt', args[0] if args else None)
-        mock_message = MagicMock()
-        json_str = json.dumps(mock_response)
-        mock_message.result = f"```json\n{json_str}\n```"
-        yield mock_message
+        with patch('llm_world_generator.query', side_effect=mock_query_error):
+            world_data = await generator.generate_world(description)
 
-    with patch('llm_world_generator.query', side_effect=mock_query_capture):
-        await world_generator.generate_world(description)
+        # Should return valid fallback world
+        assert isinstance(world_data, WorldData)
+        assert len(world_data.grid) == 10
+        assert len(world_data.grid[0]) == 10
 
-    assert captured_prompt is not None
-    assert "magical forest with ancient trees" in captured_prompt
+    @pytest.mark.asyncio()
+    async def test_generate_world_prompt_includes_xml_instructions(self, generator):
+        """Test that the prompt includes XML CDATA format instructions."""
+        description = "a magical forest"
+
+        mock_response = {
+            "name": "Test World",
+            "description": "A test world",
+            "grid": [["grass"] * 10 for _ in range(10)],
+            "agent_start": [0, 0]
+        }
+
+        captured_prompt = None
+
+        async def mock_query_capture(prompt):
+            nonlocal captured_prompt
+            captured_prompt = prompt
+            xml_response = f"<output><![CDATA[{json.dumps(mock_response)}]]></output>"
+            yield MockMessage(result=xml_response)
+
+        with patch('llm_world_generator.query', side_effect=mock_query_capture):
+            await generator.generate_world(description)
+
+        assert captured_prompt is not None
+        assert "<output><![CDATA[" in captured_prompt
+        assert "magical forest" in captured_prompt
