@@ -2,10 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for Theme Support */
+:root {
+  /* Light Mode (Default) */
+  --bg-primary: #FFF4E6;
+  --bg-secondary: #FFD700;
+  --bg-card: #FFFFFF;
+  --text-primary: #2C1810;
+  --text-secondary: #5C4033;
+  --accent-green: #8BC34A;
+  --accent-gold: #FFD700;
+  --border-color: #000000;
+  --shadow-color: rgba(0, 0, 0, 1);
+}
+
+[data-theme="dark"] {
+  /* Dark Mode - Pokémon Night Theme */
+  --bg-primary: #1A1A2E;
+  --bg-secondary: #16213E;
+  --bg-card: #16213E;
+  --text-primary: #FFF4E6;
+  --text-secondary: #D4AF37;
+  --accent-green: #4ECCA3;
+  --accent-gold: #FFD700;
+  --border-color: #000000;
+  --shadow-color: rgba(0, 0, 0, 1);
+}
+
 body {
   margin: 0;
   font-family: 'Press Start 2P', cursive;
-  background-color: #FFF4E6;
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease;
 }
 
 /* Pokémon Button Styles */
@@ -43,9 +71,12 @@ body {
 
   /* Agent Card */
   .pokemon-card {
-    @apply bg-white p-6 rounded-lg;
-    @apply border-4 border-black;
-    @apply shadow-[8px_8px_0px_0px_rgba(0,0,0,1)];
+    @apply p-6 rounded-lg;
+    @apply border-4;
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 8px 8px 0px 0px var(--shadow-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
   /* Personality Badges */
@@ -107,16 +138,26 @@ body {
   /* Input Styles */
   .pokemon-input {
     @apply w-full px-4 py-3 font-pixel text-sm;
-    @apply border-4 border-black rounded;
-    @apply bg-white;
-    @apply focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)];
+    @apply border-4 rounded;
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  .pokemon-input:focus {
+    @apply outline-none;
+    box-shadow: 4px 4px 0px 0px var(--shadow-color);
   }
 
   /* Container */
   .pokemon-container {
-    @apply bg-pokemon-cream p-8 rounded-xl;
-    @apply border-4 border-black;
-    @apply shadow-[8px_8px_0px_0px_rgba(0,0,0,1)];
+    @apply p-8 rounded-xl;
+    @apply border-4;
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 8px 8px 0px 0px var(--shadow-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 }
 

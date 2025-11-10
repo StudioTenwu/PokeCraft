@@ -1,122 +1,158 @@
-**Task: Fix Personality Tag Colors - Make Each Unique**
+**Task: Add Simple Night Mode Toggle Button**
 
-**Problem:** Currently only the first two personality traits have different colors. All other traits use the same color. The user wants each personality tag to have slightly different colors.
-
-**Goal:** Assign unique colors to all personality trait badges in the AgentCard component with Pokémon Retro aesthetic.
+**Goal:** Add a simple toggle button to switch between light and dark mode while maintaining the Pokémon Retro aesthetic.
 
 ## Success Criteria
-- [ ] Each personality trait has a unique color
-- [ ] Colors match Pokémon Retro theme (warm, nostalgic palette)
-- [ ] Good contrast/readability on cream background
-- [ ] Colors cycle if there are more traits than colors in palette
-- [ ] Visual polish with pixel aesthetic maintained
+- [ ] Toggle button in header (top-right corner suggested)
+- [ ] Smooth transition between light and dark themes
+- [ ] Dark mode maintains Pokémon Retro vibe
+- [ ] Preference saved to localStorage
+- [ ] Pixel/retro styled toggle button
 
-## Current State
-File: `frontend/src/components/AgentCard.jsx`
+## Design Specifications
 
-The personality badges are currently rendered with limited color variation. User mentioned "See SCREENSHOT ~1" - the first two have colors, rest are same.
+### Light Mode (Current)
+- Background: Cream #FFF4E6
+- Accent: Gold #FFD700
+- Text: Dark colors
+- GB Green accents #8BC34A
+
+### Dark Mode (New)
+**Pokémon Night Theme:**
+- Background: Dark navy #1A1A2E (night sky)
+- Secondary: Deep purple #16213E (twilight)
+- Accent: Bright gold #FFD700 (moon/stars)
+- Text: Cream #FFF4E6
+- Accents: Moonlight blue #4ECCA3
 
 ## Implementation Plan
 
-### 1. Define Color Palette
-Create a Pokémon-themed color palette in `AgentCard.jsx` or `pokemon-theme.css`:
+### 1. Create Dark Mode CSS in `pokemon-theme.css`
+```css
+:root {
+  --bg-primary: #FFF4E6;
+  --bg-secondary: #FFD700;
+  --text-primary: #2C1810;
+  --text-secondary: #5C4033;
+  --accent: #8BC34A;
+}
 
-**Suggested Palette** (Game Boy Color inspired):
-- Red: `#FF6B6B` (Charizard red)
-- Blue: `#4ECDC4` (Squirtle blue)
-- Yellow: `#FFE66D` (Pikachu yellow)
-- Green: `#95E1D3` (Bulbasaur green)
-- Purple: `#C7CEEA` (Gengar purple)
-- Orange: `#FFA07A` (Charmander orange)
-- Pink: `#FFB6D9` (Jigglypuff pink)
-- Brown: `#D4A574` (Eevee brown)
+[data-theme="dark"] {
+  --bg-primary: #1A1A2E;
+  --bg-secondary: #16213E;
+  --text-primary: #FFF4E6;
+  --text-secondary: #D4AF37;
+  --accent: #4ECCA3;
+}
 
-All with good contrast on cream background (#FFF4E6).
-
-### 2. Modify AgentCard.jsx
-Update the personality badge rendering logic:
-
-```javascript
-const PERSONALITY_COLORS = [
-  'bg-red-400',
-  'bg-blue-400', 
-  'bg-yellow-400',
-  'bg-green-400',
-  'bg-purple-400',
-  'bg-orange-400',
-  'bg-pink-400',
-  'bg-amber-400'
-];
-
-// In render:
-{agent.personality_traits.map((trait, index) => (
-  <span 
-    key={trait}
-    className={`
-      ${PERSONALITY_COLORS[index % PERSONALITY_COLORS.length]}
-      px-3 py-1 rounded-full text-xs font-pixel 
-      border-2 border-black shadow-pixel
-    `}
-  >
-    {trait}
-  </span>
-))}
+/* Update existing classes to use CSS variables */
+.bg-pokemon-cream { background-color: var(--bg-primary); }
+.text-pokemon-dark { color: var(--text-primary); }
+/* etc... */
 ```
 
-### 3. Alternative: Custom Color Mapping
-If specific traits should have specific colors:
+### 2. Create Toggle Component
+File: `frontend/src/components/ThemeToggle.jsx`
 
 ```javascript
-const TRAIT_COLORS = {
-  brave: 'bg-red-400',
-  curious: 'bg-blue-400',
-  friendly: 'bg-green-400',
-  clever: 'bg-purple-400',
-  energetic: 'bg-yellow-400',
-  calm: 'bg-blue-300',
-  creative: 'bg-pink-400',
-  loyal: 'bg-amber-400',
-  // fallback for unknown traits
-  default: 'bg-gray-400'
-};
+import { useState, useEffect } from 'react';
 
-const getTraitColor = (trait) => {
-  return TRAIT_COLORS[trait.toLowerCase()] || TRAIT_COLORS.default;
-};
+export default function ThemeToggle() {
+  const [isDark, setIsDark] = useState(
+    localStorage.getItem('theme') === 'dark'
+  );
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  return (
+    <button
+      onClick={() => setIsDark(!isDark)}
+      className="font-pixel text-xl p-2 pokemon-button"
+      aria-label="Toggle theme"
+    >
+      {isDark ? '☀️' : '🌙'}
+    </button>
+  );
+}
 ```
 
-### 4. Ensure Pixel Aesthetic
-Maintain existing pixel styling:
-- `border-2 border-black` for retro outline
-- `shadow-pixel` class for depth
-- `font-pixel` for Press Start 2P font
-- `rounded-full` for pill shape
+### 3. Add Toggle to App Header
+File: `frontend/src/App.jsx`
+
+Add ThemeToggle component to header, positioned top-right:
+
+```jsx
+<header className="flex justify-between items-center mb-12">
+  <div className="text-center flex-1">
+    <h1 className="font-pixel text-3xl sm:text-5xl text-pokemon-gold">
+      AICraft
+    </h1>
+    <p className="font-pixel text-xs text-white">Pokémon Edition</p>
+  </div>
+  <ThemeToggle />
+</header>
+```
+
+### 4. Update All Color Classes
+Systematically replace hardcoded colors with CSS variables throughout:
+- `App.jsx`
+- `AgentCard.jsx`
+- `AgentCreation.jsx`
+- `PokemonButton.jsx`
+
+## Pixel Aesthetic Toggle Button
+
+**Style Options:**
+
+**Option A: Simple Emoji Toggle** (Recommended for MVP)
+- Sun ☀️ / Moon 🌙 emoji
+- Pixel border
+- Pokémon button styling
+
+**Option B: Game Boy Style Switch**
+- Sliding toggle like Game Boy power switch
+- More implementation time
+
+**Option C: Pixel Icon Toggle**
+- Custom pixel art day/night icons
+- 16x16px sprites
+
+Choose Option A for quick implementation.
 
 ## Testing
 
-**Manual Testing:**
-1. Create agents with 2-8 different personality traits
-2. Verify each trait has a unique color
-3. Test with more traits than colors (should cycle)
-4. Check contrast/readability on cream background
-5. Verify on both light and future dark mode
+**Manual Tests:**
+1. Toggle between light and dark modes
+2. Verify localStorage persistence (refresh page)
+3. Check all components in both themes
+4. Verify readability/contrast in dark mode
+5. Test responsive behavior on mobile
 
-**Visual Check:**
-- Compare with user's SCREENSHOT ~1 reference
-- Ensure improvement over current state
-- Get user approval on color choices
+**Accessibility:**
+- Ensure proper `aria-label` on toggle button
+- Verify keyboard navigation works
+- Check color contrast ratios (WCAG AA minimum)
 
 ## Files to Modify
-- `frontend/src/components/AgentCard.jsx`
-- Possibly `frontend/src/styles/pokemon-theme.css` (if adding custom colors)
+- `frontend/src/styles/pokemon-theme.css` (add dark mode variables)
+- `frontend/src/components/ThemeToggle.jsx` (new file)
+- `frontend/src/App.jsx` (add toggle to header)
+- Update color references in all components to use CSS variables
 
-## TDD Note
-This is primarily a visual/styling task. Testing strategy:
-1. Manual visual inspection
-2. Screenshot comparison before/after
-3. User approval
-4. Consider snapshot tests if time permits
+## Notes
+- Keep dark mode colors warm and nostalgic (not harsh blue-black)
+- Maintain pixel aesthetic in dark mode
+- Smooth transition: `transition: background-color 0.3s ease`
+- User mentioned "simple" - don't overcomplicate
 
-**Priority**: This is a quick frontend polish task that can be done in parallel with the mflux progress indicator.
+**Priority**: Nice-to-have feature, lowest priority of the three tasks. Can be implemented quickly in parallel.
 
 **Working Directory**: You're in an isolated git worktree. Make changes and report completion when done.

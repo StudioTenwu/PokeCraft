@@ -63,14 +63,14 @@ export default function AgentCreation({ onAgentCreated }) {
             style={{textShadow: '4px 4px 0px rgba(0,0,0,0.3)'}}>
           Hatch Your Companion
         </h2>
-        <p className="text-black text-sm font-pixel">
+        <p className="text-sm font-pixel" style={{color: 'var(--text-primary)'}}>
           Describe your AI partner...
         </p>
       </div>
 
       {/* Input area */}
       <div className="pokemon-container mb-6">
-        <label className="block font-pixel text-xs mb-3 text-black">
+        <label className="block font-pixel text-xs mb-3" style={{color: 'var(--text-primary)'}}>
           Describe your companion:
         </label>
         <textarea
@@ -81,7 +81,7 @@ export default function AgentCreation({ onAgentCreated }) {
           disabled={loading}
         />
 
-        <div className="mt-4 text-xs text-gray-700 font-sans">
+        <div className="mt-4 text-xs font-sans" style={{color: 'var(--text-secondary)'}}>
           <p className="mb-1">💡 Try describing:</p>
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li>Personality traits (brave, curious, clever)</li>
@@ -130,9 +130,13 @@ export default function AgentCreation({ onAgentCreated }) {
             <button
               key={i}
               onClick={() => setDescription(example)}
-              className="w-full text-left px-3 py-2 bg-white hover:bg-pokemon-cream
-                       text-black text-xs border-2 border-pokemon-green transition-colors
+              className="w-full text-left px-3 py-2 hover:bg-pokemon-cream
+                       text-xs border-2 border-pokemon-green transition-colors
                        font-sans"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                color: 'var(--text-primary)'
+              }}
               disabled={loading}
             >
               {example}

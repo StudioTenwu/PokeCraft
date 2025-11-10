@@ -47,14 +47,14 @@ export default function AgentCard({ agent }) {
           <h2 className="font-pixel text-2xl mb-4 text-pokemon-gold" style={{textShadow: '3px 3px 0px rgba(0,0,0,0.3)'}}>
             {agent.name}
           </h2>
-          <p className="text-sm mb-4 leading-relaxed font-sans">
+          <p className="text-sm mb-4 leading-relaxed font-sans" style={{color: 'var(--text-primary)'}}>
             {agent.backstory}
           </p>
 
           {/* Personality Traits */}
           {agent.personality_traits && agent.personality_traits.length > 0 && (
             <div>
-              <p className="font-pixel text-xs mb-2">Personality:</p>
+              <p className="font-pixel text-xs mb-2" style={{color: 'var(--text-primary)'}}>Personality:</p>
               <div className="flex flex-wrap gap-2">
                 {agent.personality_traits.map((trait, i) => (
                   <span key={i} className={getBadgeClass(trait, i)}>

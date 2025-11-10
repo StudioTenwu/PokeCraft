@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-personality-colors /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-night-mode-toggle /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-personality-colors /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-night-mode-toggle /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "orchestra-hook AICraft-personality-colors /Users/wz/Desktop/zPersonalProjects/AICraft"
+            "command": "orchestra-hook AICraft-night-mode-toggle /Users/wz/Desktop/zPersonalProjects/AICraft"
           }
         ]
       }
