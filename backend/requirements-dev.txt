@@ -1,3 +1,7 @@
+# NOTE: Dependencies are now managed in pyproject.toml [project.optional-dependencies] section
+# This file is kept for backward compatibility with older tooling
+# To install: pip install -e . or pip install -e ".[dev]"
+
 # Development dependencies (testing, linting, formatting)
 pytest==7.4.3
 pytest-asyncio==0.21.1

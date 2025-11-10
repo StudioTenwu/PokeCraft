@@ -21,7 +21,13 @@ Interactive demonstration of how AI agents evolve from simple chat to sophistica
 2. **Start the backend:**
    ```bash
    cd agent-evolution/backend
+
+   # Modern approach (recommended)
+   pip install -e ".[dev]"
+
+   # OR legacy approach
    pip install -r requirements.txt
+
    python main.py
    ```
 

@@ -1,3 +1,37 @@
+[project]
+name = "aicraft-backend"
+version = "0.1.0"
+description = "AICraft - Educational AI platform backend API"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Warren Zhu", email = "wzhu@college.harvard.edu"}
+]
+
+# Production dependencies (from requirements.txt)
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "anthropic==0.42.0",
+    "python-multipart==0.0.20",
+    "aiosqlite==0.20.0",
+]
+
+# Development dependencies (from requirements-dev.txt)
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+    "pytest-cov==4.1.0",
+    "pytest-mock==3.12.0",
+    "httpx==0.25.2",
+    "black==23.11.0",
+    "isort==5.12.0",
+    "ruff==0.1.6",
+    "mypy==1.7.1",
+    "pre-commit==3.5.0",
+]
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
