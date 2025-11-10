@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AgentCreation from './components/AgentCreation'
 import AgentCard from './components/AgentCard'
 import ThemeToggle from './components/ThemeToggle'
+import WorldCreation from './components/WorldCreation'
 
 function App() {
   // Mock agent for testing personality colors
@@ -26,6 +27,7 @@ function App() {
   }
 
   const [agents, setAgents] = useState([])
+  const [selectedAgent, setSelectedAgent] = useState(null)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pokemon-cream to-pokemon-gold/30 p-4 sm:p-8"
@@ -79,9 +81,38 @@ function App() {
           <AgentCreation
             onAgentCreated={(newAgent) => {
               setAgents([...agents, newAgent])
+              setSelectedAgent(newAgent) // Auto-select newly created agent
             }}
           />
         </div>
+
+        {/* Show world creation for selected agent */}
+        {selectedAgent && !agents.some(a => a.id === selectedAgent.id && a.world) && (
+          <div>
+            <WorldCreation agent={selectedAgent} />
+          </div>
+        )}
+
+        {/* Show created agents */}
+        {agents.length > 0 && (
+          <div className="mt-8">
+            <h2 className="font-pixel text-lg mb-4 text-center" style={{ color: 'var(--text-primary)' }}>
+              Created Agents
+            </h2>
+            <div className="grid gap-4">
+              {agents.map((agent) => (
+                <div key={agent.id} className="flex flex-col gap-4">
+                  <AgentCard agent={agent} />
+                  {selectedAgent?.id === agent.id && !agent.world && (
+                    <p className="font-pixel text-xs text-center" style={{ color: 'var(--text-primary)', opacity: 0.7 }}>
+                      👆 Create a world for this agent above
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer info */}
         <div className="mt-8 text-center">
