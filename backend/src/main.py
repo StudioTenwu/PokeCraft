@@ -243,7 +243,8 @@ async def deploy_agent(request: DeployRequest, req: Request):
             await asyncio.sleep(1)
 
             # Event 4: Tool call (mock)
-            yield f"event: tool_call\ndata: {json.dumps({'tool': 'move_forward', 'args': {{'steps': 3}}, 'result': 'Moved forward 3 steps'})}\n\n"
+            tool_call_data = {'tool': 'move_forward', 'args': {'steps': 3}, 'result': 'Moved forward 3 steps'}
+            yield f"event: tool_call\ndata: {json.dumps(tool_call_data)}\n\n"
             await asyncio.sleep(1)
 
             # Event 5: Completion
