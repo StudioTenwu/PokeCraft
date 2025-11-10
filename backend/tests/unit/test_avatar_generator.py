@@ -44,8 +44,8 @@ class TestAvatarGenerator:
         # Act
         result = generator.generate_avatar(agent_id, prompt)
 
-        # Assert
-        assert result == f"/static/avatars/{agent_id}.png"
+        # Assert - should return full URL now
+        assert result == f"http://localhost:8000/static/avatars/{agent_id}.png"
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
         assert "mflux-generate" in call_args

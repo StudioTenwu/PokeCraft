@@ -6,8 +6,13 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 class AvatarGenerator:
-    def __init__(self, model_path: str = "/Users/wz/Desktop/zPersonalProjects/AICraft/models/schnell-3bit"):
+    def __init__(
+        self,
+        model_path: str = "/Users/wz/Desktop/zPersonalProjects/AICraft/models/schnell-3bit",
+        base_url: str = "http://localhost:8000"
+    ):
         self.model_path = model_path
+        self.base_url = base_url
         self.output_dir = Path(__file__).parent.parent / "static" / "avatars"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         logger.debug(f"AvatarGenerator initialized with model at {model_path}")
@@ -44,8 +49,9 @@ class AvatarGenerator:
                 return self._get_fallback_avatar()
 
             if output_path.exists():
-                logger.info(f"Avatar generated successfully: /static/avatars/{agent_id}.png")
-                return f"/static/avatars/{agent_id}.png"
+                avatar_url = f"{self.base_url}/static/avatars/{agent_id}.png"
+                logger.info(f"Avatar generated successfully: {avatar_url}")
+                return avatar_url
             else:
                 logger.warning(f"Output file not created: {output_path}")
                 return self._get_fallback_avatar()
