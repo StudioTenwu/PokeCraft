@@ -1,15 +1,13 @@
 import PropTypes from 'prop-types'
-import PokemonButton from './PokemonButton'
 
 /**
  * AgentPanel - Left sidebar showing agent details and equipped tools
  * @param {Object} props
  * @param {Object} props.agent - The agent to display
  * @param {Array} props.equippedTools - Array of tools equipped to this agent
- * @param {Function} props.onDeploy - Callback when deploy button clicked
  * @param {Function} props.onToolRemove - Callback when tool is removed
  */
-export default function AgentPanel({ agent, equippedTools = [], onDeploy, onToolRemove }) {
+export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) {
   if (!agent) {
     return (
       <div className="pokemon-container h-full flex items-center justify-center">
@@ -125,14 +123,6 @@ export default function AgentPanel({ agent, equippedTools = [], onDeploy, onTool
         </div>
       </div>
 
-      {/* Deploy Button */}
-      {onDeploy && (
-        <div className="mt-auto pt-4">
-          <PokemonButton onClick={onDeploy} className="w-full">
-            🚀 Deploy Agent
-          </PokemonButton>
-        </div>
-      )}
     </div>
   )
 }
@@ -140,6 +130,5 @@ export default function AgentPanel({ agent, equippedTools = [], onDeploy, onTool
 AgentPanel.propTypes = {
   agent: PropTypes.object,
   equippedTools: PropTypes.array,
-  onDeploy: PropTypes.func,
   onToolRemove: PropTypes.func
 }

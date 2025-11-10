@@ -12,3 +12,99 @@ Each tool follows this format:
 from typing import Any
 
 # Custom tools will be appended below this line
+
+
+from typing import Any
+
+@tool("jump", "Make the agent jump up in the air", {"height": "int"})
+async def jump(args: dict[str, Any]) -> dict[str, Any]:
+    height = args.get('height', 1)
+    
+    # Ensure height is within safe bounds for children's game
+    if height < 1:
+        height = 1
+    elif height > 5:
+        height = 5
+    
+    # Create a fun jumping message
+    jump_sound = "Boing!" * height
+    message = f"{jump_sound} Your agent jumped {height} block{'s' if height != 1 else ''} high!"
+    
+    return {"content": [{"type": "text", "text": message}]}
+
+
+from typing import Any
+
+@tool("move", "Move the agent in a direction on the grid", {"direction": "string", "steps": "int"})
+async def move(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'north').lower()
+    steps = args.get('steps', 1)
+    
+    # Validate direction
+    valid_directions = ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']
+    if direction not in valid_directions:
+        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try: north, south, east, west, up, down, left, or right."}]}
+    
+    # Ensure steps is positive
+    if steps < 1:
+        return {"content": [{"type": "text", "text": "You need to move at least 1 step!"}]}
+    
+    # Normalize direction names
+    if direction == 'up':
+        direction = 'north'
+    elif direction == 'down':
+        direction = 'south'
+    
+    # Create friendly response
+    emoji_map = {
+        'north': '⬆️',
+        'south': '⬇️',
+        'east': '➡️',
+        'west': '⬅️',
+        'left': '⬅️',
+        'right': '➡️'
+    }
+    
+    emoji = emoji_map.get(direction, '🚶')
+    step_word = "step" if steps == 1 else "steps"
+    
+    return {"content": [{"type": "text", "text": f"{emoji} Moved {steps} {step_word} {direction}!"}]}
+
+
+@tool("move", "Move the agent in a direction on the 2D grid", {"direction": "string", "steps": "int"})
+async def move(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'north').lower()
+    steps = args.get('steps', 1)
+    
+    # Validate direction
+    valid_directions = ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']
+    if direction not in valid_directions:
+        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try: north, south, east, west, up, down, left, or right."}]}
+    
+    # Validate steps
+    if steps < 1:
+        return {"content": [{"type": "text", "text": "You need to move at least 1 step!"}]}
+    
+    if steps > 10:
+        return {"content": [{"type": "text", "text": "Whoa! That's too far! Try moving 10 steps or less at a time."}]}
+    
+    # Normalize directions
+    direction_map = {
+        'up': 'north',
+        'down': 'south',
+        'right': 'east',
+        'left': 'west'
+    }
+    display_direction = direction_map.get(direction, direction)
+    
+    # Create fun movement message
+    step_word = "step" if steps == 1 else "steps"
+    emoji_map = {
+        'north': '⬆️',
+        'south': '⬇️',
+        'east': '➡️',
+        'west': '⬅️'
+    }
+    emoji = emoji_map.get(display_direction, '🚶')
+    
+    return {"content": [{"type": "text", "text": f"{emoji} Moving {display_direction} {steps} {step_word}! New position reached."}]}

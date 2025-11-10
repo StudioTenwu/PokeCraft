@@ -18,7 +18,13 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={() => setIsDark(!isDark)}
-      className="pokemon-button font-pixel text-xl p-3"
+      className="font-pixel text-2xl p-3 border-4 rounded hover:scale-110 transition-transform"
+      style={{
+        backgroundColor: isDark ? '#1a1a1a' : '#fff',
+        borderColor: isDark ? '#FFD700' : '#000',
+        color: isDark ? '#FFD700' : '#000',
+        boxShadow: '4px 4px 0px 0px rgba(0,0,0,0.3)'
+      }}
       aria-label="Toggle theme"
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
