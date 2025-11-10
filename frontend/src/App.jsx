@@ -3,10 +3,15 @@ import AgentCreation from './components/AgentCreation'
 import AgentCard from './components/AgentCard'
 import ThemeToggle from './components/ThemeToggle'
 import WorldCreation from './components/WorldCreation'
+import ToolCreator from './components/ToolCreator'
+import ToolLibrary from './components/ToolLibrary'
+import AgentRunner from './components/AgentRunner'
 
 function App() {
   const [agents, setAgents] = useState([])
   const [selectedAgent, setSelectedAgent] = useState(null)
+  const [worlds, setWorlds] = useState({}) // Store worlds by agent ID
+  const [currentPhase, setCurrentPhase] = useState('agent') // 'agent', 'world', 'tools', 'deploy'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pokemon-cream to-pokemon-gold/30 p-4 sm:p-8"
@@ -54,15 +59,84 @@ function App() {
           <AgentCreation
             onAgentCreated={(newAgent) => {
               setAgents([...agents, newAgent])
-              setSelectedAgent(newAgent) // Auto-select newly created agent
+              setSelectedAgent(newAgent)
+              setCurrentPhase('world') // Move to world creation
             }}
           />
         </div>
 
-        {/* Show world creation for selected agent */}
-        {selectedAgent && !agents.some(a => a.id === selectedAgent.id && a.world) && (
+        {/* Phase 2: World creation for selected agent */}
+        {selectedAgent && !worlds[selectedAgent.id] && currentPhase === 'world' && (
           <div>
-            <WorldCreation agent={selectedAgent} />
+            <WorldCreation
+              agent={selectedAgent}
+              onWorldCreated={(world) => {
+                setWorlds({ ...worlds, [selectedAgent.id]: world })
+                setCurrentPhase('tools')
+              }}
+            />
+          </div>
+        )}
+
+        {/* Phase 3: Tool teaching */}
+        {selectedAgent && worlds[selectedAgent.id] && currentPhase === 'tools' && (
+          <div className="space-y-6">
+            <div className="pokemon-container">
+              <h2 className="font-pixel text-xl mb-4" style={{ color: 'var(--text-primary)' }}>
+                🛠️ Teach {selectedAgent.name} New Skills
+              </h2>
+              <ToolCreator
+                agentId={selectedAgent.id}
+                onToolCreated={() => {
+                  // Tool created, can view in library
+                }}
+              />
+            </div>
+            <div className="pokemon-container">
+              <ToolLibrary
+                agentId={selectedAgent.id}
+                onToolDeleted={() => {
+                  // Tool deleted
+                }}
+              />
+            </div>
+            <div className="text-center">
+              <button
+                onClick={() => setCurrentPhase('deploy')}
+                className="font-pixel px-8 py-3 border-2 hover:scale-105 transition-transform"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-primary)',
+                  boxShadow: '4px 4px 0px 0px var(--shadow-color)'
+                }}
+              >
+                Deploy Agent 🚀
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 3: Agent deployment */}
+        {selectedAgent && worlds[selectedAgent.id] && currentPhase === 'deploy' && (
+          <div className="pokemon-container">
+            <AgentRunner
+              agentId={selectedAgent.id}
+              worldId={worlds[selectedAgent.id].id}
+            />
+            <div className="text-center mt-4">
+              <button
+                onClick={() => setCurrentPhase('tools')}
+                className="font-pixel px-6 py-2 border-2 text-sm"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                ← Back to Tools
+              </button>
+            </div>
           </div>
         )}
 
