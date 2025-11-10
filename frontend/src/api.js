@@ -128,5 +128,38 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/agents/${agentId}`)
     if (!res.ok) throw new Error('Failed to get agent')
     return res.json()
+  },
+
+  async createWorld(agentId, description) {
+    const res = await fetch(`${API_BASE}/api/worlds/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_id: agentId, description })
+    })
+    if (!res.ok) {
+      const error = await res.text()
+      throw new Error(`Failed to create world: ${error}`)
+    }
+    return res.json()
+  },
+
+  async getWorld(worldId) {
+    const res = await fetch(`${API_BASE}/api/worlds/${worldId}`)
+    if (!res.ok) throw new Error('Failed to get world')
+    return res.json()
+  },
+
+  async getWorldsByAgent(agentId) {
+    const res = await fetch(`${API_BASE}/api/worlds/agent/${agentId}`)
+    if (!res.ok) throw new Error('Failed to get worlds')
+    return res.json()
   }
 }
+
+// Export individual functions for easier imports
+export const createAgent = api.createAgent.bind(api)
+export const createAgentStream = api.createAgentStream.bind(api)
+export const getAgent = api.getAgent.bind(api)
+export const createWorld = api.createWorld.bind(api)
+export const getWorld = api.getWorld.bind(api)
+export const getWorldsByAgent = api.getWorldsByAgent.bind(api)

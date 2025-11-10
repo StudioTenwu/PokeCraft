@@ -12,6 +12,7 @@ import asyncio
 sys.path.insert(0, str(Path(__file__).parent))
 
 from agent_service import AgentService
+from world_service import WorldService
 
 app = FastAPI(title="AICraft - Pokémon Edition API")
 
@@ -29,16 +30,22 @@ static_path = Path(__file__).parent.parent / "static"
 static_path.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
-# Initialize service
+# Initialize services
 agent_service = AgentService()
+world_service = WorldService()
 
 class AgentCreateRequest(BaseModel):
+    description: str
+
+class WorldCreateRequest(BaseModel):
+    agent_id: str
     description: str
 
 @app.on_event("startup")
 async def startup():
     """Initialize database on startup."""
     await agent_service.init_db()
+    await world_service.init_db()
     print("✅ Database initialized")
     print("🚀 AICraft API running on http://localhost:8000")
 
@@ -49,7 +56,10 @@ async def root():
         "version": "1.0",
         "endpoints": {
             "create_agent": "POST /api/agents/create",
-            "get_agent": "GET /api/agents/{agent_id}"
+            "get_agent": "GET /api/agents/{agent_id}",
+            "create_world": "POST /api/worlds/create",
+            "get_world": "GET /api/worlds/{world_id}",
+            "get_worlds_by_agent": "GET /api/worlds/agent/{agent_id}"
         }
     }
 
@@ -107,6 +117,31 @@ async def get_agent(agent_id: str):
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+# World endpoints
+@app.post("/api/worlds/create")
+async def create_world(request: WorldCreateRequest):
+    """Create a new world for an agent."""
+    try:
+        world = await world_service.create_world(request.agent_id, request.description)
+        return world
+    except Exception as e:
+        print(f"Error creating world: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/worlds/{world_id}")
+async def get_world(world_id: str):
+    """Get world by ID."""
+    world = await world_service.get_world(world_id)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+    return world
+
+@app.get("/api/worlds/agent/{agent_id}")
+async def get_worlds_by_agent(agent_id: str):
+    """Get all worlds for a specific agent."""
+    worlds = await world_service.get_worlds_by_agent_id(agent_id)
+    return worlds
 
 if __name__ == "__main__":
     import uvicorn
