@@ -71,3 +71,29 @@ class WorldDB(Base):
     def __repr__(self) -> str:
         """String representation of WorldDB."""
         return f"<WorldDB(id={self.id}, name={self.name}, agent_id={self.agent_id})>"
+
+
+class ToolDB(Base):
+    """ORM model for tools table."""
+
+    __tablename__ = "tools"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    agent_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("agents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str | None] = mapped_column(String, nullable=True)  # Movement, Perception, Interaction
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        """String representation of ToolDB."""
+        return f"<ToolDB(id={self.id}, name={self.name}, agent_id={self.agent_id})>"

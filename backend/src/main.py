@@ -18,6 +18,8 @@ from agent_service import AgentService
 from config import Config
 from database import init_db
 from logging_config import setup_logging
+from models.tool import DeployRequest, ToolCreateRequest, ToolCreateResponse, ToolResponse
+from tool_service import ToolService
 from world_service import WorldService
 
 # Initialize logging
@@ -40,13 +42,16 @@ async def lifespan(app: FastAPI):
 
     agent_service = AgentService()
     world_service = WorldService()
+    tool_service = ToolService()
 
     await agent_service.init_db()
     await world_service.init_db()
+    await tool_service.init_db()
 
     # Store in app.state for dependency injection
     app.state.agent_service = agent_service
     app.state.world_service = world_service
+    app.state.tool_service = tool_service
 
     logger.info("Database initialized")
     logger.info("AICraft API running on http://localhost:8000")
@@ -95,6 +100,10 @@ async def root():
             "create_world": "POST /api/worlds/create",
             "get_world": "GET /api/worlds/{world_id}",
             "get_worlds_by_agent": "GET /api/worlds/agent/{agent_id}",
+            "create_tool": "POST /api/tools/create",
+            "get_agent_tools": "GET /api/tools/agent/{agent_id}",
+            "delete_tool": "DELETE /api/tools/{tool_name}",
+            "deploy_agent": "POST /api/agents/deploy",
         },
     }
 
@@ -177,6 +186,77 @@ async def get_worlds_by_agent(agent_id: str, req: Request):
     """Get all worlds for a specific agent."""
     worlds = await req.app.state.world_service.get_worlds_by_agent_id(agent_id)
     return worlds
+
+# Tool endpoints
+@app.post("/api/tools/create")
+async def create_tool(request: ToolCreateRequest, req: Request):
+    """Create a new custom tool for an agent."""
+    try:
+        result = await req.app.state.tool_service.create_tool(
+            request.agent_id,
+            request.description
+        )
+        return ToolCreateResponse(**result)
+    except Exception as e:
+        logger.error(f"Error creating tool: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tools/agent/{agent_id}")
+async def get_agent_tools(agent_id: str, req: Request):
+    """Get all tools for a specific agent."""
+    try:
+        tools = await req.app.state.tool_service.get_agent_tools(agent_id)
+        return [ToolResponse(**tool) for tool in tools]
+    except Exception as e:
+        logger.error(f"Error fetching tools: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/tools/{tool_name}")
+async def delete_tool(tool_name: str, req: Request):
+    """Delete a tool by name."""
+    try:
+        success = await req.app.state.tool_service.delete_tool(tool_name)
+        if not success:
+            raise HTTPException(status_code=404, detail="Tool not found")
+        return {"message": f"Tool {tool_name} deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting tool: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agents/deploy")
+async def deploy_agent(request: DeployRequest, req: Request):
+    """Deploy an agent in a world with SSE streaming."""
+
+    async def event_generator():
+        """Generator that yields SSE-formatted events."""
+        # Import here to avoid circular dependencies
+        from agent_deployer import AgentDeployer
+
+        deployer = AgentDeployer(
+            req.app.state.tool_service, req.app.state.world_service
+        )
+
+        async for event in deployer.deploy_agent(
+            request.agent_id, request.world_id, request.goal
+        ):
+            # Convert DeploymentEvent to SSE format
+            sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
+            yield sse_message
+
+            # Small delay to ensure client receives message
+            await asyncio.sleep(0.01)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn
