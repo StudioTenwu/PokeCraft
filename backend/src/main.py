@@ -222,37 +222,26 @@ async def delete_tool(tool_name: str, req: Request):
 
 @app.post("/api/agents/deploy")
 async def deploy_agent(request: DeployRequest, req: Request):
-    """Deploy an agent in a world with SSE streaming (stub for now)."""
+    """Deploy an agent in a world with SSE streaming."""
 
     async def event_generator():
         """Generator that yields SSE-formatted events."""
-        try:
-            # TODO: Implement full agent deployment with Claude Agent SDK
-            # For now, return mock events
+        # Import here to avoid circular dependencies
+        from agent_deployer import AgentDeployer
 
-            # Event 1: Starting
-            yield f"event: progress\ndata: {json.dumps({'status': 'starting', 'message': 'Initializing agent...'})}\n\n"
-            await asyncio.sleep(0.5)
+        deployer = AgentDeployer(
+            req.app.state.tool_service, req.app.state.world_service
+        )
 
-            # Event 2: Loading tools
-            yield f"event: progress\ndata: {json.dumps({'status': 'loading_tools', 'message': 'Loading custom tools...'})}\n\n"
-            await asyncio.sleep(0.5)
+        async for event in deployer.deploy_agent(
+            request.agent_id, request.world_id, request.goal
+        ):
+            # Convert DeploymentEvent to SSE format
+            sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
+            yield sse_message
 
-            # Event 3: Agent reasoning (mock)
-            yield f"event: reasoning\ndata: {json.dumps({'message': 'Analyzing the world and planning actions...'})}\n\n"
-            await asyncio.sleep(1)
-
-            # Event 4: Tool call (mock)
-            tool_call_data = {'tool': 'move_forward', 'args': {'steps': 3}, 'result': 'Moved forward 3 steps'}
-            yield f"event: tool_call\ndata: {json.dumps(tool_call_data)}\n\n"
-            await asyncio.sleep(1)
-
-            # Event 5: Completion
-            yield f"event: complete\ndata: {json.dumps({'status': 'complete', 'message': 'Goal accomplished!', 'agent_id': request.agent_id, 'world_id': request.world_id})}\n\n"
-
-        except Exception as e:
-            error_event = f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
-            yield error_event
+            # Small delay to ensure client receives message
+            await asyncio.sleep(0.01)
 
     return StreamingResponse(
         event_generator(),

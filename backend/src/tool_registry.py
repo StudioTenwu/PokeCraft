@@ -1,6 +1,7 @@
 """Dynamic tool discovery and MCP server creation."""
 import importlib.util
 import logging
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -113,3 +114,49 @@ def append_tool_to_file(tool_code: str, tools_file_path: str | None = None) -> N
     except Exception as e:
         logger.error(f"Failed to append tool to file: {e}", exc_info=True)
         raise IOError(f"Could not write to tools file: {e}")
+
+
+def write_tools_to_temp_file(tools_data: list[dict[str, Any]]) -> str:
+    """
+    Write tools from database to a temporary Python file.
+
+    This is used for agent deployment to create an isolated tools module
+    that can be dynamically imported.
+
+    Args:
+        tools_data: List of tool dictionaries from database (with 'code' field)
+
+    Returns:
+        str: Path to the temporary tools file
+
+    Raises:
+        IOError: If temp file cannot be written
+    """
+    logger.info(f"Writing {len(tools_data)} tools to temporary file")
+
+    try:
+        # Create a temporary file that won't be auto-deleted
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", delete=False, prefix="agent_tools_"
+        ) as f:
+            # Write header
+            f.write('"""Temporary tool storage for agent deployment."""\n')
+            f.write("from typing import Any\n")
+            f.write("from claude_agent_sdk import tool\n\n")
+
+            # Write each tool's code
+            for tool in tools_data:
+                code = tool.get("code", "")
+                if code:
+                    f.write("\n\n")
+                    f.write(code)
+                    f.write("\n")
+
+            temp_path = f.name
+
+        logger.info(f"Wrote tools to temporary file: {temp_path}")
+        return temp_path
+
+    except Exception as e:
+        logger.error(f"Failed to write tools to temp file: {e}", exc_info=True)
+        raise IOError(f"Could not create temporary tools file: {e}")

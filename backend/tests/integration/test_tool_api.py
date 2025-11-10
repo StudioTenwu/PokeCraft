@@ -1,7 +1,7 @@
 """Integration tests for tool API endpoints."""
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -177,27 +177,45 @@ def test_create_tool_error_handling(client):
 
 def test_deploy_agent_endpoint_sse_streaming(client):
     """Test POST /api/agents/deploy - SSE streaming functionality."""
-    response = client.post(
-        "/api/agents/deploy",
-        json={"agent_id": "test-agent", "world_id": "test-world", "goal": "Find treasure"},
-    )
+    from src.agent_deployer import DeploymentEvent
 
-    # Verify SSE response
-    assert response.status_code == 200
-    assert "text/event-stream" in response.headers["content-type"]
+    # Mock the AgentDeployer to return test events
+    async def mock_deploy_agent(agent_id, world_id, goal):
+        # Yield mock deployment events
+        yield DeploymentEvent(event_type="progress", data={"status": "starting", "message": "Initializing agent..."})
+        yield DeploymentEvent(event_type="progress", data={"status": "loading_tools", "message": "Loading custom tools..."})
+        yield DeploymentEvent(event_type="reasoning", data={"message": "Analyzing the world..."})
+        tool_call_data = {"tool": "move_forward", "args": {"steps": 3}, "result": "Moved 3 steps"}
+        yield DeploymentEvent(event_type="tool_call", data=tool_call_data)
+        yield DeploymentEvent(event_type="complete", data={"status": "complete", "message": "Goal accomplished!", "agent_id": agent_id, "world_id": world_id})
 
-    # Parse SSE events from response
-    content = response.text
-    assert "event: progress" in content
-    assert "event: reasoning" in content
-    assert "event: tool_call" in content
-    assert "event: complete" in content
+    # Patch the AgentDeployer where it's imported in main.py's event_generator (local import)
+    with patch("agent_deployer.AgentDeployer") as mock_deployer_class:
+        mock_deployer = MagicMock()
+        mock_deployer.deploy_agent = mock_deploy_agent
+        mock_deployer_class.return_value = mock_deployer
 
-    # Verify event data contains expected information
-    assert "Initializing agent" in content
-    assert "Loading custom tools" in content
-    assert "test-agent" in content
-    assert "test-world" in content
+        response = client.post(
+            "/api/agents/deploy",
+            json={"agent_id": "test-agent", "world_id": "test-world", "goal": "Find treasure"},
+        )
+
+        # Verify SSE response
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+
+        # Parse SSE events from response
+        content = response.text
+        assert "event: progress" in content
+        assert "event: reasoning" in content
+        assert "event: tool_call" in content
+        assert "event: complete" in content
+
+        # Verify event data contains expected information
+        assert "Initializing agent" in content
+        assert "Loading custom tools" in content
+        assert "test-agent" in content
+        assert "test-world" in content
 
 
 def test_deploy_agent_missing_fields_returns_422(client):
