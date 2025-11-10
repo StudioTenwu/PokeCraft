@@ -9,7 +9,6 @@ from typing import Optional
 def setup_logging(
     level: str = "INFO",
     log_dir: Optional[Path] = None,
-    json_format: bool = False
 ) -> None:
     """
     Configure application-wide logging.
@@ -17,7 +16,6 @@ def setup_logging(
     Args:
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_dir: Directory for log files (None = no file logging)
-        json_format: Use JSON format for structured logging
     """
     # Root logger configuration
     root_logger = logging.getLogger()
@@ -26,17 +24,10 @@ def setup_logging(
     # Remove existing handlers
     root_logger.handlers.clear()
 
-    # Console handler (pretty format for development)
+    # Console handler with JSON format for structured logging
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
-
-    if json_format:
-        console_formatter = JsonFormatter()
-    else:
-        console_formatter = logging.Formatter(
-            fmt='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
+    console_formatter = JsonFormatter()
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
 

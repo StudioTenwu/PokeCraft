@@ -20,24 +20,24 @@ class LLMClient:
 
         prompt = f"""Create an AI companion based on this description: {description}
 
-You must return your response wrapped in XML <output> tags containing a valid JSON object.
+You must return your response wrapped in XML <output> tags with CDATA containing a valid JSON object.
 
 Return your response in this exact format:
-<output>
+<output><![CDATA[
 {{
     "name": "agent name",
     "backstory": "2-3 sentence backstory",
     "personality_traits": ["trait1", "trait2", "trait3"],
     "avatar_prompt": "detailed prompt for image generation in Pokémon retro Game Boy style"
 }}
-</output>
+]]></output>
 
 Requirements:
 - The avatar_prompt should describe a Pokémon-style character in retro Game Boy Color aesthetic
 - Keep the backstory child-friendly and engaging
 - Make personality traits single words or short phrases
 - The JSON must be valid and properly formatted
-- You must wrap the entire JSON object in <output></output> tags"""
+- You must wrap the entire JSON object in <output><![CDATA[...]]></output> tags"""
 
         try:
             # Collect the response from the Agent SDK
@@ -53,25 +53,10 @@ Requirements:
 
             logger.debug(f"Agent SDK response: {response_text[:200]}...")
 
-            # Parse XML to extract JSON from <output> tags
-            try:
-                # Parse the XML response
-                root = ET.fromstring(response_text)
-
-                # Extract text from <output> tag
-                json_str = root.text.strip()
-
-                logger.debug("Extracted JSON from <output> tags")
-            except ET.ParseError:
-                # Fallback: If XML parsing fails, try to extract content between <output> tags manually
-                start_tag = response_text.find("<output>")
-                end_tag = response_text.find("</output>")
-
-                if start_tag != -1 and end_tag != -1:
-                    json_str = response_text[start_tag + 8:end_tag].strip()
-                    logger.debug("Extracted JSON using manual tag search (XML parse failed)")
-                else:
-                    raise ValueError(f"No <output> tags found in response: {response_text[:200]}")
+            # Parse XML to extract JSON from <output> CDATA tags
+            root = ET.fromstring(response_text)
+            json_str = root.text.strip()
+            logger.debug("Extracted JSON from <output> CDATA tags")
 
             # Parse the JSON string
             data_dict = json.loads(json_str)
