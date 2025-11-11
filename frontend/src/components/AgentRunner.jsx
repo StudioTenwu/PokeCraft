@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import PokemonButton from './PokemonButton'
+import GameWorldView from './GameWorldView'
+import EventLogSidebar from './EventLogSidebar'
 
 /**
  * AgentRunner - Deploy agent with a goal and watch SSE stream in real-time with world visualization
@@ -15,16 +17,7 @@ export default function AgentRunner({ agentId, worldId }) {
   const [error, setError] = useState(null)
   const [worldState, setWorldState] = useState(null)
 
-  const canvasRef = useRef(null)
   const eventSourceRef = useRef(null)
-  const eventsEndRef = useRef(null)
-
-  // Auto-scroll to bottom of events
-  useEffect(() => {
-    if (eventsEndRef.current && typeof eventsEndRef.current.scrollIntoView === 'function') {
-      eventsEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [events])
 
   // Clean up EventSource on unmount
   useEffect(() => {
@@ -35,135 +28,6 @@ export default function AgentRunner({ agentId, worldId }) {
       }
     }
   }, [])
-
-  // Initialize canvas with world grid
-  const initializeCanvas = (width, height) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    canvas.width = width * 32
-    canvas.height = height * 32
-
-    // Draw grid
-    ctx.fillStyle = '#FFF4E6'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Draw grid lines
-    ctx.strokeStyle = '#E0E0E0'
-    ctx.lineWidth = 1
-
-    for (let x = 0; x <= width; x++) {
-      ctx.beginPath()
-      ctx.moveTo(x * 32, 0)
-      ctx.lineTo(x * 32, canvas.height)
-      ctx.stroke()
-    }
-
-    for (let y = 0; y <= height; y++) {
-      ctx.beginPath()
-      ctx.moveTo(0, y * 32)
-      ctx.lineTo(canvas.width, y * 32)
-      ctx.stroke()
-    }
-
-    setWorldState({ width, height, agentPosition: [0, 0] })
-  }
-
-  // Update agent position on canvas (delta update)
-  const updateAgentPosition = (fromPos, toPos) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-
-    // Clear old position
-    if (fromPos) {
-      ctx.fillStyle = '#FFF4E6'
-      ctx.fillRect(fromPos[0] * 32, fromPos[1] * 32, 32, 32)
-
-      // Redraw grid lines for cleared cell
-      ctx.strokeStyle = '#E0E0E0'
-      ctx.lineWidth = 1
-      ctx.strokeRect(fromPos[0] * 32, fromPos[1] * 32, 32, 32)
-    }
-
-    // Draw new position
-    ctx.fillStyle = '#FFD700'
-    ctx.fillRect(toPos[0] * 32, toPos[1] * 32, 32, 32)
-
-    // Draw agent sprite
-    ctx.font = '24px Arial'
-    ctx.fillText('🤖', toPos[0] * 32 + 4, toPos[1] * 32 + 24)
-
-    setWorldState(prev => ({
-      ...prev,
-      agentPosition: toPos
-    }))
-  }
-
-  // Mark cell as visited (delta update)
-  const markCellVisited = (position) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    ctx.globalAlpha = 0.3
-    ctx.fillStyle = '#8BC34A'
-    ctx.fillRect(position[0] * 32, position[1] * 32, 32, 32)
-    ctx.globalAlpha = 1.0
-
-    // Redraw agent if on this cell
-    if (worldState?.agentPosition &&
-        worldState.agentPosition[0] === position[0] &&
-        worldState.agentPosition[1] === position[1]) {
-      ctx.font = '24px Arial'
-      ctx.fillText('🤖', position[0] * 32 + 4, position[1] * 32 + 24)
-    }
-  }
-
-  // Render event in stream
-  const renderEvent = (event) => {
-    switch (event.type) {
-      case 'reasoning':
-        return <span className="text-yellow-400">🤔 {event.text}</span>
-      case 'tool_call':
-        return (
-          <span className="text-blue-400">
-            ⚙️ Using {event.tool_name}({JSON.stringify(event.parameters)})
-          </span>
-        )
-      case 'tool_result':
-        return (
-          <span className={event.success ? "text-green-400" : "text-red-400"}>
-            {event.success ? "✓" : "✗"} {event.result}
-            {event.duration_ms && <span className="text-gray-400"> ({event.duration_ms}ms)</span>}
-          </span>
-        )
-      case 'world_update':
-        return (
-          <span className="text-cyan-400">
-            📍 Moved to [{event.agent_moved_to?.join(', ') || 'unknown'}]
-          </span>
-        )
-      case 'error':
-        return (
-          <span className="text-red-400">
-            ⚠️ {event.message}
-            {event.recoverable && <span className="text-yellow-400"> (recoverable)</span>}
-          </span>
-        )
-      case 'complete':
-        return (
-          <span className="text-green-400">
-            🎉 Mission {event.status}!
-            {event.total_steps && <span> (Steps: {event.total_steps})</span>}
-          </span>
-        )
-      default:
-        return <span className="text-gray-400">Unknown event: {event.type}</span>
-    }
-  }
 
   const deployAgent = () => {
     if (!goal.trim()) {
@@ -180,8 +44,8 @@ export default function AgentRunner({ agentId, worldId }) {
     setError(null)
     setEvents([])
 
-    // Initialize canvas (assuming 10x10 grid for now)
-    initializeCanvas(10, 10)
+    // Initialize world state (assuming 10x10 grid for now)
+    setWorldState({ width: 10, height: 10, agentPosition: [0, 0] })
 
     const url = `http://localhost:8000/api/agents/deploy?agent_id=${encodeURIComponent(agentId)}&world_id=${encodeURIComponent(worldId)}&goal=${encodeURIComponent(goal)}`
     const eventSource = new EventSource(url)
@@ -205,13 +69,12 @@ export default function AgentRunner({ agentId, worldId }) {
     eventSource.addEventListener('world_update', (e) => {
       const data = JSON.parse(e.data)
 
-      // Apply delta updates to canvas
-      if (data.agent_moved_from && data.agent_moved_to) {
-        updateAgentPosition(data.agent_moved_from, data.agent_moved_to)
-      }
-
-      if (data.cell_updated?.position) {
-        markCellVisited(data.cell_updated.position)
+      // Update world state if agent moved
+      if (data.agent_moved_to) {
+        setWorldState(prev => ({
+          ...prev,
+          agentPosition: data.agent_moved_to
+        }))
       }
 
       setEvents(prev => [...prev, { type: 'world_update', ...data }])
@@ -311,62 +174,26 @@ export default function AgentRunner({ agentId, worldId }) {
         </div>
       )}
 
-      {/* World Visualization */}
-      {worldState && (
-        <div className="mb-6">
-          <h3 className="font-pixel text-sm mb-2" style={{ color: 'var(--text-primary)' }}>
-            World View:
-          </h3>
-          <div className="flex justify-center">
-            <canvas
-              ref={canvasRef}
-              className="border-4 border-pokemon-green rounded"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Stream Display */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-pixel text-sm" style={{ color: 'var(--text-primary)' }}>
-            Event Stream:
-          </h3>
-          {deploying && (
-            <div className="flex items-center gap-2">
-              <div className="pokeball-animation text-xl">⚽</div>
-              <span className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
-                Running...
-              </span>
-            </div>
-          )}
+      {/* Two-column layout: Game World (left 65%) + Event Log (right 35%) */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: Game World (65%) */}
+        <div className="lg:w-2/3">
+          <GameWorldView
+            worldState={worldState}
+            events={events}
+            deploying={deploying}
+          />
         </div>
 
-        <div className="bg-black text-green-400 font-mono text-xs p-4 rounded h-96 overflow-y-auto border-4 border-black">
-          {events.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">
-              No events yet. Deploy an agent to see the action!
-            </div>
-          ) : (
-            events.map((event, i) => (
-              <div key={i} className="mb-2">
-                <span className="text-gray-500">[{new Date(event.timestamp || Date.now()).toLocaleTimeString()}]</span>{' '}
-                {renderEvent(event)}
-              </div>
-            ))
-          )}
-          <div ref={eventsEndRef} />
+        {/* Right: Event Log (35%) */}
+        <div className="lg:w-1/3">
+          <EventLogSidebar
+            events={events}
+            deploying={deploying}
+            onClear={clearStream}
+          />
         </div>
       </div>
-
-      {events.length > 0 && (
-        <div className="mt-4 text-center">
-          <p className="font-pixel text-xs opacity-70" style={{ color: 'var(--text-primary)' }}>
-            💡 {events.length} event{events.length !== 1 ? 's' : ''} logged
-          </p>
-        </div>
-      )}
     </div>
   )
 }
