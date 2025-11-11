@@ -85,10 +85,10 @@ function App() {
             }}
           >
             <h1
-              className="font-pixel text-2xl sm:text-3xl text-pokemon-gold"
+              className="font-title text-2xl sm:text-3xl text-pokemon-gold"
               style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}
             >
-              AICraft <span className="text-xl">⚽ Pokemon Edition</span>
+              PokéCraft
             </h1>
           </div>
           <div className="flex-1 flex justify-end items-center gap-2">
