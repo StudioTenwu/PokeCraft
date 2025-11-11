@@ -59,6 +59,11 @@ class WorldDB(Base):
     agent_position_y: Mapped[int] = mapped_column(Integer, nullable=False)
     width: Mapped[int] = mapped_column(Integer, nullable=False)
     height: Mapped[int] = mapped_column(Integer, nullable=False)
+    game_type: Mapped[str] = mapped_column(
+        String,
+        default="grid_navigation",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
@@ -88,6 +93,10 @@ class ToolDB(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     code: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(String, nullable=True)  # Movement, Perception, Interaction
+    expected_action_id: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+    )  # Expected action this tool should emit (for validation)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
