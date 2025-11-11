@@ -181,9 +181,9 @@ class AvatarGenerator:
             # Track last progress to prevent regression
             last_progress = 0
 
-            # Parse stderr for progress
-            if process.stderr:
-                async for line_bytes in process.stderr:
+            # Parse stdout for progress (mflux outputs to stdout, not stderr!)
+            if process.stdout:
+                async for line_bytes in process.stdout:
                     line = line_bytes.decode('utf-8', errors='ignore')
 
                     # Parse progress from line
