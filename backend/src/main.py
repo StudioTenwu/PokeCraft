@@ -19,7 +19,7 @@ from agent_service import AgentService
 from config import Config
 from database import init_db
 from logging_config import setup_logging
-from models.tool import DeployRequest, ToolCreateRequest, ToolCreateResponse, ToolResponse
+from models.tool import ToolCreateRequest, ToolCreateResponse, ToolResponse
 from tool_service import ToolService
 from world_service import WorldService
 
@@ -105,7 +105,7 @@ async def root():
             "create_tool": "POST /api/tools/create",
             "get_agent_tools": "GET /api/tools/agent/{agent_id}",
             "delete_tool": "DELETE /api/tools/{tool_name}",
-            "deploy_agent": "POST /api/agents/deploy",
+            "deploy_agent": "GET /api/agents/deploy (SSE stream)",
         },
     }
 
@@ -276,9 +276,15 @@ async def delete_tool(tool_name: str, req: Request):
         logger.error(f"Error deleting tool: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/agents/deploy")
-async def deploy_agent(request: DeployRequest, req: Request):
-    """Deploy an agent in a world with SSE streaming."""
+@app.get("/api/agents/deploy")
+async def deploy_agent(agent_id: str, world_id: str, goal: str, req: Request):
+    """Deploy an agent in a world with SSE streaming.
+
+    Args:
+        agent_id: UUID of the agent to deploy
+        world_id: UUID of the world to deploy in
+        goal: Mission goal for the agent
+    """
 
     async def event_generator():
         """Generator that yields SSE-formatted events."""
@@ -290,7 +296,7 @@ async def deploy_agent(request: DeployRequest, req: Request):
         )
 
         async for event in deployer.deploy_agent(
-            request.agent_id, request.world_id, request.goal
+            agent_id, world_id, goal
         ):
             # Convert DeploymentEvent to SSE format
             sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
