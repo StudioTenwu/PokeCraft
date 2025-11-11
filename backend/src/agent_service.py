@@ -1,6 +1,7 @@
 import logging
 import uuid
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 from avatar_generator import AvatarGenerator
@@ -103,6 +104,8 @@ class AgentService:
 
             # Step 3: Avatar Start (33%)
             agent_id = str(uuid.uuid4())
+
+            sleep(2)
 
             yield {
                 "event": "avatar_start",

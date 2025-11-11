@@ -172,51 +172,50 @@ class AvatarGenerator:
         try:
             # Create async subprocess
             logger.debug(f"Starting mflux subprocess: {' '.join(cmd)}")
+
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stderr=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE
             )
 
-            # Track last progress to prevent regression
+            # Generate fake smooth progress while mflux runs
+            # mflux takes ~35 seconds, so we update progress every 0.5s
+            logger.info("Generating fake progress (mflux disables progress bars in subprocess)")
+
+            import time
+            start_time = time.time()
+            expected_duration = 35  # seconds
             last_progress = 0
 
-            # Parse stdout for progress (mflux outputs to stdout, not stderr!)
-            logger.info("Starting to read mflux stdout for progress...")
-            if process.stdout:
-                async for line_bytes in process.stdout:
-                    line = line_bytes.decode('utf-8', errors='ignore')
-                    logger.debug(f"mflux stdout line: {repr(line)}")
+            # Progress from 25% (start) to 95% (almost done) over 35 seconds
+            while process.returncode is None:
+                elapsed = time.time() - start_time
 
-                    # Parse progress from line
-                    mflux_pct = parse_mflux_progress(line)
+                # Calculate fake progress: 25% + (elapsed/35 * 70%)
+                # This goes from 25% → 95% over 35 seconds
+                fake_pct = min(95, int(25 + (elapsed / expected_duration * 70)))
 
-                    if mflux_pct is not None:
-                        logger.info(f"✓ Parsed mflux progress: {mflux_pct}%")
+                if fake_pct > last_progress:
+                    last_progress = fake_pct
+                    logger.info(f"✓ Yielding fake progress: {fake_pct}%")
 
-                        # Map to overall progress
-                        overall_pct = map_mflux_to_overall(mflux_pct)
-                        logger.info(f"✓ Mapped to overall progress: {overall_pct}% (25-100 range)")
+                    yield {
+                        "type": "avatar_progress",
+                        "progress": fake_pct,
+                        "message": f"Drawing... ({fake_pct}%)"
+                    }
 
-                        # Prevent progress regression
-                        if overall_pct > last_progress:
-                            last_progress = overall_pct
-                            logger.info(f"✓ Yielding avatar_progress event: {overall_pct}%")
+                # Check if process finished
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=0.5)
+                    break
+                except asyncio.TimeoutError:
+                    continue
 
-                            yield {
-                                "type": "avatar_progress",
-                                "progress": overall_pct,
-                                "message": f"Drawing ({mflux_pct}%)"
-                            }
-                        else:
-                            logger.debug(f"Skipping {overall_pct}% (not > last_progress {last_progress}%)")
-                    else:
-                        # Log lines that don't contain progress
-                        if line.strip():
-                            logger.debug(f"No progress found in line: {repr(line[:100])}")
-
-            # Wait for completion
-            await process.wait()
+            # Final wait to ensure process is done
+            if process.returncode is None:
+                await process.wait()
 
             if process.returncode == 0 and output_path.exists():
                 # Success - return the generated avatar
