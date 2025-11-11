@@ -18,23 +18,31 @@ class LLMClient:
         """Generate agent data using Claude via Agent SDK."""
         logger.debug(f"Generating agent from description: {description[:50]}...")
 
-        prompt = f"""Create an AI pokemon based on this description: {description}
+        prompt = f"""Create a Pokémon based on this description: {description}
 
 You must return your response wrapped in XML <output> tags with CDATA containing a valid JSON object.
 
 Return your response in this exact format:
 <output><![CDATA[
 {{
-    "name": "agent name",
+    "name": "pokemon name",
     "backstory": "2-3 sentence backstory",
     "personality_traits": ["trait1", "trait2", "trait3"],
     "avatar_prompt": "detailed prompt for image generation in Pokemon retro Game Boy style"
 }}
 ]]></output>
 
-Requirements:
-- The avatar_prompt should describe a Pokemon-style character in retro Game Boy Color aesthetic
-- The name should have a cute, Pokemon-like feel
+CRITICAL NAMING REQUIREMENTS - Follow Pokémon Naming Conventions:
+- Names should be cute, memorable, and follow real Pokémon naming patterns
+- Use portmanteau (combining words): "Char" + "mander" = Charmander, "Squirt" + "turtle" = Squirtle
+- Keep names short: 2-3 syllables maximum (like Pikachu, Eevee, Bulbasaur)
+- Use playful sounds: -chu, -puff, -dex, -saur, -eon, -mon are common endings
+- Examples of good names: Sparkeon, Leafdex, Bubblchu, Flamepuff, Rockmon, Swiftail
+- Make the name relate to the Pokémon's traits or description
+- AVOID: Generic names, human names, overly complex words
+
+Other Requirements:
+- The avatar_prompt should describe a Pokémon-style character in retro Game Boy Color aesthetic
 - Keep the backstory child-friendly and engaging
 - Make personality traits single words or short phrases
 - The JSON must be valid and properly formatted

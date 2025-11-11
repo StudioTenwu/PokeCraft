@@ -1,7 +1,7 @@
 [project]
-name = "aicraft-backend"
+name = "pokecraft-backend"
 version = "0.1.0"
-description = "AICraft - Educational AI platform backend API"
+description = "PokéCraft - Create and train your Pokémon companions"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [

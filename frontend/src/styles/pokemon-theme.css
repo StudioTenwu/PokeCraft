@@ -31,9 +31,34 @@
 
 body {
   margin: 0;
-  font-family: 'Press Start 2P', cursive;
+  font-family: 'Silkscreen', 'Press Start 2P', cursive;
   background-color: var(--bg-primary);
   transition: background-color 0.3s ease;
+}
+
+/* Font System: Multi-Font for Different Contexts */
+/* Silkscreen: Straight edges for UI, buttons, body text */
+/* Press Start 2P: Curved, friendly for titles and headers */
+
+.font-title {
+  font-family: 'Press Start 2P', cursive;
+  /* For titles, logos, headers - curved, iconic */
+}
+
+.font-ui {
+  font-family: 'Silkscreen', monospace;
+  /* For UI elements, buttons, stats - straight, readable */
+}
+
+/* Pixel-perfect rendering for both fonts */
+.font-title,
+.font-ui,
+body {
+  font-smooth: never;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+  image-rendering: pixelated;
 }
 
 /* Pokemon Button Styles */

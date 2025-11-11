@@ -1,6 +1,6 @@
-# AICraft - Pokemon Edition 🎮
+# PokéCraft 🎮
 
-Interactive platform where you create AI agents, design worlds, teach them custom tools, and watch them explore autonomously.
+Interactive platform where you create Pokémon companions, design worlds, teach them custom tools, and watch them explore autonomously.
 
 ## 🚀 Quick Start
 
