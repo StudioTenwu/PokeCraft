@@ -215,13 +215,8 @@ function App() {
           </div>
         ) : showCreationForm ? (
           /* Agent Creation - Full Screen */
-          <div className="max-w-5xl mx-auto">
-            <div className="pokemon-container">
-              <h2 className="font-pixel text-2xl mb-6 text-center" style={{ color: 'var(--text-primary)' }}>
-                {agents.length === 0 ? '⚽ Hatch Your First Companion' : '✨ Create New Agent'}
-              </h2>
-              <AgentCreation onAgentCreated={handleAgentCreated} />
-            </div>
+          <div className="pokemon-container">
+            <AgentCreation onAgentCreated={handleAgentCreated} />
           </div>
         ) : !selectedAgent ? (
           /* No agent selected - show selection prompt */

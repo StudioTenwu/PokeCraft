@@ -124,33 +124,34 @@ export default function AgentCreation({ onAgentCreated }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="font-pixel text-3xl text-pokemon-gold mb-3"
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-12 py-8">
+        <div className="text-8xl mb-6">⚽</div>
+        <h2 className="font-pixel text-4xl sm:text-5xl text-pokemon-gold mb-4"
             style={{textShadow: '4px 4px 0px rgba(0,0,0,0.3)'}}>
-          Hatch Your Companion
+          Hatch Your First Companion
         </h2>
-        <p className="text-sm font-pixel" style={{color: 'var(--text-primary)'}}>
-          Describe your AI partner...
+        <p className="text-base font-pixel" style={{color: 'var(--text-primary)', opacity: 0.9}}>
+          Describe your AI partner and watch them come to life!
         </p>
       </div>
 
       {/* Input area */}
-      <div className="pokemon-container mb-6">
-        <label className="block font-pixel text-xs mb-3" style={{color: 'var(--text-primary)'}}>
+      <div className="pokemon-container mb-8">
+        <label className="block font-pixel text-sm mb-4" style={{color: 'var(--text-primary)'}}>
           Describe your companion:
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="A brave explorer who loves solving puzzles and helping others..."
-          className="pokemon-input h-32 resize-none font-sans"
+          className="pokemon-input h-40 resize-none font-sans text-base"
           disabled={loading}
         />
 
-        <div className="mt-4 text-xs font-sans" style={{color: 'var(--text-secondary)'}}>
-          <p className="mb-1">💡 Try describing:</p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
+        <div className="mt-6 p-4 rounded" style={{backgroundColor: 'rgba(0,0,0,0.05)'}}>
+          <p className="mb-2 font-pixel text-xs" style={{color: 'var(--text-primary)', opacity: 0.8}}>💡 Try describing:</p>
+          <ul className="list-disc list-inside space-y-2 ml-2 text-sm font-sans" style={{color: 'var(--text-primary)', opacity: 0.7}}>
             <li>Personality traits (brave, curious, clever)</li>
             <li>What they like to do</li>
             <li>Their goals or motivations</li>
@@ -164,37 +165,37 @@ export default function AgentCreation({ onAgentCreated }) {
         </div>
       )}
 
-      <div className="text-center">
+      <div className="text-center mb-12">
         {loading ? (
-          <div className="space-y-4">
+          <div className="space-y-6 py-8">
             {/* Animated egg emoji based on progress */}
-            <div className="text-6xl">
+            <div className="text-8xl animate-bounce">
               {progress.phase === 'llm' && '🥚'}
               {progress.phase === 'avatar' && progress.avatarPercent < 50 && '🥚'}
               {progress.phase === 'avatar' && progress.avatarPercent >= 50 && '🐣'}
             </div>
 
             {/* Progress message */}
-            <p className="font-pixel text-sm text-pokemon-gold">
+            <p className="font-pixel text-base text-pokemon-gold">
               {progress.message || 'Hatching your companion...'}
             </p>
 
             {/* Progress bar for avatar generation */}
             {progress.phase === 'avatar' && (
-              <div className="max-w-md mx-auto space-y-2">
+              <div className="max-w-lg mx-auto space-y-3">
                 {/* Step counter */}
-                <p className="font-pixel text-xs text-black">
+                <p className="font-pixel text-sm" style={{color: 'var(--text-primary)'}}>
                   Step {progress.avatarStep}/{progress.avatarTotal} - {progress.avatarPercent}%
                 </p>
 
                 {/* Pokémon-themed progress bar */}
-                <div className="w-full h-6 bg-pokemon-cream border-4 border-black relative overflow-hidden">
+                <div className="w-full h-8 bg-pokemon-cream border-4 border-black relative overflow-hidden rounded">
                   <div
                     className="h-full bg-pokemon-gold transition-all duration-300 ease-out"
                     style={{ width: `${progress.avatarPercent}%` }}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="font-pixel text-xs text-black mix-blend-difference">
+                      <span className="font-pixel text-sm text-black mix-blend-difference">
                         {progress.avatarPercent}%
                       </span>
                     </div>
@@ -207,30 +208,31 @@ export default function AgentCreation({ onAgentCreated }) {
           <PokemonButton
             onClick={handleCreate}
             variant="green"
-            className="text-lg px-8 py-4"
+            className="text-xl px-12 py-5"
           >
-            Hatch Companion
+            🥚 Hatch Companion ✨
           </PokemonButton>
         )}
       </div>
 
       {/* Example companions */}
-      <div className="mt-8 p-4 bg-pokemon-green/20 border-2 border-pokemon-green rounded">
-        <p className="font-pixel text-xs text-pokemon-green mb-3">
-          Example Companions:
+      <div className="mt-12 p-6 bg-pokemon-green/20 border-2 border-pokemon-green rounded">
+        <p className="font-pixel text-sm text-pokemon-green mb-4 text-center">
+          ✨ Example Companions - Click to try!
         </p>
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             "A cheerful robot who loves exploring and collecting shiny gems",
             "A wise owl who enjoys solving puzzles and teaching others",
-            "A playful cat who helps friends find lost items"
+            "A playful cat who helps friends find lost items",
+            "A brave knight who protects the forest and its creatures"
           ].map((example, i) => (
             <button
               key={i}
               onClick={() => setDescription(example)}
-              className="w-full text-left px-3 py-2 hover:bg-pokemon-cream
-                       text-xs border-2 border-pokemon-green transition-colors
-                       font-sans"
+              className="text-left px-4 py-3 hover:bg-pokemon-cream hover:scale-105
+                       text-xs border-2 border-pokemon-green transition-all
+                       font-sans rounded"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)'

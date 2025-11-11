@@ -1,4 +1,15 @@
+import { useState } from 'react'
 import PropTypes from 'prop-types'
+
+// Color palette for personality traits
+const TRAIT_COLORS = [
+  { bg: '#E3F2FD', border: '#42A5F5', text: '#1565C0' }, // Blue
+  { bg: '#F3E5F5', border: '#AB47BC', text: '#6A1B9A' }, // Purple
+  { bg: '#E8F5E9', border: '#66BB6A', text: '#2E7D32' }, // Green
+  { bg: '#FFF3E0', border: '#FFA726', text: '#E65100' }, // Orange
+  { bg: '#FCE4EC', border: '#EC407A', text: '#AD1457' }, // Pink
+  { bg: '#FFF9C4', border: '#FFEB3B', text: '#F57F17' }, // Yellow
+]
 
 /**
  * AgentPanel - Left sidebar showing agent details and equipped tools
@@ -8,6 +19,7 @@ import PropTypes from 'prop-types'
  * @param {Function} props.onToolRemove - Callback when tool is removed
  */
 export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) {
+  const [isBackstoryExpanded, setIsBackstoryExpanded] = useState(false)
   if (!agent) {
     return (
       <div className="pokemon-container h-full flex items-center justify-center">
@@ -44,10 +56,23 @@ export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) 
             style={{ color: 'var(--text-primary)' }}>
           {agent.name}
         </h2>
-        <p className="font-pixel text-xs text-center mb-3"
-           style={{ color: 'var(--text-primary)', opacity: 0.8 }}>
-          {agent.backstory?.substring(0, 80)}...
-        </p>
+        <div className="text-center">
+          <p className="font-pixel text-xs mb-1"
+             style={{ color: 'var(--text-primary)', opacity: 0.8 }}>
+            {isBackstoryExpanded
+              ? agent.backstory
+              : `${agent.backstory?.substring(0, 80)}...`}
+          </p>
+          {agent.backstory && agent.backstory.length > 80 && (
+            <button
+              onClick={() => setIsBackstoryExpanded(!isBackstoryExpanded)}
+              className="font-pixel text-xs underline hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--text-primary)', opacity: 0.6 }}
+            >
+              {isBackstoryExpanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Personality Traits */}
@@ -57,19 +82,22 @@ export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) 
             Traits:
           </h3>
           <div className="flex flex-wrap gap-2">
-            {agent.personality_traits.map((trait, idx) => (
-              <span
-                key={idx}
-                className="font-pixel text-xs px-2 py-1 border-2 rounded"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                • {trait}
-              </span>
-            ))}
+            {agent.personality_traits.map((trait, idx) => {
+              const color = TRAIT_COLORS[idx % TRAIT_COLORS.length]
+              return (
+                <span
+                  key={idx}
+                  className="font-pixel text-xs px-2 py-1 border-2 rounded"
+                  style={{
+                    backgroundColor: color.bg,
+                    borderColor: color.border,
+                    color: color.text
+                  }}
+                >
+                  • {trait}
+                </span>
+              )
+            })}
           </div>
         </div>
       )}
