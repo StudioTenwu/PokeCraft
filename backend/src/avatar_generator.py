@@ -182,26 +182,38 @@ class AvatarGenerator:
             last_progress = 0
 
             # Parse stdout for progress (mflux outputs to stdout, not stderr!)
+            logger.info("Starting to read mflux stdout for progress...")
             if process.stdout:
                 async for line_bytes in process.stdout:
                     line = line_bytes.decode('utf-8', errors='ignore')
+                    logger.debug(f"mflux stdout line: {repr(line)}")
 
                     # Parse progress from line
                     mflux_pct = parse_mflux_progress(line)
 
                     if mflux_pct is not None:
+                        logger.info(f"✓ Parsed mflux progress: {mflux_pct}%")
+
                         # Map to overall progress
                         overall_pct = map_mflux_to_overall(mflux_pct)
+                        logger.info(f"✓ Mapped to overall progress: {overall_pct}% (25-100 range)")
 
                         # Prevent progress regression
                         if overall_pct > last_progress:
                             last_progress = overall_pct
+                            logger.info(f"✓ Yielding avatar_progress event: {overall_pct}%")
 
                             yield {
                                 "type": "avatar_progress",
                                 "progress": overall_pct,
                                 "message": f"Drawing ({mflux_pct}%)"
                             }
+                        else:
+                            logger.debug(f"Skipping {overall_pct}% (not > last_progress {last_progress}%)")
+                    else:
+                        # Log lines that don't contain progress
+                        if line.strip():
+                            logger.debug(f"No progress found in line: {repr(line[:100])}")
 
             # Wait for completion
             await process.wait()
