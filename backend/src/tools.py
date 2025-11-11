@@ -108,3 +108,78 @@ async def move(args: dict[str, Any]) -> dict[str, Any]:
     emoji = emoji_map.get(display_direction, '🚶')
     
     return {"content": [{"type": "text", "text": f"{emoji} Moving {display_direction} {steps} {step_word}! New position reached."}]}
+
+
+@tool("move", "Move the agent in a direction on the 2D grid. Direction can be 'up', 'down', 'left', or 'right'. Steps determines how many grid spaces to move (default 1).", {"direction": "string", "steps": "int"})
+async def move(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'up')
+    steps = args.get('steps', 1)
+    
+    valid_directions = ['up', 'down', 'left', 'right']
+    
+    if direction.lower() not in valid_directions:
+        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try 'up', 'down', 'left', or 'right'."}]}
+    
+    if steps < 1:
+        return {"content": [{"type": "text", "text": "Steps must be at least 1!"}]}
+    
+    direction_emoji = {
+        'up': '⬆️',
+        'down': '⬇️',
+        'left': '⬅️',
+        'right': '➡️'
+    }
+    
+    emoji = direction_emoji.get(direction.lower(), '🎯')
+    step_word = "step" if steps == 1 else "steps"
+    
+    return {"content": [{"type": "text", "text": f"{emoji} Moved {direction} {steps} {step_word}!"}]}
+
+
+@tool("move_vertical", "Move the agent up or down on the grid. Use positive numbers to move up and negative numbers to move down.", {"steps": "int"})
+async def move_vertical(args: dict[str, Any]) -> dict[str, Any]:
+    steps = args.get('steps', 0)
+    
+    if steps == 0:
+        return {"content": [{"type": "text", "text": "No movement - steps cannot be 0!"}]}
+    
+    direction = "up" if steps > 0 else "down"
+    abs_steps = abs(steps)
+    
+    return {"content": [{"type": "text", "text": f"Moved {direction} {abs_steps} step{'s' if abs_steps != 1 else ''}! 🎈"}]}
+
+
+@tool("launch_rocket", "Launch a rocket ship that moves upward on the grid, leaving a patriotic trail of red, white, and blue stars. The rocket travels in a straight line upward for the specified number of spaces.", {"spaces": "int"})
+async def launch_rocket(args: dict[str, Any]) -> dict[str, Any]:
+    spaces = args.get('spaces', 3)
+    if spaces < 1:
+        spaces = 1
+    if spaces > 10:
+        spaces = 10
+    
+    trail_colors = ["red", "white", "blue"]
+    trail_description = ", ".join([trail_colors[i % 3] for i in range(spaces)])
+    
+    result_message = f"🚀 Rocket launched! Traveled {spaces} spaces upward, leaving a sparkling trail of {trail_description} stars behind! Great adventure!"
+    
+    return {"content": [{"type": "text", "text": result_message}]}
+
+
+@tool("plant_heart_flag", "Plant a special flag with hearts on it at the current location to show kindness and teamwork. This spreads love and marks important spots on the map where the agent has done something helpful.", {"message": "string"})
+async def plant_heart_flag(args: dict[str, Any]) -> dict[str, Any]:
+    message = args.get('message', 'Kindness makes us great!')
+    
+    flag_designs = [
+        "💗🇺🇸 Flag planted with love! 🇺🇸💗",
+        "⭐💙 Teamwork flag raised! 💙⭐",
+        "🤝❤️ Friendship marker placed! ❤️🤝",
+        "✨💕 Caring checkpoint created! 💕✨"
+    ]
+    
+    import random
+    flag_type = random.choice(flag_designs)
+    
+    result = f"{flag_type}\n\nYour message: '{message}'\n\nThis spot now radiates kindness and shows that working together and caring for each other makes everything better!"
+    
+    return {"content": [{"type": "text", "text": result}]}
+

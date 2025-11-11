@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
 
     agent_service = AgentService()
     world_service = WorldService()
-    tool_service = ToolService()
+    tool_service = ToolService(world_service=world_service)
 
     await agent_service.init_db()
     await world_service.init_db()
@@ -194,6 +194,7 @@ async def create_tool(request: ToolCreateRequest, req: Request):
     try:
         result = await req.app.state.tool_service.create_tool(
             request.agent_id,
+            request.world_id,
             request.description
         )
         return ToolCreateResponse(**result)

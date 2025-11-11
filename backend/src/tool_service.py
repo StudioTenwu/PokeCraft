@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from models.db_models import Base, ToolDB
 from tool_generator import ToolGenerator
 from tool_registry import append_tool_to_file
+from action_registry import get_action_set_for_game
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +19,13 @@ logger = logging.getLogger(__name__)
 class ToolService:
     """Service for creating, retrieving, and deleting custom tools."""
 
-    def __init__(self, db_path: str = "sqlite+aiosqlite:///agents.db") -> None:
+    def __init__(self, db_path: str = "sqlite+aiosqlite:///agents.db", world_service: Any = None) -> None:
         """
         Initialize the ToolService.
 
         Args:
             db_path: Path to SQLite database (async URL)
+            world_service: Optional world service for fetching world data
         """
         self.db_path = db_path
         self.engine = create_async_engine(self.db_path, echo=False)
@@ -31,6 +33,7 @@ class ToolService:
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
         self.tool_generator = ToolGenerator()
+        self.world_service = world_service
 
     async def init_db(self) -> None:
         """Initialize database tables."""
@@ -38,21 +41,39 @@ class ToolService:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Tool database initialized")
 
-    async def create_tool(self, agent_id: str, description: str) -> dict[str, Any]:
+    async def create_tool(self, agent_id: str, world_id: str, description: str) -> dict[str, Any]:
         """
         Create a new custom tool for an agent.
 
         Args:
             agent_id: ID of the agent this tool is for
+            world_id: ID of the world this tool will be used in
             description: Natural language description of the tool
 
         Returns:
             Dictionary with tool_name, code, explanation, and tool_id
         """
-        logger.info(f"Creating tool for agent {agent_id}: {description[:50]}...")
+        logger.info(f"Creating tool for agent {agent_id} in world {world_id}: {description[:50]}...")
 
-        # Generate tool code using LLM
-        tool_code_obj = await self.tool_generator.generate_tool(description, agent_id)
+        # Get world to determine game type
+        if not self.world_service:
+            raise ValueError("WorldService is required to fetch game context for tool generation")
+
+        world = await self.world_service.get_world(world_id)
+        if not world:
+            raise ValueError(f"World {world_id} not found")
+
+        game_type = world.get("game_type", "grid_navigation")
+
+        # Get action set for this game type
+        action_set = get_action_set_for_game(game_type)
+        if not action_set:
+            raise ValueError(f"No action set found for game type: {game_type}")
+
+        logger.info(f"Tool will be generated with {game_type} action context")
+
+        # Generate tool code using LLM with game action context
+        tool_code_obj = await self.tool_generator.generate_tool(description, agent_id, action_set)
 
         # Append tool to tools.py file
         append_tool_to_file(tool_code_obj.code)

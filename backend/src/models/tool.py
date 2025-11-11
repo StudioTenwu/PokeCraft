@@ -6,6 +6,7 @@ class ToolCreateRequest(BaseModel):
     """Request model for creating a new tool."""
 
     agent_id: str = Field(..., description="ID of the agent this tool is for")
+    world_id: str = Field(..., description="ID of the world this tool will be used in")
     description: str = Field(..., description="Natural language description of the tool")
 
 

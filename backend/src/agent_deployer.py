@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from claude_agent_sdk import query, ClaudeAgentOptions
 from tool_registry import create_user_tool_server, get_available_tools
+from action_registry import get_action_set_for_game, create_game_engine
+from game_engine import GameEngine
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,7 @@ class AgentDeployer:
         total_steps = 0
         total_tools_used = 0
         current_position = None
+        game_engine = None
 
         try:
             # 1. Load world state from world_service
@@ -75,8 +78,27 @@ class AgentDeployer:
                 return
 
             current_position = world["agent_position"]
+            game_type = world.get("game_type", "grid_navigation")
 
-            # 2. Load agent's custom tools from tool_service
+            # 2. Initialize game engine for action execution
+            try:
+                action_set = get_action_set_for_game(game_type)
+                game_engine = create_game_engine(game_type, world_id, action_set, world)
+                logger.info(f"Initialized {game_type} game engine for world {world_id}")
+            except ValueError as e:
+                logger.error(f"Failed to initialize game engine: {e}")
+                yield DeploymentEvent(
+                    event_type="error",
+                    data={
+                        "error_type": "game_engine_init_failed",
+                        "message": str(e),
+                        "recoverable": False,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    },
+                )
+                return
+
+            # 3. Load agent's custom tools from tool_service
             tools = await self.tool_service.get_agent_tools(agent_id)
             logger.info(f"Loaded {len(tools)} tools for agent {agent_id}")
 
@@ -131,7 +153,63 @@ class AgentDeployer:
                         },
                     )
 
-                # Check for tool results that update position
+                    # Parse action field from tool result
+                    if isinstance(tool_result, dict) and "action" in tool_result:
+                        action_data = tool_result["action"]
+                        if isinstance(action_data, dict) and "action_id" in action_data:
+                            action_id = action_data["action_id"]
+                            parameters = action_data.get("parameters", {})
+
+                            logger.info(f"Parsing action: {action_id} with params {parameters}")
+
+                            # Execute action through game engine
+                            if game_engine:
+                                try:
+                                    action_result = game_engine.execute_action(action_id, parameters)
+
+                                    if action_result.success and action_result.state_delta:
+                                        # Update current position if it changed
+                                        if "agent_position" in action_result.state_delta:
+                                            current_position = action_result.state_delta["agent_position"]
+
+                                        # Yield world_update event with state deltas
+                                        yield DeploymentEvent(
+                                            event_type="world_update",
+                                            data={
+                                                **action_result.state_delta,
+                                                "message": action_result.message,
+                                                "timestamp": datetime.utcnow().isoformat(),
+                                            },
+                                        )
+                                        logger.info(f"Action {action_id} executed successfully")
+                                    elif not action_result.success:
+                                        # Action failed - yield error event
+                                        yield DeploymentEvent(
+                                            event_type="error",
+                                            data={
+                                                "error_type": "action_execution_failed",
+                                                "message": action_result.error or action_result.message,
+                                                "action_id": action_id,
+                                                "recoverable": True,
+                                                "timestamp": datetime.utcnow().isoformat(),
+                                            },
+                                        )
+                                        logger.warning(f"Action {action_id} failed: {action_result.error}")
+
+                                except Exception as e:
+                                    logger.error(f"Failed to execute action {action_id}: {e}", exc_info=True)
+                                    yield DeploymentEvent(
+                                        event_type="error",
+                                        data={
+                                            "error_type": "action_execution_error",
+                                            "message": str(e),
+                                            "action_id": action_id,
+                                            "recoverable": True,
+                                            "timestamp": datetime.utcnow().isoformat(),
+                                        },
+                                    )
+
+                # Check for tool results that update position (legacy fallback)
                 if hasattr(message, "tool_result") and message.tool_result:
                     result = message.tool_result.result
                     if isinstance(result, dict) and "new_position" in result:

@@ -12,7 +12,23 @@ class TestToolService:
     @pytest.fixture
     async def service(self) -> ToolService:
         """Create a ToolService instance for testing."""
-        svc = ToolService(db_path="sqlite+aiosqlite:///:memory:")
+        # Create a mock world_service
+        mock_world_service = MagicMock()
+
+        async def mock_get_world(world_id):
+            return {
+                "id": world_id,
+                "name": "Test World",
+                "game_type": "grid_navigation",
+                "agent_position": [0, 0],
+                "grid": [["." for _ in range(10)] for _ in range(10)],
+                "width": 10,
+                "height": 10,
+            }
+
+        mock_world_service.get_world = mock_get_world
+
+        svc = ToolService(db_path="sqlite+aiosqlite:///:memory:", world_service=mock_world_service)
         await svc.init_db()
         return svc
 
@@ -32,7 +48,7 @@ class TestToolService:
 
         # Mock append_tool_to_file
         with patch("src.tool_service.append_tool_to_file"):
-            result = await service.create_tool("agent-123", "Make a test tool")
+            result = await service.create_tool("agent-123", "test-world-123", "Make a test tool")
 
             assert result["tool_name"] == "test_tool"
             assert result["code"] == "@tool(...)\nasync def test_tool(args): pass"
@@ -53,7 +69,7 @@ class TestToolService:
         service.tool_generator.generate_tool = AsyncMock(return_value=mock_tool_code)
 
         with patch("src.tool_service.append_tool_to_file"):
-            await service.create_tool("agent-456", "Create a tool")
+            await service.create_tool("agent-456", "test-world-456", "Create a tool")
 
         # Now get tools for the agent
         tools = await service.get_agent_tools("agent-456")
@@ -77,7 +93,7 @@ class TestToolService:
         service.tool_generator.generate_tool = AsyncMock(return_value=mock_tool_code)
 
         with patch("src.tool_service.append_tool_to_file"):
-            result = await service.create_tool("agent-789", "Create a deletable tool")
+            result = await service.create_tool("agent-789", "test-world-789", "Create a deletable tool")
             tool_id = result["tool_id"]
 
         # Delete the tool

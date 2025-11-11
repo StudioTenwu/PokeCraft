@@ -80,6 +80,7 @@ class WorldService:
             "grid": world_data.grid,
             "width": 10,
             "height": 10,
+            "game_type": "grid_navigation",  # Default game type for MVP
             "agent_position": world_data.agent_start,
             "created_at": datetime.now().isoformat()
         }
@@ -110,6 +111,7 @@ class WorldService:
                     "grid": grid_data,
                     "width": world.width,
                     "height": world.height,
+                    "game_type": world.game_type,
                     "agent_position": agent_position,
                     "created_at": world.created_at.isoformat() if world.created_at else None
                 }
@@ -142,6 +144,7 @@ class WorldService:
                     "grid": grid_data,
                     "width": world.width,
                     "height": world.height,
+                    "game_type": world.game_type,
                     "agent_position": agent_position,
                     "created_at": world.created_at.isoformat() if world.created_at else None
                 })

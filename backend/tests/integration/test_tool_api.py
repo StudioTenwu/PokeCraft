@@ -15,17 +15,35 @@ def client():
     """Create a test client for the FastAPI app."""
     # TestClient doesn't run lifespan, so we need to initialize services manually
     from src.tool_service import ToolService
+    from src.world_service import WorldService
 
     with TestClient(app) as test_client:
         # Initialize services
-        tool_service = ToolService(db_path="sqlite+aiosqlite:///:memory:")
+        world_service = WorldService(db_path=":memory:")
+        tool_service = ToolService(db_path="sqlite+aiosqlite:///:memory:", world_service=world_service)
 
         # Manually initialize the DB (async operation)
         import asyncio
 
+        asyncio.run(world_service.init_db())
         asyncio.run(tool_service.init_db())
 
+        # Mock world_service.get_world to return a test world
+        async def mock_get_world(world_id):
+            return {
+                "id": world_id,
+                "name": "Test World",
+                "game_type": "grid_navigation",
+                "agent_position": [0, 0],
+                "grid": [["." for _ in range(10)] for _ in range(10)],
+                "width": 10,
+                "height": 10,
+            }
+
+        world_service.get_world = mock_get_world
+
         # Add to app state
+        app.state.world_service = world_service
         app.state.tool_service = tool_service
 
         yield test_client
@@ -61,7 +79,11 @@ def test_create_tool_endpoint(client, temp_tools_file):
     with patch("src.tool_service.append_tool_to_file") as mock_append:
         response = client.post(
             "/api/tools/create",
-            json={"agent_id": "test-agent-123", "description": "move forward 3 steps"},
+            json={
+                "agent_id": "test-agent-123",
+                "world_id": "test-world-123",
+                "description": "move forward 3 steps"
+            },
         )
 
         # Verify response
@@ -91,7 +113,11 @@ def test_get_agent_tools_endpoint(client):
         # Create the tool
         create_response = client.post(
             "/api/tools/create",
-            json={"agent_id": "agent-retrieve-123", "description": "test tool"},
+            json={
+                "agent_id": "agent-retrieve-123",
+                "world_id": "test-world-retrieve",
+                "description": "test tool"
+            },
         )
         assert create_response.status_code == 200
 
@@ -137,7 +163,11 @@ def test_delete_tool_endpoint(client):
     with patch("src.tool_service.append_tool_to_file"):
         create_response = client.post(
             "/api/tools/create",
-            json={"agent_id": "agent-delete-test", "description": "tool to delete"},
+            json={
+                "agent_id": "agent-delete-test",
+                "world_id": "test-world-delete",
+                "description": "tool to delete"
+            },
         )
         assert create_response.status_code == 200
 
