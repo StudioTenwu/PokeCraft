@@ -29,6 +29,8 @@ class ToolCreateResponse(BaseModel):
     code: str
     explanation: str
     tool_id: str | None = None
+    action_id: str | None = None  # Which action the tool uses
+    category: str | None = None  # Movement/Perception/Interaction
 
 
 class DeployRequest(BaseModel):

@@ -78,6 +78,17 @@ class ToolService:
         # Append tool to tools.py file
         append_tool_to_file(tool_code_obj.code)
 
+        # Parse action_id from tool code object
+        action_id = tool_code_obj.action_id
+
+        # Determine category based on action_id
+        category = None
+        if action_id:
+            for action in action_set.actions:
+                if action.action_id == action_id:
+                    category = action.category
+                    break
+
         # Save to database
         tool_id = str(uuid.uuid4())
         tool_db = ToolDB(
@@ -86,7 +97,8 @@ class ToolService:
             name=tool_code_obj.tool_name,
             description=description,
             code=tool_code_obj.code,
-            category=None,  # Could be inferred from description in future
+            category=category,
+            expected_action_id=action_id,
         )
 
         async with self.session_factory() as session:
@@ -101,6 +113,8 @@ class ToolService:
             "code": tool_code_obj.code,
             "explanation": tool_code_obj.explanation,
             "tool_id": tool_id,
+            "action_id": action_id,
+            "category": category,
         }
 
     async def get_agent_tools(self, agent_id: str) -> list[dict[str, Any]]:

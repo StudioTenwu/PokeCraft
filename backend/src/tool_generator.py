@@ -18,6 +18,7 @@ class ToolCode(BaseModel):
     tool_name: str = Field(..., description="Name of the generated tool")
     code: str = Field(..., description="Complete Python code with @tool decorator")
     explanation: str = Field(..., description="Kid-friendly explanation of what the tool does")
+    action_id: str | None = Field(default=None, description="Which action this tool uses")
 
 
 class ToolGenerator:
