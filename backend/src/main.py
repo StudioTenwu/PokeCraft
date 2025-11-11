@@ -4,6 +4,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,6 +101,7 @@ async def root():
             "create_world": "POST /api/worlds/create",
             "get_world": "GET /api/worlds/{world_id}",
             "get_worlds_by_agent": "GET /api/worlds/agent/{agent_id}",
+            "get_world_actions": "GET /api/actions/{world_id}",
             "create_tool": "POST /api/tools/create",
             "get_agent_tools": "GET /api/tools/agent/{agent_id}",
             "delete_tool": "DELETE /api/tools/{tool_name}",
@@ -172,6 +174,54 @@ async def create_world(request: WorldCreateRequest, req: Request):
     except Exception as e:
         logger.error(f"Error creating world: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/actions/{world_id}")
+async def get_world_actions(world_id: str, req: Request):
+    """Get available actions for a world's game type."""
+    # Fetch world
+    world = await req.app.state.world_service.get_world(world_id)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    # Get action set for game type
+    from action_registry import get_action_set_for_game
+    action_set = get_action_set_for_game(world["game_type"])
+
+    if not action_set:
+        raise HTTPException(status_code=500, detail=f"No action set found for game type: {world['game_type']}")
+
+    # Group actions by category
+    grouped_actions: dict[str, list[dict[str, Any]]] = {
+        "Movement": [],
+        "Perception": [],
+        "Interaction": []
+    }
+
+    for action in action_set.actions:
+        category = action.category or "Interaction"
+        if category not in grouped_actions:
+            grouped_actions[category] = []
+
+        grouped_actions[category].append({
+            "action_id": action.action_id,
+            "name": action.name,
+            "description": action.description,
+            "parameters": [
+                {"name": p.name, "type": p.type, "description": p.description}
+                for p in action.parameters
+            ]
+        })
+
+    return {
+        "world": {
+            "id": world["id"],
+            "name": world["name"],
+            "width": world.get("width", 10),
+            "height": world.get("height", 10),
+            "game_type": world["game_type"]
+        },
+        "actions": grouped_actions
+    }
 
 @app.get("/api/worlds/{world_id}")
 async def get_world(world_id: str, req: Request):

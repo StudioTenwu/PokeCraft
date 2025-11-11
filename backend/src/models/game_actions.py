@@ -44,6 +44,7 @@ class GameAction(BaseModel):
         name: Human-readable name
         description: Description of what the action does
         parameters: List of parameters this action accepts
+        category: Category of the action (Movement, Perception, Interaction, etc.)
     """
 
     action_id: str = Field(..., description="Unique action identifier")
@@ -52,6 +53,7 @@ class GameAction(BaseModel):
     parameters: list[ActionParameter] = Field(
         default_factory=list, description="List of parameters"
     )
+    category: str | None = Field(default=None, description="Action category")
 
     def get_parameter(self, param_name: str) -> ActionParameter | None:
         """Get a parameter by name.
@@ -110,6 +112,7 @@ GRID_NAVIGATION_ACTIONS = GameActionSet(
             action_id="move",
             name="Move",
             description="Move the agent in a cardinal direction (north, south, east, west)",
+            category="Movement",
             parameters=[
                 ActionParameter(
                     name="direction",
@@ -130,6 +133,7 @@ GRID_NAVIGATION_ACTIONS = GameActionSet(
             action_id="pickup",
             name="Pick Up Item",
             description="Pick up an item at the current position",
+            category="Interaction",
             parameters=[
                 ActionParameter(
                     name="item_type",
@@ -144,6 +148,7 @@ GRID_NAVIGATION_ACTIONS = GameActionSet(
             action_id="wait",
             name="Wait",
             description="Wait for one turn without taking action",
+            category="Interaction",
             parameters=[
                 ActionParameter(
                     name="turns",

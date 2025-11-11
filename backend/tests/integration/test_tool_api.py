@@ -196,6 +196,38 @@ def test_delete_nonexistent_tool_returns_404(client):
     assert "not found" in data["detail"].lower()
 
 
+def test_create_tool_returns_action_id(client, temp_tools_file):
+    """Test POST /api/tools/create - verify action_id is returned."""
+    # Mock the tool_generator to return a tool with action_id
+    mock_tool_code = ToolCode(
+        tool_name="move_north_tool",
+        code='@tool("move_north_tool", "Move north", {})\n'
+        + "async def move_north_tool(args: dict[str, Any]) -> dict[str, Any]:\n"
+        + '    return {"action": {"action_id": "move", "parameters": {"direction": "north"}}}',
+        explanation="This tool moves the agent north",
+        action_id="move"  # This should be parsed from the generated code
+    )
+
+    # Patch the generate_tool method to return mock with action_id
+    app.state.tool_service.tool_generator.generate_tool = AsyncMock(return_value=mock_tool_code)
+
+    # Mock file appending
+    with patch("src.tool_service.append_tool_to_file") as mock_append:
+        response = client.post(
+            "/api/tools/create",
+            json={
+                "agent_id": "test-agent-123",
+                "world_id": "test-world-123",
+                "description": "move north"
+            },
+        )
+
+        # Verify response
+        assert response.status_code == 200
+        data = response.json()
+        assert "action_id" in data
+        assert data["action_id"] == "move"
+
 def test_create_tool_error_handling(client):
     """Test POST /api/tools/create error handling."""
     # Test with invalid request (missing description)
