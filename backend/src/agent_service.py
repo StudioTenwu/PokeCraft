@@ -109,42 +109,41 @@ class AgentService:
                 "data": {"status": "generating", "message": "Hatching your companion..."}
             }
 
-            # Give UI time to show avatar_start before jumping to progress
-            await asyncio.sleep(0.5)
-
-            # Step 4: Avatar Progress - Starting generation (66%)
-            yield {
-                "event": "avatar_progress",
-                "data": {
-                    "step": 1,
-                    "total": 2,
-                    "percent": 66,
-                    "message": "Drawing your companion..."
-                }
-            }
-
-            # Generate avatar (this is where the real work happens)
-            avatar_url = self.avatar_generator.generate_avatar(
+            # Step 4: Stream real avatar generation progress from mflux
+            async for progress_event in self.avatar_generator.generate_avatar_stream(
                 agent_id, agent_data.avatar_prompt
-            )
-            logger.info(f"Avatar generated: {avatar_url}")
+            ):
+                if progress_event["type"] == "avatar_progress":
+                    # Map mflux progress (25-100) to our scale (33-100)
+                    # Formula: 33 + ((progress - 25) * 67/75)
+                    mflux_progress = progress_event["progress"]
+                    overall_percent = int(33 + ((mflux_progress - 25) * 67 / 75))
 
-            # Step 5: Avatar Progress - Generation complete (100%)
-            yield {
-                "event": "avatar_progress",
-                "data": {
-                    "step": 2,
-                    "total": 2,
-                    "percent": 100,
-                    "message": "Finalizing avatar..."
-                }
-            }
+                    yield {
+                        "event": "avatar_progress",
+                        "data": {
+                            "percent": overall_percent,
+                            "message": progress_event.get("message", "Drawing...")
+                        }
+                    }
+                elif progress_event["type"] == "avatar_complete":
+                    avatar_url = progress_event["avatar_url"]
+                    logger.info(f"Avatar generated: {avatar_url}")
 
-            # Step 6: Avatar Complete
-            yield {
-                "event": "avatar_complete",
-                "data": {"avatar_url": avatar_url}
-            }
+                    # Final progress update at 100%
+                    yield {
+                        "event": "avatar_progress",
+                        "data": {
+                            "percent": 100,
+                            "message": "Avatar complete!"
+                        }
+                    }
+
+                    # Avatar complete event
+                    yield {
+                        "event": "avatar_complete",
+                        "data": {"avatar_url": avatar_url}
+                    }
 
             # Step 3: Save to database
             yield {
