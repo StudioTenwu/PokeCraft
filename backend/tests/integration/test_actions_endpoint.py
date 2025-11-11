@@ -73,3 +73,14 @@ class TestActionsAPI:
                 assert "description" in action
                 assert "parameters" in action
                 assert isinstance(action["parameters"], list)
+
+    def test_get_actions_404_for_invalid_world(self, client):
+        """Should return 404 for non-existent world ID."""
+        # Act
+        response = client.get("/api/actions/invalid-world-id-12345")
+
+        # Assert
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        data = response.json()
+        assert "detail" in data
+        assert "not found" in data["detail"].lower()
