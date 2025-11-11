@@ -200,7 +200,7 @@ function App() {
           <div className="max-w-5xl mx-auto">
             <div className="pokemon-container">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-pixel text-xl" style={{ color: 'var(--text-primary)' }}>
+                <h2 className="font-title text-xl" style={{ color: 'var(--text-primary)' }}>
                   🚀 {selectedAgent.name} in Action
                 </h2>
                 <PokemonButton onClick={() => setShowDeployment(false)}>
@@ -221,7 +221,7 @@ function App() {
         ) : !selectedAgent ? (
           /* No agent selected - show selection prompt */
           <div className="pokemon-container text-center py-16">
-            <h2 className="font-pixel text-2xl mb-4" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="font-title text-2xl mb-4" style={{ color: 'var(--text-primary)' }}>
               Select an agent to continue ⬆️
             </h2>
             <p className="font-pixel text-sm mb-6" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>
@@ -245,7 +245,7 @@ function App() {
               {/* World Viewport */}
               <div className="pokemon-container">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-pixel text-lg" style={{ color: 'var(--text-primary)' }}>
+                  <h2 className="font-title text-lg" style={{ color: 'var(--text-primary)' }}>
                     🌍 {selectedAgent.name}'s World
                   </h2>
                 </div>

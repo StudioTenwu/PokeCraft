@@ -52,7 +52,7 @@ export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) 
 
       {/* Agent Info */}
       <div className="mb-4">
-        <h2 className="font-pixel text-xl mb-2 text-center"
+        <h2 className="font-title text-xl mb-2 text-center"
             style={{ color: 'var(--text-primary)' }}>
           {agent.name}
         </h2>
