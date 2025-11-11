@@ -30,13 +30,16 @@ class ToolGenerator:
         """Initialize the ToolGenerator."""
         pass
 
-    async def generate_tool(self, description: str, agent_id: str) -> ToolCode:
+    async def generate_tool(
+        self, description: str, agent_id: str, game_action_set: Any | None = None
+    ) -> ToolCode:
         """
         Generate a custom tool from natural language description.
 
         Args:
             description: Natural language description of what the tool should do
             agent_id: ID of the agent this tool is for
+            game_action_set: Optional GameActionSet defining available game actions
 
         Returns:
             ToolCode object with tool_name, code, and explanation
@@ -47,9 +50,22 @@ class ToolGenerator:
         logger.info(f"Generating tool for agent {agent_id} from description: {description}...")
 
         forbidden_list = ", ".join(sorted(self.FORBIDDEN_IMPORTS))
+
+        # Include action information if provided
+        action_info = ""
+        if game_action_set:
+            action_info = f"""
+
+    IMPORTANT: This tool must emit a game action. Available actions in this game:
+{self._format_actions_for_prompt(game_action_set)}
+
+    Your tool MUST return an "action" field along with "content":
+    Return format: {{"content": [{{"type": "text", "text": "message"}}], "action": {{"action_id": "action_id", "parameters": {{...}}}}}}"""
+
         prompt = f"""Create a custom tool for an AI agent based on this description: {description}
 
     The tool will be used in a children's educational game where agents explore 2D grid worlds.
+{action_info}
 
     You must return your response wrapped in XML <output> tags with CDATA containing a valid JSON object.
 
@@ -66,7 +82,7 @@ class ToolGenerator:
     1. Must include @tool decorator: @tool("tool_name", "description", {{"param": "type"}})
     2. Function signature: async def tool_name(args: dict[str, Any]) -> dict[str, Any]:
     3. Extract parameters from args dict: param = args.get('param_name', default_value)
-    4. Return format: {{"content": [{{"type": "text", "text": "result message"}}]}}
+    4. Return format: {{"content": [{{"type": "text", "text": "result message"}}]}}{', "action": {{"action_id": "...", "parameters": {{...}}}}' if game_action_set else ''}
     5. NO forbidden imports: {forbidden_list}
     6. The function name must match the tool_name in the @tool decorator
     7. The description should have enough information for an agent to use it effectively
@@ -75,7 +91,7 @@ class ToolGenerator:
     @tool("move_forward", "Move agent forward", {{"steps": "int"}})
     async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
         steps = args.get('steps', 1)
-        return {{"content": [{{"type": "text", "text": f"Moved forward {{steps}} steps"}}]}}
+        return {{"content": [{{"type": "text", "text": f"Moved forward {{steps}} steps"}}]}}{', "action": {{"action_id": "move", "parameters": {{"direction": "north", "steps": steps}}}}' if game_action_set else ''}
 
     Make the tool appropriate for: {description}"""
 
@@ -163,3 +179,34 @@ class ToolGenerator:
             logger.warning(f"Tool {expected_tool_name} may not have a return statement")
 
         logger.debug(f"Code validation passed for tool: {expected_tool_name}")
+
+    def _format_actions_for_prompt(self, action_set: Any) -> str:
+        """Format action set information for LLM prompt.
+
+        Args:
+            action_set: GameActionSet with available actions
+
+        Returns:
+            Formatted string describing available actions
+        """
+        if not action_set or not hasattr(action_set, "actions"):
+            return "No actions available"
+
+        lines = []
+        for action in action_set.actions:
+            params_str = ""
+            if action.parameters:
+                param_list = []
+                for param in action.parameters:
+                    req = "required" if param.required else "optional"
+                    default = f", default={param.default}" if not param.required else ""
+                    param_list.append(
+                        f"{param.name} ({param.type.value}, {req}{default}): {param.description}"
+                    )
+                params_str = "\n      " + "\n      ".join(param_list)
+
+            lines.append(
+                f"    - {action.action_id}: {action.description}{params_str}"
+            )
+
+        return "\n".join(lines)

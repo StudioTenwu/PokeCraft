@@ -135,3 +135,88 @@ async def different_name(args: dict[str, Any]) -> dict[str, Any]:
 
         with pytest.raises(ValueError, match="Function name.*does not match"):
             generator._validate_code_safety(code_with_mismatch, "expected_name")
+
+    @pytest.mark.asyncio
+    async def test_generate_tool_with_action_set(self, generator: ToolGenerator) -> None:
+        """Test generating tool with GameActionSet parameter."""
+        from src.models.game_actions import GRID_NAVIGATION_ACTIONS
+
+        description = "Move the agent north"
+        agent_id = "test-agent-123"
+
+        mock_response = """<output><![CDATA[
+{
+    "tool_name": "move_north",
+    "code": "@tool(\\"move_north\\", \\"Move north\\", {})\\nasync def move_north(args: dict[str, Any]) -> dict[str, Any]:\\n    return {\\n        'content': [{'type': 'text', 'text': 'Moving north'}],\\n        'action': {'action_id': 'move', 'parameters': {'direction': 'north'}}\\n    }",
+    "explanation": "Moves the agent north using the game action system"
+}
+]]></output>"""
+
+        with patch("src.tool_generator.query") as mock_query:
+            async def mock_query_gen(*args, **kwargs):
+                class MockMessage:
+                    def __init__(self, result):
+                        self.result = result
+                yield MockMessage(mock_response)
+
+            mock_query.return_value = mock_query_gen()
+
+            result = await generator.generate_tool(
+                description, agent_id, game_action_set=GRID_NAVIGATION_ACTIONS
+            )
+
+            assert result.tool_name == "move_north"
+            assert "action" in result.code
+            assert "action_id" in result.code
+
+    def test_format_actions_for_prompt(self, generator: ToolGenerator) -> None:
+        """Test formatting actions for LLM prompt."""
+        from src.models.game_actions import GRID_NAVIGATION_ACTIONS
+
+        formatted = generator._format_actions_for_prompt(GRID_NAVIGATION_ACTIONS)
+
+        assert isinstance(formatted, str)
+        assert len(formatted) > 0
+        # Should contain action information
+        assert "move" in formatted.lower()
+        assert "direction" in formatted.lower()
+
+    @pytest.mark.asyncio
+    async def test_prompt_includes_actions(self, generator: ToolGenerator) -> None:
+        """Test that the prompt includes available actions."""
+        from src.models.game_actions import GRID_NAVIGATION_ACTIONS
+
+        description = "Create a movement tool"
+        agent_id = "test-agent-123"
+
+        captured_prompt = None
+
+        mock_response = """<output><![CDATA[
+{
+    "tool_name": "test_tool",
+    "code": "@tool(\\"test_tool\\", \\"Test\\", {})\\nasync def test_tool(args): return {'content': [], 'action': {}}",
+    "explanation": "Test"
+}
+]]></output>"""
+
+        with patch("src.tool_generator.query") as mock_query:
+            async def mock_query_gen(*args, **kwargs):
+                nonlocal captured_prompt
+                captured_prompt = kwargs.get('prompt')
+                class MockMessage:
+                    def __init__(self, result):
+                        self.result = result
+                yield MockMessage(mock_response)
+
+            mock_query.side_effect = mock_query_gen
+
+            await generator.generate_tool(
+                description, agent_id, game_action_set=GRID_NAVIGATION_ACTIONS
+            )
+
+            # Verify prompt includes action information
+            assert captured_prompt is not None
+            assert "action" in captured_prompt.lower()
+            # Should mention available actions or include formatted actions
+            assert ("available actions" in captured_prompt.lower() or
+                    "move" in captured_prompt.lower())
