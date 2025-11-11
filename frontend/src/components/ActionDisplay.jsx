@@ -7,13 +7,13 @@ import PropTypes from 'prop-types'
  * @param {string} props.worldId - The world ID to fetch actions for
  */
 export default function ActionDisplay({ worldId }) {
-  const [actions, setActions] = useState([])
+  const [actions, setActions] = useState({})  // Object with categories, not array
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!worldId) {
-      setActions([])
+      setActions({})
       setLoading(false)
       setError(null)
       return
@@ -31,7 +31,14 @@ export default function ActionDisplay({ worldId }) {
         }
 
         const data = await response.json()
-        setActions(data)
+
+        // The API returns {world: {...}, actions: {...}}
+        // Extract the actions object
+        if (data && data.actions) {
+          setActions(data.actions)
+        } else {
+          setActions({})
+        }
       } catch (err) {
         setError('Failed to load actions')
         console.error('Error fetching actions:', err)
@@ -88,18 +95,28 @@ export default function ActionDisplay({ worldId }) {
       <h3 className="font-pixel text-sm mb-3" style={{ color: 'var(--text-primary)' }}>
         Available Actions:
       </h3>
-      <div className="space-y-2">
-        {actions.map((action) => (
-          <div
-            key={action.name}
-            className="p-3 border-2 border-pokemon-blue bg-blue-50 rounded"
-          >
-            <p className="font-pixel text-xs font-bold text-pokemon-blue mb-1">
-              {action.name}
-            </p>
-            <p className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
-              {action.description}
-            </p>
+      <div className="space-y-4">
+        {/* Actions is an object with categories like {Movement: [...], Perception: [...]} */}
+        {Object.entries(actions).map(([category, categoryActions]) => (
+          <div key={category}>
+            <h4 className="font-pixel text-xs font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+              {category}
+            </h4>
+            <div className="space-y-2">
+              {categoryActions.map((action) => (
+                <div
+                  key={action.action_id}
+                  className="p-3 border-2 border-pokemon-blue bg-blue-50 rounded"
+                >
+                  <p className="font-pixel text-xs font-bold text-pokemon-blue mb-1">
+                    {action.name}
+                  </p>
+                  <p className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {action.description}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
