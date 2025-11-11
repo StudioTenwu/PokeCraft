@@ -47,12 +47,19 @@ export default function AgentCreation({ onAgentCreated }) {
         setProgress(prev => ({
           ...prev,
           phase: 'llm',
-          message: data.message || 'Dreaming up your companion...'
+          message: data.message || 'Dreaming up your companion...',
+          avatarPercent: 0
         }))
       },
 
       onLLMComplete: (data) => {
         console.log('LLM complete:', data)
+        setProgress(prev => ({
+          ...prev,
+          phase: 'llm',
+          message: data.message || `Meet ${data.name}!`,
+          avatarPercent: 33
+        }))
       },
 
       onAvatarStart: (data) => {
@@ -168,11 +175,12 @@ export default function AgentCreation({ onAgentCreated }) {
       <div className="text-center mb-12">
         {loading ? (
           <div className="space-y-6 py-8">
-            {/* Animated egg emoji based on progress */}
+            {/* Animated emoji showing hatching progress */}
             <div className="text-8xl animate-bounce">
-              {progress.phase === 'llm' && '🥚'}
-              {progress.phase === 'avatar' && progress.avatarPercent < 50 && '🥚'}
-              {progress.phase === 'avatar' && progress.avatarPercent >= 50 && '🐣'}
+              {progress.avatarPercent === 0 && '🥚'}
+              {progress.avatarPercent === 33 && '🐣'}
+              {progress.avatarPercent === 66 && '🐥'}
+              {progress.avatarPercent === 100 && '🐦'}
             </div>
 
             {/* Progress message */}
@@ -180,29 +188,27 @@ export default function AgentCreation({ onAgentCreated }) {
               {progress.message || 'Hatching your companion...'}
             </p>
 
-            {/* Progress bar for avatar generation */}
-            {progress.phase === 'avatar' && (
-              <div className="max-w-lg mx-auto space-y-3">
-                {/* Step counter */}
-                <p className="font-pixel text-sm" style={{color: 'var(--text-primary)'}}>
-                  Step {progress.avatarStep}/{progress.avatarTotal} - {progress.avatarPercent}%
-                </p>
+            {/* Progress bar showing overall progress */}
+            <div className="max-w-lg mx-auto space-y-3">
+              {/* Progress percentage */}
+              <p className="font-pixel text-sm" style={{color: 'var(--text-primary)'}}>
+                {progress.avatarPercent}% Complete
+              </p>
 
-                {/* Pokémon-themed progress bar */}
-                <div className="w-full h-8 bg-pokemon-cream border-4 border-black relative overflow-hidden rounded">
-                  <div
-                    className="h-full bg-pokemon-gold transition-all duration-300 ease-out"
-                    style={{ width: `${progress.avatarPercent}%` }}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="font-pixel text-sm text-black mix-blend-difference">
-                        {progress.avatarPercent}%
-                      </span>
-                    </div>
+              {/* Pokémon-themed progress bar */}
+              <div className="w-full h-8 bg-pokemon-cream border-4 border-black relative overflow-hidden rounded">
+                <div
+                  className="h-full bg-pokemon-gold transition-all duration-300 ease-out"
+                  style={{ width: `${progress.avatarPercent}%` }}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="font-pixel text-sm text-black mix-blend-difference">
+                      {progress.avatarPercent}%
+                    </span>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         ) : (
           <PokemonButton

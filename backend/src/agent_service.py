@@ -85,38 +85,63 @@ class AgentService:
         logger.info(f"Creating agent (streaming) from: {description[:50]}...")
 
         try:
-            # Yield start event
+            # Step 1: LLM Start (0%)
             yield {
-                "event": "progress",
-                "data": {"status": "started", "message": "Hatching your companion..."}
+                "event": "llm_start",
+                "data": {"status": "generating", "message": "Dreaming up your companion..."}
             }
 
-            # Step 1: Generate agent data with LLM
-            yield {
-                "event": "progress",
-                "data": {"status": "generating", "message": "Consulting with Claude..."}
-            }
-
+            # Generate agent data with LLM
             agent_data = await self.llm_client.generate_agent(description)
             logger.debug(f"LLM generated: {agent_data.name}")
 
+            # Step 2: LLM Complete (33%)
             yield {
-                "event": "progress",
-                "data": {"status": "generated", "message": f"Meet {agent_data.name}!"}
+                "event": "llm_complete",
+                "data": {"name": agent_data.name, "message": f"Meet {agent_data.name}!"}
             }
 
-            # Step 2: Generate avatar
+            # Step 3: Avatar Start (33%)
             agent_id = str(uuid.uuid4())
 
             yield {
-                "event": "progress",
-                "data": {"status": "avatar", "message": "Creating avatar..."}
+                "event": "avatar_start",
+                "data": {"status": "generating", "message": "Hatching your companion..."}
             }
 
+            # Step 4: Avatar Progress - First step (66%)
+            yield {
+                "event": "avatar_progress",
+                "data": {
+                    "step": 1,
+                    "total": 2,
+                    "percent": 66,
+                    "message": "Drawing your companion..."
+                }
+            }
+
+            # Generate avatar
             avatar_url = self.avatar_generator.generate_avatar(
                 agent_id, agent_data.avatar_prompt
             )
             logger.info(f"Avatar generated: {avatar_url}")
+
+            # Step 5: Avatar Progress - Second step (100%)
+            yield {
+                "event": "avatar_progress",
+                "data": {
+                    "step": 2,
+                    "total": 2,
+                    "percent": 100,
+                    "message": "Finalizing avatar..."
+                }
+            }
+
+            # Step 6: Avatar Complete
+            yield {
+                "event": "avatar_complete",
+                "data": {"avatar_url": avatar_url}
+            }
 
             # Step 3: Save to database
             yield {
