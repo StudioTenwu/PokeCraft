@@ -7,10 +7,11 @@ import ToolLibrary from './ToolLibrary'
  * ToolWorkshop - Collapsible bottom panel for creating and managing tools
  * @param {Object} props
  * @param {string} props.agentId - The agent ID to create tools for
+ * @param {string} props.worldId - The world ID for context-aware tools
  * @param {Function} props.onToolCreated - Callback when tool is created
  * @param {Function} props.onToolDeleted - Callback when tool is deleted
  */
-export default function ToolWorkshop({ agentId, onToolCreated, onToolDeleted }) {
+export default function ToolWorkshop({ agentId, worldId, onToolCreated, onToolDeleted }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState('create') // 'create' or 'library'
 
@@ -77,6 +78,7 @@ export default function ToolWorkshop({ agentId, onToolCreated, onToolDeleted }) 
             {activeTab === 'create' ? (
               <ToolCreator
                 agentId={agentId}
+                worldId={worldId}
                 onToolCreated={onToolCreated}
               />
             ) : (
@@ -100,6 +102,7 @@ export default function ToolWorkshop({ agentId, onToolCreated, onToolDeleted }) 
 
 ToolWorkshop.propTypes = {
   agentId: PropTypes.string,
+  worldId: PropTypes.string,
   onToolCreated: PropTypes.func,
   onToolDeleted: PropTypes.func
 }

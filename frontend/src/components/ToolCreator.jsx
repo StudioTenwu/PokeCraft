@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
 import PokemonButton from './PokemonButton'
+import ActionDisplay from './ActionDisplay'
 
 /**
  * ToolCreator - Let children describe tools in natural language and see the generated code
@@ -69,6 +70,11 @@ export default function ToolCreator({ agentId, worldId, onToolCreated }) {
           style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.3)' }}>
         Teach Your Pokemon a New Skill!
       </h2>
+
+      {/* Show available actions for context */}
+      <div className="mb-4">
+        <ActionDisplay worldId={worldId} />
+      </div>
 
       <div className="space-y-4">
         <textarea

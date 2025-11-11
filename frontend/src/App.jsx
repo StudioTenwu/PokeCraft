@@ -284,6 +284,7 @@ function App() {
               {selectedWorld && (
                 <ToolWorkshop
                   agentId={selectedAgent.id}
+                  worldId={selectedWorld.id}
                   onToolCreated={handleToolCreated}
                   onToolDeleted={handleToolDeleted}
                 />
