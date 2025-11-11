@@ -80,7 +80,7 @@ export default function ActionDisplay({ worldId }) {
     )
   }
 
-  if (actions.length === 0) {
+  if (Object.keys(actions).length === 0) {
     return (
       <div className="pokemon-container">
         <p className="font-pixel text-xs text-center" style={{ color: 'var(--text-primary)' }}>
@@ -102,21 +102,27 @@ export default function ActionDisplay({ worldId }) {
             <h4 className="font-pixel text-xs font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
               {category}
             </h4>
-            <div className="space-y-2">
-              {categoryActions.map((action) => (
-                <div
-                  key={action.action_id}
-                  className="p-3 border-2 border-pokemon-blue bg-blue-50 rounded"
-                >
-                  <p className="font-pixel text-xs font-bold text-pokemon-blue mb-1">
-                    {action.name}
-                  </p>
-                  <p className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
-                    {action.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {categoryActions && categoryActions.length > 0 ? (
+              <div className="space-y-2">
+                {categoryActions.map((action) => (
+                  <div
+                    key={action.action_id}
+                    className="p-3 border-2 border-pokemon-blue bg-blue-50 rounded"
+                  >
+                    <p className="font-pixel text-xs font-bold text-pokemon-blue mb-1">
+                      {action.name}
+                    </p>
+                    <p className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
+                      {action.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="font-pixel text-xs text-gray-500 italic">
+                No actions in this category
+              </p>
+            )}
           </div>
         ))}
       </div>
