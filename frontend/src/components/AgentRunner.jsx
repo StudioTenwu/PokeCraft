@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import PokemonButton from './PokemonButton'
 import GameWorldView from './GameWorldView'
 import EventLogSidebar from './EventLogSidebar'
+import { getWorld } from '../api'
 
 /**
  * AgentRunner - Deploy agent with a goal and watch SSE stream in real-time with world visualization
@@ -16,8 +17,39 @@ export default function AgentRunner({ agentId, worldId }) {
   const [deploying, setDeploying] = useState(false)
   const [error, setError] = useState(null)
   const [worldState, setWorldState] = useState(null)
+  const [loadingWorld, setLoadingWorld] = useState(true)
 
   const eventSourceRef = useRef(null)
+
+  // Load world data on mount
+  useEffect(() => {
+    const loadWorld = async () => {
+      try {
+        setLoadingWorld(true)
+        const world = await getWorld(worldId)
+
+        // Initialize world state with actual world data
+        setWorldState({
+          id: world.id,
+          name: world.name,
+          description: world.description,
+          width: world.width,
+          height: world.height,
+          grid: world.grid,
+          agentPosition: world.agent_position || [0, 0],
+          game_type: world.game_type
+        })
+
+        setLoadingWorld(false)
+      } catch (err) {
+        console.error('Failed to load world:', err)
+        setError('Failed to load world. Please try refreshing.')
+        setLoadingWorld(false)
+      }
+    }
+
+    loadWorld()
+  }, [worldId])
 
   // Clean up EventSource on unmount
   useEffect(() => {
@@ -35,6 +67,11 @@ export default function AgentRunner({ agentId, worldId }) {
       return
     }
 
+    if (!worldState) {
+      setError('World not loaded yet. Please wait.')
+      return
+    }
+
     // Close existing connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
@@ -43,9 +80,6 @@ export default function AgentRunner({ agentId, worldId }) {
     setDeploying(true)
     setError(null)
     setEvents([])
-
-    // Initialize world state (assuming 10x10 grid for now)
-    setWorldState({ width: 10, height: 10, agentPosition: [0, 0] })
 
     const url = `http://localhost:8000/api/agents/deploy?agent_id=${encodeURIComponent(agentId)}&world_id=${encodeURIComponent(worldId)}&goal=${encodeURIComponent(goal)}`
     const eventSource = new EventSource(url)
@@ -120,12 +154,33 @@ export default function AgentRunner({ agentId, worldId }) {
     setError(null)
   }
 
+  // Show loading state while world is being fetched
+  if (loadingWorld) {
+    return (
+      <div className="pokemon-container">
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4 animate-bounce">🗺️</div>
+          <p className="font-pixel text-pokemon-gold">Loading world...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="pokemon-container">
       <h2 className="font-pixel text-pokemon-gold text-xl mb-6 text-center"
           style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.3)' }}>
         Mission Control 🚀
       </h2>
+
+      {/* World info */}
+      {worldState && (
+        <div className="mb-4 p-3 bg-pokemon-gold/10 border-2 border-pokemon-gold rounded">
+          <p className="font-pixel text-xs" style={{ color: 'var(--text-primary)' }}>
+            🗺️ <strong>{worldState.name}</strong> ({worldState.width}x{worldState.height} • {worldState.game_type})
+          </p>
+        </div>
+      )}
 
       {/* Goal Input */}
       <div className="mb-6">
@@ -137,11 +192,11 @@ export default function AgentRunner({ agentId, worldId }) {
           placeholder="Find the treasure..."
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
-          disabled={deploying}
+          disabled={deploying || loadingWorld}
           className="w-full p-3 border-4 border-pokemon-green rounded font-mono focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
           onKeyPress={(e) => {
-            if (e.key === 'Enter' && !deploying) {
+            if (e.key === 'Enter' && !deploying && !loadingWorld) {
               deployAgent()
             }
           }}
@@ -149,7 +204,7 @@ export default function AgentRunner({ agentId, worldId }) {
 
         <div className="mt-3 flex gap-2">
           {!deploying ? (
-            <PokemonButton onClick={deployAgent} disabled={!goal.trim()}>
+            <PokemonButton onClick={deployAgent} disabled={!goal.trim() || loadingWorld}>
               Deploy Agent 🚀
             </PokemonButton>
           ) : (
