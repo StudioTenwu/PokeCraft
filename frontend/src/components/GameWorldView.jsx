@@ -46,6 +46,17 @@ export default function GameWorldView({ worldState, events, deploying }) {
     ctx.fillStyle = TILE_COLORS.background
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
 
+    // Draw the actual world grid tiles if available
+    if (worldState.grid && Array.isArray(worldState.grid)) {
+      worldState.grid.forEach((row, y) => {
+        row.forEach((tile, x) => {
+          // Draw tile with color based on type
+          ctx.fillStyle = TILE_COLORS[tile] || TILE_COLORS.background
+          ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        })
+      })
+    }
+
     // Phase 2: Subtle grid borders
     ctx.strokeStyle = '#00000020'
     ctx.lineWidth = 1
@@ -61,6 +72,14 @@ export default function GameWorldView({ worldState, events, deploying }) {
       ctx.lineTo(CANVAS_SIZE, i * TILE_SIZE)
       ctx.stroke()
     }
+
+    // Draw initial agent position if available
+    if (worldState.agentPosition) {
+      const [agentX, agentY] = worldState.agentPosition
+      ctx.font = '48px serif'
+      ctx.fillText('🤖', agentX * TILE_SIZE + 8, agentY * TILE_SIZE + 48)
+      setDisplayPosition(worldState.agentPosition)
+    }
   }, [worldState])
 
   // Phase 3: Helper function to redraw grid
@@ -74,6 +93,17 @@ export default function GameWorldView({ worldState, events, deploying }) {
     // Clear and redraw background
     ctx.fillStyle = TILE_COLORS.background
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+
+    // Redraw the actual world grid tiles if available
+    if (worldState?.grid && Array.isArray(worldState.grid)) {
+      worldState.grid.forEach((row, y) => {
+        row.forEach((tile, x) => {
+          // Draw tile with color based on type
+          ctx.fillStyle = TILE_COLORS[tile] || TILE_COLORS.background
+          ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        })
+      })
+    }
 
     // Redraw grid lines
     ctx.strokeStyle = '#00000020'
@@ -89,6 +119,12 @@ export default function GameWorldView({ worldState, events, deploying }) {
       ctx.moveTo(0, i * TILE_SIZE)
       ctx.lineTo(CANVAS_SIZE, i * TILE_SIZE)
       ctx.stroke()
+    }
+
+    // Redraw agent at current position if available
+    if (displayPosition) {
+      ctx.font = '48px serif'
+      ctx.fillText('🤖', displayPosition[0] * TILE_SIZE + 8, displayPosition[1] * TILE_SIZE + 48)
     }
   }
 
@@ -308,7 +344,8 @@ GameWorldView.propTypes = {
   worldState: PropTypes.shape({
     agentPosition: PropTypes.arrayOf(PropTypes.number),
     width: PropTypes.number,
-    height: PropTypes.number
+    height: PropTypes.number,
+    grid: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.string))
   }),
   events: PropTypes.array,
   deploying: PropTypes.bool
