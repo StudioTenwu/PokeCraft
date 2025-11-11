@@ -28,7 +28,7 @@ describe('AgentCreation', () => {
 
   it('renders form with title', () => {
     render(<AgentCreation onAgentCreated={mockOnAgentCreated} />);
-    expect(screen.getByText('Hatch Your Companion')).toBeInTheDocument();
+    expect(screen.getByText('Hatch Your Pokemon')).toBeInTheDocument();
   });
 
   it('renders textarea with placeholder', () => {
@@ -38,18 +38,18 @@ describe('AgentCreation', () => {
 
   it('renders hatch button', () => {
     render(<AgentCreation onAgentCreated={mockOnAgentCreated} />);
-    expect(screen.getByRole('button', { name: 'Hatch Companion' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hatch Pokemon' })).toBeInTheDocument();
   });
 
   it('shows error when submitting empty description', async () => {
     const user = userEvent.setup();
     render(<AgentCreation onAgentCreated={mockOnAgentCreated} />);
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/please describe your companion/i)).toBeInTheDocument();
+      expect(screen.getByText(/please describe your pokemon/i)).toBeInTheDocument();
     });
   });
 
@@ -60,11 +60,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, '   ');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/please describe your companion/i)).toBeInTheDocument();
+      expect(screen.getByText(/please describe your pokemon/i)).toBeInTheDocument();
     });
   });
 
@@ -77,7 +77,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
@@ -101,7 +101,7 @@ describe('AgentCreation', () => {
 
     api.createAgentStream.mockImplementation((desc, callbacks) => {
       setTimeout(() => {
-        callbacks.onLLMStart({ message: 'Dreaming up your companion...' });
+        callbacks.onLLMStart({ message: 'Dreaming up your pokemon...' });
       }, 0);
       return vi.fn();
     });
@@ -111,12 +111,12 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
       expect(screen.getByText('🥚')).toBeInTheDocument();
-      expect(screen.getByText('Dreaming up your companion...')).toBeInTheDocument();
+      expect(screen.getByText('Dreaming up your pokemon...')).toBeInTheDocument();
     });
   });
 
@@ -127,7 +127,7 @@ describe('AgentCreation', () => {
       // Call avatar progress callbacks using setTimeout to properly update state
       setTimeout(() => {
         act(() => {
-          callbacks.onAvatarStart({ message: 'Hatching your companion...' });
+          callbacks.onAvatarStart({ message: 'Hatching your pokemon...' });
         });
         setTimeout(() => {
           act(() => {
@@ -148,12 +148,12 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     // Check that avatar phase UI shows up
     await waitFor(() => {
-      expect(screen.getByText('Hatching your companion...')).toBeInTheDocument();
+      expect(screen.getByText('Hatching your pokemon...')).toBeInTheDocument();
     }, { timeout: 500 });
   });
 
@@ -180,7 +180,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     // First check for egg
@@ -209,11 +209,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText('Companion Hatched! ✨')).toBeInTheDocument();
+      expect(screen.getByText('Pokemon Hatched! ✨')).toBeInTheDocument();
       expect(screen.getByTestId('agent-card')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Hatch Another' })).toBeInTheDocument();
     });
@@ -234,7 +234,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
@@ -257,7 +257,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
@@ -268,7 +268,7 @@ describe('AgentCreation', () => {
     await user.click(hatchAnotherButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Hatch Companion' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Hatch Pokemon' })).toBeInTheDocument();
       expect(screen.getByRole('textbox')).toHaveValue('');
     });
   });
@@ -288,11 +288,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to hatch your companion/i)).toBeInTheDocument();
+      expect(screen.getByText(/failed to hatch your pokemon/i)).toBeInTheDocument();
       expect(screen.getByText(/make sure the backend is running/i)).toBeInTheDocument();
     });
   });
@@ -327,7 +327,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByRole('textbox');
     await user.type(textarea, 'A brave explorer');
 
-    const button = screen.getByRole('button', { name: 'Hatch Companion' });
+    const button = screen.getByRole('button', { name: 'Hatch Pokemon' });
     await user.click(button);
 
     await waitFor(() => {

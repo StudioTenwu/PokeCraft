@@ -69,7 +69,7 @@ class AvatarGenerator:
         logger.info(f"Generating avatar for agent {agent_id}")
         output_path = self.output_dir / f"{agent_id}.png"
 
-        # Enhance prompt for Pokémon retro aesthetic
+        # Enhance prompt for Pokemon retro aesthetic
         enhanced_prompt = f"{prompt}, Game Boy Color style, retro pixel art, colorful, nostalgic 90s gaming aesthetic"
 
         try:
@@ -180,10 +180,11 @@ class AvatarGenerator:
             )
 
             # Generate fake smooth progress while mflux runs
-            # mflux takes ~35 seconds, so we update progress every 0.5s
-            logger.info("Generating fake progress (mflux disables progress bars in subprocess)")
+            # mflux takes ~35 seconds, with Gaussian randomness for realism
+            logger.info("Generating fake progress with Gaussian timing (mflux disables progress bars in subprocess)")
 
             import time
+            import random
             start_time = time.time()
             expected_duration = 35  # seconds
             last_progress = 0
@@ -206,9 +207,15 @@ class AvatarGenerator:
                         "message": f"Drawing... ({fake_pct}%)"
                     }
 
+                # Wait with Gaussian randomness for more realistic timing
+                # Mean: 0.5s, Variance: 0.25s (half of mean)
+                mean_wait = 0.5
+                variance = mean_wait / 2
+                wait_time = max(0.1, random.gauss(mean_wait, variance))
+
                 # Check if process finished
                 try:
-                    await asyncio.wait_for(process.wait(), timeout=0.5)
+                    await asyncio.wait_for(process.wait(), timeout=wait_time)
                     break
                 except asyncio.TimeoutError:
                     continue

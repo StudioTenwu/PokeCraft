@@ -2,10 +2,10 @@
 
 ## Before Implementation
 ```
-User clicks "Hatch Companion"
+User clicks "Hatch Pokemon"
     ↓
 [Static spinning Pokéball ⚽]
-"Hatching your companion..."
+"Hatching your pokemon..."
     ↓
 (30-40 seconds of silence)
     ↓
@@ -20,12 +20,12 @@ Agent appears suddenly
 
 ### Phase 1: LLM Generation (2-5 seconds)
 ```
-User clicks "Hatch Companion"
+User clicks "Hatch Pokemon"
     ↓
 ╔════════════════════════════════╗
 ║          🥚                     ║
 ║                                 ║
-║  Dreaming up your companion... ║
+║  Dreaming up your pokemon... ║
 ╚════════════════════════════════╝
 ```
 
@@ -38,7 +38,7 @@ User clicks "Hatch Companion"
 ╔════════════════════════════════╗
 ║          🥚                     ║
 ║                                 ║
-║  Hatching your companion...    ║
+║  Hatching your pokemon...    ║
 ╚════════════════════════════════╝
 ```
 
@@ -106,7 +106,7 @@ User clicks "Hatch Companion"
 ### Phase 6: Agent Card Display
 ```
 ╔════════════════════════════════╗
-║   Companion Hatched! ✨        ║
+║   Pokemon Hatched! ✨        ║
 ╚════════════════════════════════╝
 
 ┌──────────────────────────────┐
@@ -141,8 +141,8 @@ User clicks "Hatch Companion"
 ```
 
 ### Phase Messages
-1. `"Dreaming up your companion..."` - During LLM generation
-2. `"Hatching your companion..."` - Avatar generation starts
+1. `"Dreaming up your pokemon..."` - During LLM generation
+2. `"Hatching your pokemon..."` - Avatar generation starts
 3. `"Hatching... Step 1/2"` - During mflux step 1
 4. `"Hatching... Step 2/2"` - During mflux step 2
 
@@ -155,7 +155,7 @@ User clicks "Hatch Companion"
 ╔════════════════════════════════╗
 ║          🤖                     ║
 ║                                 ║
-║  Your companion is ready!      ║
+║  Your pokemon is ready!      ║
 ║  (Using placeholder avatar)    ║
 ╚════════════════════════════════╝
 ```
@@ -213,13 +213,13 @@ Browser                    Backend
 
 ---
 
-## Pokémon Theme Consistency
+## Pokemon Theme Consistency
 
-✅ **Gold/Cream color scheme** - Matches Pokémon game aesthetic
+✅ **Gold/Cream color scheme** - Matches Pokemon game aesthetic
 ✅ **Pixel-style fonts** - Retro Game Boy feel
-✅ **Egg hatching metaphor** - Pokémon breeding mechanic
-✅ **Step-by-step reveal** - Like Pokémon evolution screen
-✅ **Companion terminology** - Pokémon-style language
+✅ **Egg hatching metaphor** - Pokemon breeding mechanic
+✅ **Step-by-step reveal** - Like Pokemon evolution screen
+✅ **Pokemon terminology** - Pokemon-style language
 
 ---
 

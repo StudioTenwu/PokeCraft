@@ -1,7 +1,7 @@
 # AICraft Hatching Implementation Analysis
 
 ## Overview
-The "hatching" system in AICraft is the process of creating an AI agent companion. It's called "hatching" as a Pokemon reference, and involves multiple stages: LLM-based agent generation, avatar image generation, and database persistence.
+The "hatching" system in AICraft is the process of creating an AI agent pokemon. It's called "hatching" as a Pokemon reference, and involves multiple stages: LLM-based agent generation, avatar image generation, and database persistence.
 
 ---
 
@@ -87,7 +87,7 @@ async def create_agent_stream(self, description: str):
 ```
 
 **Event Sequence:**
-1. **Started**: `{"status": "started", "message": "Hatching your companion..."}`
+1. **Started**: `{"status": "started", "message": "Hatching your pokemon..."}`
 2. **Generating**: `{"status": "generating", "message": "Consulting with Claude..."}`
 3. **Generated**: `{"status": "generated", "message": f"Meet {agent_data.name}!"}`
 4. **Avatar**: `{"status": "avatar", "message": "Creating avatar..."}`
@@ -201,7 +201,7 @@ def generate_avatar(self, agent_id: str, prompt: str) -> str:
 #### Claude Agent SDK Integration
 ```python
 async def generate_agent(self, description: str) -> AgentData:
-    prompt = f"Create an AI companion based on: {description}..."
+    prompt = f"Create an AI pokemon based on: {description}..."
     
     async for message in query(prompt=prompt):
         if hasattr(message, "result") and message.result:

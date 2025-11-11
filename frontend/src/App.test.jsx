@@ -33,7 +33,7 @@ describe('App', () => {
   it('renders header with title', () => {
     render(<App />);
     expect(screen.getByText('AICraft')).toBeInTheDocument();
-    expect(screen.getByText('Pokémon Edition')).toBeInTheDocument();
+    expect(screen.getByText('Pokemon Edition')).toBeInTheDocument();
   });
 
   it('renders theme toggle', () => {
@@ -48,7 +48,7 @@ describe('App', () => {
 
   it('renders tagline', () => {
     render(<App />);
-    expect(screen.getByText(/Hatch your AI companion/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hatch your AI pokemon/i)).toBeInTheDocument();
   });
 
   it('shows backend info in footer', () => {

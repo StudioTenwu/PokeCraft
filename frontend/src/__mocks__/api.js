@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 const mockAgentResponse = {
   id: 'mock-agent-123',
   name: 'Mock Buddy',
-  backstory: 'A test companion for testing purposes',
+  backstory: 'A test pokemon for testing purposes',
   personality_traits: ['Brave', 'Curious', 'Helpful'],
   avatar_url: 'data:image/png;base64,mock-base64-data'
 };
@@ -36,7 +36,7 @@ export const api = {
     const simulate = async () => {
       // LLM start
       await new Promise(resolve => setTimeout(resolve, 10));
-      callbacks.onLLMStart?.({ message: 'Dreaming up your companion...' });
+      callbacks.onLLMStart?.({ message: 'Dreaming up your pokemon...' });
 
       // LLM complete
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -48,7 +48,7 @@ export const api = {
 
       // Avatar start
       await new Promise(resolve => setTimeout(resolve, 10));
-      callbacks.onAvatarStart?.({ message: 'Hatching your companion...' });
+      callbacks.onAvatarStart?.({ message: 'Hatching your pokemon...' });
 
       // Avatar progress - step 1
       await new Promise(resolve => setTimeout(resolve, 10));

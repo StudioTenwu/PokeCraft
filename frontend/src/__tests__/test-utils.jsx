@@ -57,7 +57,7 @@ export const mockWorlds = {
 export const mockSSEEvents = {
   llmStart: {
     event: 'llm_start',
-    data: { message: 'Dreaming up your companion...' }
+    data: { message: 'Dreaming up your pokemon...' }
   },
   llmComplete: {
     event: 'llm_complete',
@@ -65,7 +65,7 @@ export const mockSSEEvents = {
   },
   avatarStart: {
     event: 'avatar_start',
-    data: { message: 'Hatching your companion...' }
+    data: { message: 'Hatching your pokemon...' }
   },
   avatarProgress: {
     event: 'avatar_progress',

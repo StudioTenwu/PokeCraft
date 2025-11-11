@@ -52,7 +52,7 @@ ASCII diagrams showing:
 ## 🎯 Quick Summary
 
 ### What is "Hatching"?
-The process of creating an AI agent companion through three sequential phases:
+The process of creating an AI agent pokemon through three sequential phases:
 1. **LLM Generation** - Claude creates agent personality, name, backstory
 2. **Avatar Generation** - Flux generates visual character image
 3. **Persistence** - Saves to database

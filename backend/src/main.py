@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
 
 # Create app with lifespan
 app = FastAPI(
-    title="AICraft - Pokémon Edition API",
+    title="AICraft - Pokemon Edition API",
     lifespan=lifespan,
 )
 
@@ -93,7 +93,7 @@ class WorldCreateRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "message": "AICraft - Pokémon Edition API",
+        "message": "AICraft - Pokemon Edition API",
         "version": "1.0",
         "endpoints": {
             "create_agent": "POST /api/agents/create",

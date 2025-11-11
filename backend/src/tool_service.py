@@ -55,27 +55,33 @@ class ToolService:
         """
         logger.info(f"Creating tool for agent {agent_id} in world {world_id}: {description[:50]}...")
 
-        # Get world to determine game type
-        if not self.world_service:
-            raise ValueError("WorldService is required to fetch game context for tool generation")
+        # Get world to determine game type (if world_id provided)
+        game_type = "grid_navigation"  # Default
+        action_set = None
 
-        world = await self.world_service.get_world(world_id)
-        if not world:
-            raise ValueError(f"World {world_id} not found")
+        if world_id:
+            if not self.world_service:
+                raise ValueError("WorldService is required to fetch game context for tool generation")
 
-        game_type = world.get("game_type", "grid_navigation")
+            world = await self.world_service.get_world(world_id)
+            if not world:
+                raise ValueError(f"World {world_id} not found")
 
-        # Get action set for this game type
-        action_set = get_action_set_for_game(game_type)
-        if not action_set:
-            raise ValueError(f"No action set found for game type: {game_type}")
+            game_type = world.get("game_type", "grid_navigation")
 
-        logger.info(f"Tool will be generated with {game_type} action context")
+            # Get action set for this game type
+            action_set = get_action_set_for_game(game_type)
+            if not action_set:
+                raise ValueError(f"No action set found for game type: {game_type}")
+
+            logger.info(f"Tool will be generated with {game_type} action context")
+        else:
+            logger.info("Tool will be generated without world context (generic tool)")
 
         # Prepare world context for tool generation
         world_context = {
-            "width": world.get("width", 10),
-            "height": world.get("height", 10),
+            "width": world.get("width", 10) if world_id and world else 10,
+            "height": world.get("height", 10) if world_id and world else 10,
             "game_type": game_type
         }
 

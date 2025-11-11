@@ -115,6 +115,7 @@
  */
 export const EVENT_CALLBACK_MAP = {
   'llm_start': 'onLLMStart',
+  'llm_progress': 'onLLMProgress',
   'llm_complete': 'onLLMComplete',
   'avatar_start': 'onAvatarStart',
   'avatar_progress': 'onAvatarProgress',
@@ -128,6 +129,7 @@ export const EVENT_CALLBACK_MAP = {
  */
 export const VALID_EVENT_TYPES = [
   'llm_start',
+  'llm_progress',
   'llm_complete',
   'avatar_start',
   'avatar_progress',

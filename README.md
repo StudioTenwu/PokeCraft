@@ -1,4 +1,4 @@
-# AICraft - Pokémon Edition 🎮
+# AICraft - Pokemon Edition 🎮
 
 Interactive platform where you create AI agents, design worlds, teach them custom tools, and watch them explore autonomously.
 
@@ -53,9 +53,9 @@ Interactive platform where you create AI agents, design worlds, teach them custo
 ## 🎯 The 3 Phases
 
 ### Phase 1: Agent Birth 🥚
-Create AI companions with unique personalities:
+Create AI pokemons with unique personalities:
 - **LLM-powered generation** - Claude creates backstories and traits
-- **AI avatar generation** - mflux generates Pokémon-style avatar images
+- **AI avatar generation** - mflux generates Pokemon-style avatar images
 - **Persistent storage** - SQLite database with SQLAlchemy ORM
 - **SSE streaming** - Real-time progress updates during creation
 
@@ -168,7 +168,7 @@ AICraft/
 
 ### Avatar Generation
 
-AICraft uses mflux to generate Pokémon-style avatars:
+AICraft uses mflux to generate Pokemon-style avatars:
 
 ```python
 # Configured in config.py

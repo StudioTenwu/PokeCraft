@@ -22,7 +22,7 @@ export default function AgentCreation({ onAgentCreated }) {
 
   const handleCreate = () => {
     if (!description.trim()) {
-      setError('Please describe your companion!')
+      setError('Please describe your Pokémon!')
       return
     }
 
@@ -47,8 +47,17 @@ export default function AgentCreation({ onAgentCreated }) {
         setProgress(prev => ({
           ...prev,
           phase: 'llm',
-          message: data.message || 'Dreaming up your companion...',
+          message: data.message || 'Dreaming up your Pokémon...',
           avatarPercent: 0
+        }))
+      },
+
+      onLLMProgress: (data) => {
+        setProgress(prev => ({
+          ...prev,
+          phase: 'llm',
+          message: data.message || `Dreaming up your Pokémon... (${data.percent}%)`,
+          avatarPercent: data.percent || 0
         }))
       },
 
@@ -66,7 +75,7 @@ export default function AgentCreation({ onAgentCreated }) {
         setProgress(prev => ({
           ...prev,
           phase: 'avatar',
-          message: data.message || 'Hatching your companion...',
+          message: data.message || 'Hatching your Pokémon...',
           avatarStep: 0,
           avatarTotal: 2,
           avatarPercent: 33  // Stay at 33% when avatar starts
@@ -77,7 +86,7 @@ export default function AgentCreation({ onAgentCreated }) {
         setProgress(prev => ({
           ...prev,
           phase: 'avatar',
-          message: data.message || `Hatching... Step ${data.step}/${data.total}`,
+          message: 'Generating Avatar',
           avatarStep: data.step || 0,
           avatarTotal: data.total || 2,
           avatarPercent: data.percent || 0
@@ -96,7 +105,7 @@ export default function AgentCreation({ onAgentCreated }) {
       },
 
       onError: (err) => {
-        setError('Failed to hatch your companion. Make sure the backend is running!')
+        setError('Failed to hatch your Pokémon. Make sure the backend is running!')
         console.error(err)
         setLoading(false)
         cleanupRef.current = null
@@ -109,7 +118,7 @@ export default function AgentCreation({ onAgentCreated }) {
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="font-pixel text-2xl text-pokemon-gold mb-4">
-            Companion Hatched! ✨
+            Pokémon Hatched! ✨
           </h2>
         </div>
 
@@ -136,29 +145,29 @@ export default function AgentCreation({ onAgentCreated }) {
         <div className="text-8xl mb-6">⚽</div>
         <h2 className="font-pixel text-4xl sm:text-5xl text-pokemon-gold mb-4"
             style={{textShadow: '4px 4px 0px rgba(0,0,0,0.3)'}}>
-          Hatch Your First Companion
+          Hatch Your First Pokémon
         </h2>
         <p className="text-base font-pixel" style={{color: 'var(--text-primary)', opacity: 0.9}}>
-          Describe your AI partner and watch them come to life!
+          Describe your dream Pokémon and watch them come to life!
         </p>
       </div>
 
       {/* Input area */}
       <div className="pokemon-container mb-8">
         <label className="block font-pixel text-sm mb-4" style={{color: 'var(--text-primary)'}}>
-          Describe your companion:
+          Describe your Pokémon:
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="A brave explorer who loves solving puzzles and helping others..."
-          className="pokemon-input h-40 resize-none font-sans text-base"
+          className="pokemon-input h-40 resize-none font-pixel text-base"
           disabled={loading}
         />
 
         <div className="mt-6 p-4 rounded" style={{backgroundColor: 'rgba(0,0,0,0.05)'}}>
           <p className="mb-2 font-pixel text-xs" style={{color: 'var(--text-primary)', opacity: 0.8}}>💡 Try describing:</p>
-          <ul className="list-disc list-inside space-y-2 ml-2 text-sm font-sans" style={{color: 'var(--text-primary)', opacity: 0.7}}>
+          <ul className="list-disc list-inside space-y-2 ml-2 text-xs font-pixel" style={{color: 'var(--text-primary)', opacity: 0.7}}>
             <li>Personality traits (brave, curious, clever)</li>
             <li>What they like to do</li>
             <li>Their goals or motivations</li>
@@ -177,15 +186,15 @@ export default function AgentCreation({ onAgentCreated }) {
           <div className="space-y-6 py-8">
             {/* Animated emoji showing hatching progress */}
             <div className="text-8xl animate-bounce">
-              {progress.avatarPercent === 0 && '🥚'}
-              {progress.avatarPercent === 33 && '🐣'}
-              {progress.avatarPercent === 66 && '🐥'}
-              {progress.avatarPercent === 100 && '🐦'}
+              {progress.avatarPercent < 33 && '🥚'}
+              {progress.avatarPercent >= 33 && progress.avatarPercent < 66 && '🐣'}
+              {progress.avatarPercent >= 66 && progress.avatarPercent < 100 && '🐥'}
+              {progress.avatarPercent >= 100 && '🐦'}
             </div>
 
             {/* Progress message */}
             <p className="font-pixel text-base text-pokemon-gold">
-              {progress.message || 'Hatching your companion...'}
+              {progress.message || 'Hatching your Pokémon...'}
             </p>
 
             {/* Progress bar showing overall progress */}
@@ -195,7 +204,7 @@ export default function AgentCreation({ onAgentCreated }) {
                 {progress.avatarPercent}% Complete
               </p>
 
-              {/* Pokémon-themed progress bar */}
+              {/* Pokemon-themed progress bar */}
               <div className="w-full h-8 bg-pokemon-cream border-4 border-black relative overflow-hidden rounded">
                 <div
                   className="h-full bg-pokemon-gold transition-all duration-300 ease-out"
@@ -216,15 +225,15 @@ export default function AgentCreation({ onAgentCreated }) {
             variant="green"
             className="text-xl px-12 py-5"
           >
-            🥚 Hatch Companion ✨
+            🥚 Hatch Pokémon ✨
           </PokemonButton>
         )}
       </div>
 
-      {/* Example companions */}
+      {/* Example pokemons */}
       <div className="mt-12 p-6 bg-pokemon-green/20 border-2 border-pokemon-green rounded">
         <p className="font-pixel text-sm text-pokemon-green mb-4 text-center">
-          ✨ Example Companions - Click to try!
+          ✨ Example Pokémon - Click to try!
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
@@ -238,7 +247,7 @@ export default function AgentCreation({ onAgentCreated }) {
               onClick={() => setDescription(example)}
               className="text-left px-4 py-3 hover:bg-pokemon-cream hover:scale-105
                        text-xs border-2 border-pokemon-green transition-all
-                       font-sans rounded"
+                       font-pixel rounded"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)'

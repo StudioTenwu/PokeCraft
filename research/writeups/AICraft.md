@@ -35,7 +35,7 @@ The system is inspired by my experiences with different agentic frameworks. I am
 
 ### Core Gameplay Experienc
 
-The child raises an AI agent like a Pokémon. The child starts with a cute, limited creature then nurture it into a capable partner/friend/pet. As they are letting the creature grow, the child should be encouraged to proactively think about the personality of their agents, the tools/senses/scaffolding that their agents need, and the memory of their agents.
+The child raises an AI agent like a Pokemon. The child starts with a cute, limited creature then nurture it into a capable partner/friend/pet. As they are letting the creature grow, the child should be encouraged to proactively think about the personality of their agents, the tools/senses/scaffolding that their agents need, and the memory of their agents.
 
 The gameplay will encourage agent development best practices. The most important of all is empathy, "Put yourself in the model's shoes" (https://www.anthropic.com/engineering/building-effective-agents). The child will be encouraged to understand the agents need by having a "First Person" view where they act with the tools and information available to their agent to accomplish certain tasks.
 
@@ -64,7 +64,7 @@ The magic: agents can do anything and play any game. Test your agent on:
 - Embodied robotics
 - Any scenario the child imagines
 
-The cool thing about deployment is that when coupled with memory, the agent can remember things that happened in the past and grow with the player! (There are many examples of these types of AI companionship and AI toys around).
+The cool thing about deployment is that when coupled with memory, the agent can remember things that happened in the past and grow with the player! (There are many examples of these types of AI pokemonship and AI toys around).
 
 ### The primitives
 

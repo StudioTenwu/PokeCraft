@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AICraft Pokemon - Chrome Extension Architecture</title>
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            /* Chinese Color Palette - Light Mode */
+            --chinese-red: #8B0000;
+            --chinese-gold: #FFD700;
+            --jade-green: #00A86B;
+            --ink-black: #2B2B2B;
+            --paper-beige: #F5F5DC;
+            --light-cream: #FAFAF0;
+
+            /* Hierarchy Levels */
+            --level-1: #000;
+            --level-2: #333;
+            --level-3: #666;
+            --level-4: #999;
+
+            /* Component Variables */
+            --card-background: #FFFFFF;
+            --section-background: #FFFFFF;
+            --border-color-light: #ddd;
+            --border-color-medium: #ccc;
+            --code-background: #F8F8F8;
+            --code-border: rgba(139, 0, 0, 0.15);
+            --code-text: #1a1a1a;
+        }
+
+        [data-theme="dark"] {
+            /* Chinese Color Palette - Dark Mode */
+            --chinese-red: #DC143C;
+            --chinese-gold: #FFD700;
+            --jade-green: #10B981;
+            --ink-black: #E5E5DC;
+            --paper-beige: #1A1A1A;
+            --light-cream: #252525;
+
+            /* Hierarchy Levels - Dark Mode */
+            --level-1: #F5F5DC;
+            --level-2: #D4C4B0;
+            --level-3: #A89F91;
+            --level-4: #6B6B6B;
+
+            /* Component Variables - Dark Mode */
+            --card-background: #252525;
+            --section-background: #252525;
+            --border-color-light: #444;
+            --border-color-medium: #555;
+            --code-background: rgba(40, 40, 40, 0.8);
+            --code-border: #555;
+            --code-text: #e0e0e0;
+        }
+
+        /* ===== BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--paper-beige) 0%, var(--light-cream) 100%);
+            color: var(--ink-black);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+
+        .container {
+            width: 100%;
+            padding: 2px;
+            margin: 0;
+        }
+
+        /* ===== TYPOGRAPHY ===== */
+        h1 {
+            font-size: 24px;
+            font-weight: 900;
+            margin: 4px 0;
+            padding: 6px 4px;
+            background: linear-gradient(135deg, var(--chinese-red), #CD5C5C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 8px 0 4px 0;
+            padding: 4px;
+            border-left: 4px solid var(--chinese-red);
+            background: rgba(139, 0, 0, 0.03);
+            color: var(--level-1);
+        }
+
+        h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 4px 0 2px 8px;
+            color: var(--level-2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        h4 {
+            font-size: 12px;
+            font-weight: 500;
+            margin: 2px 0 1px 16px;
+            color: var(--level-3);
+        }
+
+        h5, h6 {
+            font-size: 11px;
+            font-weight: 500;
+            margin: 1px 0 1px 24px;
+            color: var(--level-4);
+        }
+
+        /* ===== LAYOUT SYSTEMS ===== */
+        .two-column-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .two-column-layout.uneven {
+            grid-template-columns: 2fr 1fr;
+        }
+
+        .two-column-layout.reverse-uneven {
+            grid-template-columns: 1fr 2fr;
+        }
+
+        .dense-columns {
+            column-count: 2;
+            column-gap: 8px;
+            column-fill: balance;
+        }
+
+        .compact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 4px;
+            width: 100%;
+        }
+
+        /* ===== SECTIONS & CONTAINERS ===== */
+        .primary-section {
+            border: 2px solid var(--chinese-red);
+            background: var(--section-background);
+            margin: 6px 0;
+            padding: 6px;
+        }
+
+        .secondary-section {
+            border-left: 3px solid var(--chinese-gold);
+            background: rgba(255, 215, 0, 0.05);
+            margin: 4px 0 4px 8px;
+            padding: 4px;
+        }
+
+        .tertiary-section {
+            margin-left: 16px;
+            padding-left: 8px;
+            border-left: 1px dashed var(--border-color-medium);
+        }
+
+        .card {
+            background: var(--card-background);
+            border: 1px solid rgba(139, 0, 0, 0.2);
+            border-radius: 2px;
+            padding: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.priority {
+            border: 2px solid var(--chinese-gold);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), var(--card-background));
+        }
+
+        .important-always-visible {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), var(--card-background));
+            border: 2px solid var(--chinese-gold);
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 3px;
+        }
+
+        .important-always-visible h2 {
+            color: var(--chinese-red);
+            margin-top: 0;
+        }
+
+        /* ===== COLLAPSIBLES ===== */
+        .collapsible {
+            margin: 4px 0;
+            width: 100%;
+        }
+
+        .collapsible-header {
+            cursor: pointer;
+            padding: 6px 8px;
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.05), rgba(255, 215, 0, 0.02));
+            border-left: 3px solid var(--chinese-gold);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .collapsible-header:hover {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.1), rgba(255, 215, 0, 0.05));
+        }
+
+        .collapsible-header .arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            color: var(--chinese-red);
+            font-size: 10px;
+        }
+
+        .collapsible.open .arrow {
+            transform: rotate(90deg);
+        }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 8px;
+            margin-left: 12px;
+        }
+
+        .collapsible.open .collapsible-content {
+            max-height: 5000px;
+            padding: 8px;
+        }
+
+        .two-column-layout .collapsible {
+            grid-column: span 1;
+        }
+
+        .two-column-layout .collapsible.full-width {
+            grid-column: span 2;
+        }
+
+        .collapsible.critical .collapsible-header {
+            border-left: 4px solid var(--chinese-red);
+            background: rgba(139, 0, 0, 0.08);
+            font-weight: 700;
+        }
+
+        .collapsible.secondary .collapsible-header {
+            border-left: 2px solid #999;
+            background: rgba(0, 0, 0, 0.02);
+            font-size: 13px;
+        }
+
+        /* ===== LISTS ===== */
+        .dense-list {
+            list-style: none;
+            padding: 0;
+            margin-left: 8px;
+        }
+
+        .dense-list li {
+            padding: 2px 0 2px 12px;
+            border-left: 2px solid transparent;
+            position: relative;
+        }
+
+        .dense-list li:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--chinese-red);
+            font-size: 10px;
+        }
+
+        .dense-list li strong {
+            color: var(--level-2);
+            font-weight: 600;
+        }
+
+        /* ===== CODE BLOCKS ===== */
+        code {
+            background: var(--code-background);
+            border: 1px solid var(--code-border);
+            padding: 2px 4px;
+            margin: 0 1px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.1;
+            border-radius: 2px;
+            color: var(--code-text);
+        }
+
+        pre {
+            background: var(--code-background);
+            border: 1px solid var(--code-border);
+            padding: 6px 8px;
+            margin: 4px 0;
+            font-family: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            tab-size: 4;
+            -moz-tab-size: 4;
+            border-radius: 3px;
+            color: var(--code-text);
+        }
+
+        pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font-size: inherit;
+            line-height: inherit;
+            white-space: inherit;
+        }
+
+        /* ===== TABLES ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 4px 0;
+            font-size: 12px;
+        }
+
+        th {
+            background: var(--chinese-red);
+            color: white;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 6px;
+        }
+
+        td {
+            border: 1px solid var(--border-color-light);
+            padding: 3px 6px;
+            text-align: left;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(0,0,0,0.02);
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: var(--level-2);
+        }
+
+        /* ===== BUTTONS ===== */
+        button, .button {
+            background: linear-gradient(135deg, var(--chinese-red), #CD5C5C);
+            color: white;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            transition: all 0.2s ease;
+            padding: 2px 6px;
+            margin: 1px;
+            font-size: 12px;
+            line-height: 1.1;
+            cursor: pointer;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(139, 0, 0, 0.3);
+            border-color: var(--chinese-gold);
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 8px;
+            right: 8px;
+            z-index: 10000;
+            background: var(--chinese-gold);
+            color: var(--ink-black);
+            border: 2px solid var(--chinese-red);
+            padding: 4px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        #theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .metric {
+            display: inline-block;
+            background: var(--card-background);
+            border: 1px solid var(--chinese-gold);
+            padding: 2px 6px;
+            margin: 2px;
+            border-radius: 2px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .metric.important {
+            background: var(--chinese-gold);
+            color: white;
+            font-weight: 700;
+        }
+
+        .critical { color: var(--chinese-red); font-weight: 700; }
+        .success { color: var(--jade-green); font-weight: 600; }
+        .warning { color: var(--chinese-gold); font-weight: 600; }
+        .muted { color: var(--level-4); font-size: 11px; }
+        .highlight { background: rgba(255, 215, 0, 0.2); padding: 1px 2px; }
+
+        .indent-1 { margin-left: 12px; }
+        .indent-2 { margin-left: 24px; }
+        .indent-3 { margin-left: 36px; }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, var(--chinese-red), transparent);
+            margin: 8px 0;
+        }
+
+        blockquote {
+            margin: 2px 0;
+            padding: 2px 8px;
+            border-left: 2px solid var(--chinese-red);
+        }
+
+        hr {
+            margin: 2px 0;
+            border: none;
+            height: 1px;
+            background: var(--chinese-red);
+        }
+
+        /* ===== DARK MODE OVERRIDES ===== */
+        /* Note: Most dark mode styling is now handled by CSS variables */
+        /* These overrides are for special cases that can't use simple variables */
+
+        [data-theme="dark"] .secondary-section {
+            background: rgba(255, 215, 0, 0.08);
+        }
+
+        [data-theme="dark"] .card.priority {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: var(--chinese-gold);
+        }
+
+        [data-theme="dark"] .important-always-visible {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: var(--chinese-gold);
+        }
+
+        [data-theme="dark"] .requirement,
+        [data-theme="dark"] .feature-list li,
+        [data-theme="dark"] .column {
+            background: var(--light-cream);
+            color: var(--ink-black);
+        }
+
+        [data-theme="dark"] tr:nth-child(even) td {
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        [data-theme="dark"] th {
+            background: rgba(220, 20, 60, 0.1);
+        }
+
+        /* ===== MERMAID DIAGRAM STYLING ===== */
+        .diagram-container {
+            background: var(--card-background);
+            border: 1px solid var(--border-color-light);
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .mermaid {
+            background: var(--card-background);
+            padding: 20px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid var(--border-color-light);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        [data-theme="dark"] .mermaid {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1200px) {
+            .dense-columns { column-count: 2; }
+        }
+
+        @media (max-width: 800px) {
+            .dense-columns { column-count: 1; }
+            .two-column-layout,
+            .two-column-layout.uneven,
+            .two-column-layout.reverse-uneven {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button id="theme-toggle">🌙 Dark</button>
+
+    <div class="container">
+        <!-- Expand/Collapse Controls -->
+        <div style="margin: 8px 0; text-align: left;">
+            <button id="expand-all">▼ Expand All</button>
+            <button id="collapse-all">▲ Collapse All</button>
+        </div>
+
+        <h1>🎮 AICraft Pokemon - Chrome Extension Architecture</h1>
+
+        <div class="important-always-visible">
+            <h2>📋 Executive Summary</h2>
+            <p><strong>Goal:</strong> Export AICraft agents as standalone Chrome extensions that children can install and chat with on their own computers.</p>
+            <ul class="dense-list">
+                <li><strong>Core Feature:</strong> Chrome Side Panel UI (Manifest V3)</li>
+                <li><strong>Simplicity:</strong> Minimal pokemon - avatar, personality, chat interface</li>
+                <li><strong>Independence:</strong> Separate from deployment system</li>
+                <li><strong>Development Approach:</strong> Test-Driven Development (TDD)</li>
+            </ul>
+        </div>
+
+        <!-- SYSTEM OVERVIEW -->
+        <div class="primary-section">
+            <h2>🏗️ System Overview</h2>
+
+            <div class="diagram-container">
+                <pre class="mermaid">
+graph TB
+    subgraph "AICraft Backend"
+        Agent[Agent Profile]
+        Avatar[Avatar Image]
+        Personality[Personality Data]
+        Export[Export API Endpoint]
+    end
+
+    subgraph "Export Package"
+        Bundle[Extension Bundle]
+        Manifest[manifest.json]
+        Assets[Agent Assets]
+    end
+
+    subgraph "Chrome Extension"
+        ServiceWorker[Service Worker<br/>Background Logic]
+        SidePanel[Side Panel UI<br/>panel.html]
+        Storage[Chrome Storage<br/>Agent Data]
+        LLM[LLM Integration<br/>Claude SDK]
+    end
+
+    subgraph "Child's Browser"
+        Install[Install Extension]
+        OpenPanel[Open Side Panel]
+        Chat[Chat with Agent]
+    end
+
+    Agent --> Export
+    Avatar --> Export
+    Personality --> Export
+    Export --> Bundle
+    Bundle --> Manifest
+    Bundle --> Assets
+    Bundle --> Install
+    Install --> ServiceWorker
+    Install --> SidePanel
+    Install --> Storage
+    SidePanel --> LLM
+    Storage --> SidePanel
+    OpenPanel --> SidePanel
+    SidePanel --> Chat
+
+    style Export fill:#8B0000,color:#fff
+    style Bundle fill:#FFD700,color:#000
+    style SidePanel fill:#00A86B,color:#fff
+                </pre>
+            </div>
+
+            <div class="secondary-section">
+                <h3>High-Level Flow</h3>
+                <ol class="dense-list">
+                    <li><strong>Export Phase:</strong> Backend generates extension package with agent data</li>
+                    <li><strong>Distribution Phase:</strong> Parent downloads .zip file containing extension</li>
+                    <li><strong>Installation Phase:</strong> Child loads unpacked extension in Chrome</li>
+                    <li><strong>Usage Phase:</strong> Child opens side panel and chats with agent</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- ARCHITECTURE PRINCIPLES -->
+        <div data-collapsible="open" class="critical">
+            <div class="collapsible-header">
+                <span><strong>🎯 Architecture Principles & Constraints</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <ul class="dense-list">
+                    <li><strong class="critical">Side Panel is Mandatory:</strong> Must use Chrome Side Panel API (chrome.sidePanel)</li>
+                    <li><strong>Simplicity First:</strong> No complex features - just avatar, personality, chat</li>
+                    <li><strong>Offline-Capable:</strong> Agent data stored locally, LLM calls are only external dependency</li>
+                    <li><strong>Manifest V3:</strong> Use modern Chrome extension format</li>
+                    <li><strong>No Backend Dependency:</strong> Extension operates independently after export</li>
+                    <li><strong>Pokemon Aesthetic:</strong> Game Boy Color retro theme from AICraft</li>
+                    <li><strong>Child-Friendly:</strong> Simple, intuitive UI suitable for children</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- COMPONENT ARCHITECTURE -->
+        <div class="primary-section">
+            <h2>🧩 Component Architecture</h2>
+
+            <div class="two-column-layout">
+                <!-- Manifest -->
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>1. manifest.json</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Purpose</h4>
+                        <p>Extension configuration and permissions</p>
+
+                        <h4>Key Configuration</h4>
+                        <pre>{
+  "manifest_version": 3,
+  "name": "AICraft Pokemon: [AgentName]",
+  "version": "1.0.0",
+  "description": "[Agent backstory snippet]",
+
+  "permissions": [
+    "sidePanel",
+    "storage"
+  ],
+
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}</pre>
+
+                        <h4>Dynamic Fields</h4>
+                        <ul class="dense-list">
+                            <li><code>name</code>: Generated from agent name</li>
+                            <li><code>description</code>: Agent backstory summary</li>
+                            <li><code>icons</code>: Generated from agent avatar</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Service Worker -->
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>2. Service Worker (background.js)</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Responsibilities</h4>
+                        <ul class="dense-list">
+                            <li>Initialize extension on install</li>
+                            <li>Store agent data in chrome.storage.local</li>
+                            <li>Handle side panel open/close events</li>
+                            <li>Manage extension lifecycle</li>
+                        </ul>
+
+                        <h4>Data Initialization</h4>
+                        <p class="muted">On install, populate storage with:</p>
+                        <pre>{
+  "agent": {
+    "id": "...",
+    "name": "...",
+    "backstory": "...",
+    "personality_traits": [...],
+    "avatar_url": "assets/avatar.png"
+  },
+  "chat_history": []
+}</pre>
+
+                        <h4>Event Handlers</h4>
+                        <ul class="dense-list">
+                            <li><code>chrome.runtime.onInstalled</code>: Initialize storage</li>
+                            <li><code>chrome.action.onClicked</code>: Open side panel (optional toolbar button)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div data-collapsible="open" class="full-width critical">
+                    <div class="collapsible-header">
+                        <span><strong>3. Side Panel UI (panel.html + panel.js)</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>UI Components</h4>
+                        <div class="diagram-container">
+                            <pre class="mermaid">
+graph TD
+    Panel[Side Panel Container]
+    Header[Header Section]
+    Avatar[Agent Avatar]
+    Name[Agent Name]
+    Personality[Personality Chips]
+    ChatArea[Chat Area]
+    Messages[Message List]
+    Input[Chat Input Box]
+    Send[Send Button]
+
+    Panel --> Header
+    Panel --> ChatArea
+    Header --> Avatar
+    Header --> Name
+    Header --> Personality
+    ChatArea --> Messages
+    ChatArea --> Input
+    ChatArea --> Send
+
+    style Panel fill:#8B0000,color:#fff
+    style Header fill:#FFD700,color:#000
+    style ChatArea fill:#00A86B,color:#fff
+                            </pre>
+                        </div>
+
+                        <h4>Visual Hierarchy</h4>
+                        <table>
+                            <tr>
+                                <th>Component</th>
+                                <th>Description</th>
+                                <th>Style Notes</th>
+                            </tr>
+                            <tr>
+                                <td>Header</td>
+                                <td>Agent avatar (circular), name, personality badges</td>
+                                <td>Fixed at top, Pokemon retro aesthetic</td>
+                            </tr>
+                            <tr>
+                                <td>Chat Area</td>
+                                <td>Scrollable message list</td>
+                                <td>Auto-scroll to latest, alternating colors for user/agent</td>
+                            </tr>
+                            <tr>
+                                <td>Input Area</td>
+                                <td>Text input + send button</td>
+                                <td>Fixed at bottom, Enter to send</td>
+                            </tr>
+                        </table>
+
+                        <h4>State Management</h4>
+                        <ul class="dense-list">
+                            <li><strong>Agent Data:</strong> Loaded once from chrome.storage on panel open</li>
+                            <li><strong>Chat History:</strong> Persisted to chrome.storage after each message</li>
+                            <li><strong>UI State:</strong> Loading indicator during LLM calls, disabled input</li>
+                        </ul>
+
+                        <h4>Interaction Flow</h4>
+                        <pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Panel as panel.js
+    participant Storage as chrome.storage
+    participant LLM as Claude SDK
+
+    User->>Panel: Open Side Panel
+    Panel->>Storage: Load agent data + chat history
+    Storage-->>Panel: Agent profile, messages[]
+    Panel->>Panel: Render UI
+
+    User->>Panel: Type message + click Send
+    Panel->>Panel: Disable input, show loading
+    Panel->>Storage: Append user message to history
+    Panel->>LLM: Send message + personality context
+    LLM-->>Panel: Agent response (streaming)
+    Panel->>Panel: Display response chunks
+    Panel->>Storage: Append agent response to history
+    Panel->>Panel: Re-enable input
+                        </pre>
+                    </div>
+                </div>
+
+                <!-- Chat Engine -->
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>4. Chat Engine (chat.js)</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Responsibilities</h4>
+                        <ul class="dense-list">
+                            <li>Format messages with personality context</li>
+                            <li>Call Claude SDK with streaming support</li>
+                            <li>Handle errors and retries</li>
+                            <li>Parse and display responses</li>
+                        </ul>
+
+                        <h4>Prompt Structure</h4>
+                        <pre>System Prompt:
+You are [Agent Name], an AI pokemon created in AICraft.
+
+Backstory: [Agent backstory]
+
+Personality Traits:
+- [trait 1]
+- [trait 2]
+- [trait 3]
+
+Respond in character, staying true to your backstory and personality.
+Keep responses friendly, encouraging, and age-appropriate for children.
+
+---
+[Chat History]
+---
+User: [New Message]
+Assistant:</pre>
+
+                        <h4>LLM Integration Strategy</h4>
+                        <p><strong>Option 1 (Recommended):</strong> Claude Agent SDK</p>
+                        <ul class="dense-list">
+                            <li>✅ Matches AICraft backend pattern</li>
+                            <li>✅ No API key management needed (uses Claude Code credentials)</li>
+                            <li>❌ Requires Claude Code to be installed on child's computer</li>
+                        </ul>
+
+                        <p><strong>Option 2:</strong> Direct Anthropic API</p>
+                        <ul class="dense-list">
+                            <li>✅ Works independently of Claude Code</li>
+                            <li>❌ Requires API key (security concern)</li>
+                            <li>❌ Parent must fund API usage</li>
+                        </ul>
+
+                        <p><strong>Option 3:</strong> Backend Proxy</p>
+                        <ul class="dense-list">
+                            <li>✅ Secure API key management</li>
+                            <li>✅ Parent controls costs</li>
+                            <li>❌ Requires running AICraft backend</li>
+                            <li>❌ Not "standalone" anymore</li>
+                        </ul>
+
+                        <p class="warning"><strong>Recommendation:</strong> Start with Option 3 (backend proxy) for security and simplicity, then evaluate Option 1 if Claude Code adoption is feasible.</p>
+                    </div>
+                </div>
+
+                <!-- Storage Layer -->
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>5. Storage Layer</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Chrome Storage API</h4>
+                        <p>Use <code>chrome.storage.local</code> for persistence</p>
+
+                        <h4>Data Schema</h4>
+                        <pre>{
+  "agent": {
+    "id": "agent-uuid",
+    "name": "Professor Oak",
+    "backstory": "A wise Pokemon researcher...",
+    "personality_traits": [
+      "Knowledgeable",
+      "Patient",
+      "Encouraging"
+    ],
+    "avatar_url": "assets/avatar.png"
+  },
+  "chat_history": [
+    {
+      "role": "user",
+      "content": "Hello!",
+      "timestamp": 1699564800000
+    },
+    {
+      "role": "assistant",
+      "content": "Hello there! Welcome...",
+      "timestamp": 1699564803000
+    }
+  ],
+  "preferences": {
+    "theme": "retro-pokemon",
+    "chat_cleared_at": null
+  }
+}</pre>
+
+                        <h4>Storage Operations</h4>
+                        <table>
+                            <tr>
+                                <th>Operation</th>
+                                <th>When</th>
+                                <th>Data</th>
+                            </tr>
+                            <tr>
+                                <td>Initialize</td>
+                                <td>Extension install</td>
+                                <td>Agent profile</td>
+                            </tr>
+                            <tr>
+                                <td>Append Message</td>
+                                <td>After each chat turn</td>
+                                <td>User + assistant messages</td>
+                            </tr>
+                            <tr>
+                                <td>Clear History</td>
+                                <td>User action (optional feature)</td>
+                                <td>Empty chat_history array</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATA FLOW -->
+        <div class="primary-section">
+            <h2>🔄 Data Flow Architecture</h2>
+
+            <div data-collapsible="open" class="critical">
+                <div class="collapsible-header">
+                    <span><strong>Export Flow: AICraft Backend → Extension Package</strong></span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="diagram-container">
+                        <pre class="mermaid">
+graph LR
+    API[Export API<br/>POST /api/agents/export]
+    Fetch[Fetch Agent Data<br/>AgentService]
+    Avatar[Fetch Avatar<br/>Static Files]
+    Template[Load Extension<br/>Template]
+    Generate[Generate Files<br/>manifest.json<br/>background.js<br/>panel.html]
+    Bundle[Create .zip Bundle]
+    Download[Download Response]
+
+    API --> Fetch
+    API --> Avatar
+    Fetch --> Template
+    Avatar --> Template
+    Template --> Generate
+    Generate --> Bundle
+    Bundle --> Download
+
+    style API fill:#8B0000,color:#fff
+    style Generate fill:#FFD700,color:#000
+    style Bundle fill:#00A86B,color:#fff
+                        </pre>
+                    </div>
+
+                    <h4>Export API Specification</h4>
+                    <pre><strong>Endpoint:</strong> POST /api/agents/{agent_id}/export
+
+<strong>Response:</strong> application/zip
+
+<strong>Bundle Contents:</strong>
+aicraft-pokemon-[agent-name].zip
+├── manifest.json          # Dynamic: name, description, icons
+├── background.js          # Static template with agent data injected
+├── panel.html            # Static template
+├── panel.js              # Static script
+├── chat.js               # Static LLM integration
+├── styles.css            # Pokemon retro theme
+└── assets/
+    ├── icon16.png        # Generated from avatar
+    ├── icon48.png        # Generated from avatar
+    ├── icon128.png       # Generated from avatar
+    └── avatar.png        # Full agent avatar</pre>
+
+                    <h4>Template Variables</h4>
+                    <table>
+                        <tr>
+                            <th>File</th>
+                            <th>Variable</th>
+                            <th>Source</th>
+                        </tr>
+                        <tr>
+                            <td>manifest.json</td>
+                            <td>{{AGENT_NAME}}</td>
+                            <td>agent.name</td>
+                        </tr>
+                        <tr>
+                            <td>manifest.json</td>
+                            <td>{{AGENT_DESCRIPTION}}</td>
+                            <td>agent.backstory (truncated to 120 chars)</td>
+                        </tr>
+                        <tr>
+                            <td>background.js</td>
+                            <td>{{AGENT_DATA_JSON}}</td>
+                            <td>Full agent profile as JSON string</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div data-collapsible="open">
+                <div class="collapsible-header">
+                    <span><strong>Chat Flow: User → LLM → Response</strong></span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="diagram-container">
+                        <pre class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant UI as panel.js
+    participant Chat as chat.js
+    participant Store as chrome.storage
+    participant LLM as Claude API
+
+    U->>UI: Type message
+    UI->>UI: Validate input
+    UI->>Store: Append user message
+    UI->>Chat: sendMessage(text, history)
+
+    Chat->>Chat: Build prompt with personality
+    Chat->>LLM: Stream request
+
+    loop Streaming chunks
+        LLM-->>Chat: Response chunk
+        Chat-->>UI: Display chunk
+        UI->>UI: Append to message bubble
+    end
+
+    LLM-->>Chat: [DONE]
+    Chat-->>UI: Complete response
+    UI->>Store: Append assistant message
+    UI->>UI: Re-enable input
+                        </pre>
+                    </div>
+
+                    <h4>Message Flow States</h4>
+                    <ol class="dense-list">
+                        <li><strong>Idle:</strong> Input enabled, waiting for user</li>
+                        <li><strong>Sending:</strong> Input disabled, message appended to UI</li>
+                        <li><strong>Waiting:</strong> Loading indicator, calling LLM</li>
+                        <li><strong>Streaming:</strong> Response chunks appearing</li>
+                        <li><strong>Complete:</strong> Full response shown, input re-enabled</li>
+                        <li><strong>Error:</strong> Error message shown, retry button</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILE STRUCTURE -->
+        <div data-collapsible="open">
+            <div class="collapsible-header">
+                <span><strong>📂 File Structure & Organization</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <h3>Extension Template (Backend)</h3>
+                <pre>backend/
+└── extension_templates/
+    ├── manifest.template.json
+    ├── background.template.js
+    ├── panel.html
+    ├── panel.js
+    ├── chat.js
+    └── styles.css</pre>
+
+                <h3>Generated Extension (Output)</h3>
+                <pre>aicraft-pokemon-[agent-name]/
+├── manifest.json          # Manifest V3 configuration
+├── background.js          # Service worker with agent data
+├── panel.html            # Side panel UI structure
+├── panel.js              # Side panel logic
+├── chat.js               # LLM integration
+├── styles.css            # Pokemon retro theme
+└── assets/
+    ├── icon16.png        # Extension icon (small)
+    ├── icon48.png        # Extension icon (medium)
+    ├── icon128.png       # Extension icon (large)
+    └── avatar.png        # Agent avatar (display)</pre>
+
+                <h3>AICraft Backend (New Code)</h3>
+                <pre>backend/src/
+├── extension_exporter.py  # Export service
+├── icon_generator.py      # Avatar → icon conversion
+└── models/
+    └── extension.py       # Extension data models</pre>
+            </div>
+        </div>
+
+        <!-- TDD STRATEGY -->
+        <div class="primary-section">
+            <h2>🧪 Test-Driven Development Strategy</h2>
+
+            <div data-collapsible="open" class="critical">
+                <div class="collapsible-header">
+                    <span><strong>TDD Workflow: Red-Green-Refactor</strong></span>
+                    <span class="arrow">▶</span>
+                </div>
+                <div class="collapsible-content">
+                    <div class="diagram-container">
+                        <pre class="mermaid">
+graph LR
+    Write[Write Failing Test<br/>RED]
+    Implement[Write Minimal Code<br/>GREEN]
+    Refactor[Clean Up Code<br/>REFACTOR]
+    Commit[Commit Changes]
+
+    Write --> Implement
+    Implement --> Refactor
+    Refactor --> Commit
+    Commit --> Write
+
+    style Write fill:#DC143C,color:#fff
+    style Implement fill:#00A86B,color:#fff
+    style Refactor fill:#FFD700,color:#000
+                        </pre>
+                    </div>
+
+                    <h4>TDD Principles for Extension</h4>
+                    <ul class="dense-list">
+                        <li><strong>Test Behavior, Not Implementation:</strong> Test what the extension does, not how</li>
+                        <li><strong>Mock Chrome APIs:</strong> Use chrome-mock library for testing</li>
+                        <li><strong>Isolate Components:</strong> Unit test each module independently</li>
+                        <li><strong>E2E Tests:</strong> Use Puppeteer for side panel interaction tests</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="two-column-layout">
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>Unit Tests</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Test Coverage</h4>
+                        <table>
+                            <tr>
+                                <th>Component</th>
+                                <th>Test File</th>
+                                <th>Tests</th>
+                            </tr>
+                            <tr>
+                                <td>background.js</td>
+                                <td>background.test.js</td>
+                                <td>Install, storage init, panel open</td>
+                            </tr>
+                            <tr>
+                                <td>chat.js</td>
+                                <td>chat.test.js</td>
+                                <td>Prompt formatting, streaming, errors</td>
+                            </tr>
+                            <tr>
+                                <td>panel.js</td>
+                                <td>panel.test.js</td>
+                                <td>Render, send message, state updates</td>
+                            </tr>
+                        </table>
+
+                        <h4>Example Test (chat.js)</h4>
+                        <pre>describe('Chat Engine', () => {
+  test('formats prompt with personality', () => {
+    const agent = {
+      name: 'Oak',
+      backstory: '...',
+      personality_traits: ['Kind']
+    };
+    const message = 'Hello';
+
+    const prompt = formatPrompt(agent, message, []);
+
+    expect(prompt).toContain('You are Oak');
+    expect(prompt).toContain('Kind');
+    expect(prompt).toContain('Hello');
+  });
+
+  test('handles streaming response', async () => {
+    const mockStream = createMockStream();
+    const chunks = [];
+
+    await streamResponse(mockStream, (chunk) => {
+      chunks.push(chunk);
+    });
+
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.join('')).toBe('Complete response');
+  });
+});</pre>
+                    </div>
+                </div>
+
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>Integration Tests</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Test Scenarios</h4>
+                        <ul class="dense-list">
+                            <li>Install extension → storage initialized</li>
+                            <li>Open side panel → agent data loaded</li>
+                            <li>Send message → LLM called → response displayed</li>
+                            <li>Storage persists chat history</li>
+                        </ul>
+
+                        <h4>Example Test</h4>
+                        <pre>describe('Extension Integration', () => {
+  let chrome;
+
+  beforeEach(() => {
+    chrome = createChromeMock();
+  });
+
+  test('full chat flow', async () => {
+    // 1. Install extension
+    await triggerInstallEvent(chrome);
+    const storage = await chrome.storage.local.get();
+    expect(storage.agent).toBeDefined();
+
+    // 2. Open panel
+    const panel = await openSidePanel(chrome);
+    expect(panel.querySelector('.agent-name')).
+      toHaveTextContent(storage.agent.name);
+
+    // 3. Send message
+    await typeMessage(panel, 'Hello');
+    await clickSend(panel);
+
+    // 4. Verify response
+    await waitForResponse(panel);
+    const messages = panel.querySelectorAll('.message');
+    expect(messages.length).toBe(2); // user + assistant
+  });
+});</pre>
+                    </div>
+                </div>
+
+                <div data-collapsible="open" class="full-width">
+                    <div class="collapsible-header">
+                        <span><strong>End-to-End Tests</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>E2E Test Tools</h4>
+                        <ul class="dense-list">
+                            <li><strong>Puppeteer:</strong> Load extension, interact with side panel</li>
+                            <li><strong>Chrome DevTools Protocol:</strong> Control extension lifecycle</li>
+                        </ul>
+
+                        <h4>Test Flow</h4>
+                        <pre>describe('E2E: Extension Usage', () => {
+  let browser, page;
+
+  beforeAll(async () => {
+    browser = await puppeteer.launch({
+      headless: false,
+      args: [
+        '--load-extension=./dist/aicraft-pokemon-oak',
+        '--disable-extensions-except=./dist/aicraft-pokemon-oak'
+      ]
+    });
+    page = await browser.newPage();
+  });
+
+  test('child can chat with agent', async () => {
+    // Open side panel
+    await page.evaluate(() => {
+      chrome.sidePanel.open();
+    });
+
+    // Wait for panel to load
+    const panelPage = await browser.waitForTarget(
+      target => target.url().includes('panel.html')
+    );
+
+    // Type message
+    await panelPage.type('#message-input', 'Tell me about Pokemon');
+    await panelPage.click('#send-button');
+
+    // Wait for response
+    await panelPage.waitForSelector('.message.assistant', {
+      timeout: 10000
+    });
+
+    const responseText = await panelPage.$eval(
+      '.message.assistant',
+      el => el.textContent
+    );
+
+    expect(responseText).toContain('Pokemon');
+  });
+});</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHROME API USAGE -->
+        <div data-collapsible="open">
+            <div class="collapsible-header">
+                <span><strong>🔌 Chrome API Usage Patterns</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <table>
+                    <tr>
+                        <th>API</th>
+                        <th>Purpose</th>
+                        <th>Key Methods</th>
+                    </tr>
+                    <tr>
+                        <td>chrome.sidePanel</td>
+                        <td>Manage side panel</td>
+                        <td>
+                            <code>open()</code><br/>
+                            <code>setPanelBehavior()</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>chrome.storage.local</td>
+                        <td>Persist agent data & chat history</td>
+                        <td>
+                            <code>get()</code><br/>
+                            <code>set()</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>chrome.runtime</td>
+                        <td>Extension lifecycle</td>
+                        <td>
+                            <code>onInstalled</code><br/>
+                            <code>sendMessage()</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>chrome.action</td>
+                        <td>Toolbar button (optional)</td>
+                        <td>
+                            <code>onClicked</code>
+                        </td>
+                    </tr>
+                </table>
+
+                <h4>Side Panel Opening Patterns</h4>
+                <pre>// Option 1: User clicks toolbar icon
+chrome.action.onClicked.addListener(() => {
+  chrome.sidePanel.open();
+});
+
+// Option 2: Automatic on install
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: true
+  });
+});
+
+// Option 3: Programmatic from content script
+chrome.runtime.sendMessage({ action: 'openPanel' });</pre>
+
+                <h4>Storage Best Practices</h4>
+                <pre>// ✅ GOOD: Batch updates
+const updates = {
+  chat_history: [...existingHistory, newMessage],
+  last_interaction: Date.now()
+};
+await chrome.storage.local.set(updates);
+
+// ❌ BAD: Multiple separate writes
+await chrome.storage.local.set({ chat_history: [...] });
+await chrome.storage.local.set({ last_interaction: Date.now() });</pre>
+            </div>
+        </div>
+
+        <!-- IMPLEMENTATION PHASES -->
+        <div class="primary-section">
+            <h2>📅 Implementation Phases (TDD Approach)</h2>
+
+            <div class="diagram-container">
+                <pre class="mermaid">
+gantt
+    title Extension Development Phases
+    dateFormat YYYY-MM-DD
+    section Phase 1: Backend Export
+        Export API Tests          :2025-01-15, 1d
+        Implement Export Service  :2025-01-16, 2d
+        Icon Generator Tests      :2025-01-17, 1d
+        Implement Icon Generator  :2025-01-18, 1d
+    section Phase 2: Extension Core
+        Service Worker Tests      :2025-01-20, 1d
+        Implement Service Worker  :2025-01-21, 1d
+        Storage Tests             :2025-01-22, 1d
+        Implement Storage Layer   :2025-01-23, 1d
+    section Phase 3: Side Panel UI
+        Panel UI Tests            :2025-01-24, 1d
+        Implement Panel HTML/CSS  :2025-01-25, 2d
+        Panel Logic Tests         :2025-01-27, 1d
+        Implement Panel.js        :2025-01-28, 2d
+    section Phase 4: Chat Integration
+        Chat Engine Tests         :2025-01-30, 1d
+        Implement Chat.js         :2025-01-31, 2d
+        LLM Integration Tests     :2025-02-02, 1d
+        Connect to Backend Proxy  :2025-02-03, 2d
+    section Phase 5: E2E & Polish
+        E2E Test Suite            :2025-02-05, 2d
+        Bug Fixes                 :2025-02-07, 2d
+        UI Polish & Theming       :2025-02-09, 1d
+        Documentation             :2025-02-10, 1d
+                </pre>
+            </div>
+
+            <div class="two-column-layout">
+                <div data-collapsible="open" class="critical">
+                    <div class="collapsible-header">
+                        <span><strong>Phase 1: Backend Export</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Deliverables</h4>
+                        <ul class="dense-list">
+                            <li>POST /api/agents/{id}/export endpoint</li>
+                            <li>Extension template files</li>
+                            <li>Icon generator (avatar → 16/48/128px)</li>
+                            <li>.zip bundler</li>
+                        </ul>
+
+                        <h4>Tests</h4>
+                        <ul class="dense-list">
+                            <li>Export API returns valid .zip</li>
+                            <li>Manifest template variables replaced</li>
+                            <li>Icons generated at correct sizes</li>
+                            <li>All required files present in bundle</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>Phase 2: Extension Core</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Deliverables</h4>
+                        <ul class="dense-list">
+                            <li>background.js with install handler</li>
+                            <li>Storage initialization</li>
+                            <li>Side panel registration</li>
+                        </ul>
+
+                        <h4>Tests</h4>
+                        <ul class="dense-list">
+                            <li>onInstalled populates storage</li>
+                            <li>Agent data persisted correctly</li>
+                            <li>Side panel opens on action click</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>Phase 3: Side Panel UI</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Deliverables</h4>
+                        <ul class="dense-list">
+                            <li>panel.html structure</li>
+                            <li>styles.css (Pokemon retro theme)</li>
+                            <li>panel.js (UI logic)</li>
+                            <li>Message rendering</li>
+                        </ul>
+
+                        <h4>Tests</h4>
+                        <ul class="dense-list">
+                            <li>Agent data renders correctly</li>
+                            <li>Chat history loads from storage</li>
+                            <li>Messages append to UI</li>
+                            <li>Input validation works</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div data-collapsible="open">
+                    <div class="collapsible-header">
+                        <span><strong>Phase 4: Chat Integration</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Deliverables</h4>
+                        <ul class="dense-list">
+                            <li>chat.js module</li>
+                            <li>Prompt formatter with personality</li>
+                            <li>Streaming LLM integration</li>
+                            <li>Error handling & retries</li>
+                        </ul>
+
+                        <h4>Tests</h4>
+                        <ul class="dense-list">
+                            <li>Prompt includes agent personality</li>
+                            <li>Streaming chunks display correctly</li>
+                            <li>Errors show user-friendly messages</li>
+                            <li>Chat history persists after response</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div data-collapsible="open" class="full-width">
+                    <div class="collapsible-header">
+                        <span><strong>Phase 5: E2E & Polish</strong></span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content">
+                        <h4>Deliverables</h4>
+                        <ul class="dense-list">
+                            <li>Puppeteer E2E test suite</li>
+                            <li>Bug fixes from integration testing</li>
+                            <li>UI polish (animations, loading states)</li>
+                            <li>User documentation (README)</li>
+                            <li>Parent installation guide</li>
+                        </ul>
+
+                        <h4>Tests</h4>
+                        <ul class="dense-list">
+                            <li>Full install → chat → persist flow</li>
+                            <li>Multiple message exchanges</li>
+                            <li>Panel close → reopen preserves history</li>
+                            <li>Error recovery scenarios</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECURITY & PRIVACY -->
+        <div data-collapsible="open">
+            <div class="collapsible-header">
+                <span><strong>🔒 Security & Privacy Considerations</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <ul class="dense-list">
+                    <li><strong>No Telemetry:</strong> Extension does not send usage data back to AICraft servers</li>
+                    <li><strong>Local Storage:</strong> All agent data and chat history stored locally (chrome.storage.local)</li>
+                    <li><strong>API Key Security:</strong> If using backend proxy, no API keys in extension code</li>
+                    <li><strong>Content Security Policy:</strong> Strict CSP in manifest to prevent XSS</li>
+                    <li><strong>Minimal Permissions:</strong> Only request <code>sidePanel</code> and <code>storage</code></li>
+                    <li><strong>No Content Scripts:</strong> Extension does not inject code into web pages</li>
+                    <li><strong>Child Safety:</strong> Chat responses filtered for age-appropriate content (LLM system prompt)</li>
+                </ul>
+
+                <h4>Recommended CSP</h4>
+                <pre>"content_security_policy": {
+  "extension_pages": "script-src 'self'; object-src 'self'"
+}</pre>
+            </div>
+        </div>
+
+        <!-- FUTURE ENHANCEMENTS -->
+        <div data-collapsible="open" class="secondary">
+            <div class="collapsible-header">
+                <span><strong>🚀 Future Enhancements (Post-MVP)</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <ul class="dense-list">
+                    <li><strong>Voice Input:</strong> Use Web Speech API for voice chat</li>
+                    <li><strong>Agent Updates:</strong> Allow parents to update agent personality remotely</li>
+                    <li><strong>Multi-Agent:</strong> Support multiple agents in one extension</li>
+                    <li><strong>Contextual Assistance:</strong> Agent provides help based on current webpage</li>
+                    <li><strong>Achievement System:</strong> Gamify chat interactions with badges</li>
+                    <li><strong>Export Chat History:</strong> Export conversations as PDF/text</li>
+                    <li><strong>Theme Customization:</strong> Let child customize panel colors</li>
+                    <li><strong>Offline Mode:</strong> Cached responses for common questions</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- REFERENCES -->
+        <div data-collapsible="open" class="secondary">
+            <div class="collapsible-header">
+                <span><strong>📚 Technical References</strong></span>
+                <span class="arrow">▶</span>
+            </div>
+            <div class="collapsible-content">
+                <h4>Chrome Extension APIs</h4>
+                <ul class="dense-list">
+                    <li><a href="https://developer.chrome.com/docs/extensions/reference/sidePanel/">Chrome Side Panel API</a></li>
+                    <li><a href="https://developer.chrome.com/docs/extensions/reference/storage/">Chrome Storage API</a></li>
+                    <li><a href="https://developer.chrome.com/docs/extensions/mv3/intro/">Manifest V3 Migration Guide</a></li>
+                </ul>
+
+                <h4>Testing Libraries</h4>
+                <ul class="dense-list">
+                    <li><a href="https://github.com/acvetkov/sinon-chrome">sinon-chrome</a> - Mock Chrome APIs</li>
+                    <li><a href="https://pptr.dev/">Puppeteer</a> - E2E testing</li>
+                    <li><a href="https://jestjs.io/">Jest</a> - Test runner</li>
+                </ul>
+
+                <h4>Example Extensions</h4>
+                <ul class="dense-list">
+                    <li>NabokovsWeb Hypertext Navigator - Content script reference</li>
+                    <li>ChatGPT Panel Extension - Side panel chat pattern</li>
+                    <li>Chrome Side AI Panel - Side panel UI examples</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ===== DARK MODE SETUP =====
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                themeToggle.textContent = savedTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    this.textContent = newTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
+                });
+            }
+
+            // ===== MERMAID SETUP =====
+            const currentTheme = localStorage.getItem('theme') || 'light';
+
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: 'base',
+                themeVariables: currentTheme === 'dark' ? {
+                    background: '#1e1e1e',
+                    primaryColor: '#bb86fc',
+                    primaryTextColor: '#e0e0e0',
+                    primaryBorderColor: '#bb86fc',
+                    lineColor: '#888',
+                    secondaryColor: '#03dac6',
+                    tertiaryColor: '#cf6679',
+                    mainBkg: '#2a2a2a',
+                    textColor: '#e0e0e0',
+                    nodeBorder: '#888',
+                    actorBkg: '#2a2a2a',
+                    actorBorder: '#bb86fc',
+                    actorTextColor: '#e0e0e0',
+                    actorLineColor: '#888',
+                    signalColor: '#e0e0e0',
+                    signalTextColor: '#e0e0e0',
+                    labelBoxBkgColor: '#bb86fc',
+                    labelTextColor: '#1a1a1a',
+                    noteBkgColor: '#2a2a2a',
+                    noteTextColor: '#e0e0e0',
+                    noteBorderColor: '#bb86fc',
+                    taskTextColor: '#e0e0e0',
+                    taskTextLightColor: '#e0e0e0',
+                    taskTextOutsideColor: '#e0e0e0',
+                    taskTextClickableColor: '#e0e0e0',
+                    sectionBkgColor: '#3a3a3a',
+                    altSectionBkgColor: '#2a2a2a',
+                    sectionBkgColor2: '#444',
+                    taskBorderColor: '#888',
+                    gridColor: '#555',
+                    todayLineColor: '#bb86fc',
+                    fontSize: '14px',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+                } : {
+                    background: '#FFFFFF',
+                    primaryColor: '#7A1712',
+                    primaryTextColor: '#1a1a1a',
+                    primaryBorderColor: '#6B4423',
+                    lineColor: '#4A5568',
+                    secondaryColor: '#1B3A57',
+                    tertiaryColor: '#2D5016',
+                    mainBkg: '#FAFAFA',
+                    textColor: '#1a1a1a',
+                    nodeBorder: '#6B4423',
+                    actorBkg: '#F0F0F0',
+                    actorBorder: '#6B4423',
+                    actorTextColor: '#1a1a1a',
+                    actorLineColor: '#6B4423',
+                    signalColor: '#1a1a1a',
+                    signalTextColor: '#1a1a1a',
+                    labelBoxBkgColor: '#7A1712',
+                    labelBoxBorderColor: '#6B4423',
+                    labelTextColor: '#fff',
+                    loopTextColor: '#1a1a1a',
+                    noteBkgColor: '#FFFBEB',
+                    noteTextColor: '#6B4423',
+                    noteBorderColor: '#D97706',
+                    activationBorderColor: '#6B4423',
+                    activationBkgColor: '#F0F0F0',
+                    labelColor: '#1a1a1a',
+                    classText: '#1a1a1a',
+                    taskTextColor: '#1a1a1a',
+                    taskTextLightColor: '#1a1a1a',
+                    taskTextOutsideColor: '#1a1a1a',
+                    taskTextClickableColor: '#1a1a1a',
+                    sectionBkgColor: '#f9f9f9',
+                    altSectionBkgColor: '#f0f0f0',
+                    sectionBkgColor2: '#e8e8e8',
+                    taskBorderColor: '#aaa',
+                    gridColor: '#ccc',
+                    todayLineColor: '#8B0000',
+                    fontSize: '14px',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+                },
+                flowchart: {
+                    curve: 'basis',
+                    padding: 20,
+                    useMaxWidth: true,
+                    htmlLabels: true
+                },
+                sequence: {
+                    actorMargin: 50,
+                    diagramMarginX: 8,
+                    diagramMarginY: 8,
+                    useMaxWidth: true
+                },
+                gantt: {
+                    useMaxWidth: true,
+                    gridLineStartPadding: 10,
+                    fontSize: 11
+                }
+            });
+
+            // ===== COLLAPSIBLES SETUP =====
+            document.querySelectorAll('[data-collapsible]').forEach(function(section) {
+                const isOpen = section.getAttribute('data-collapsible') === 'open';
+                section.classList.add('collapsible');
+                if (isOpen) section.classList.add('open');
+            });
+
+            document.querySelectorAll('.collapsible-header').forEach(function(header) {
+                header.addEventListener('click', function() {
+                    const collapsible = this.closest('.collapsible');
+                    collapsible.classList.toggle('open');
+                });
+            });
+
+            // ===== EXPAND/COLLAPSE ALL =====
+            const expandAllBtn = document.getElementById('expand-all');
+            const collapseAllBtn = document.getElementById('collapse-all');
+
+            if (expandAllBtn) {
+                expandAllBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.collapsible').forEach(function(c) {
+                        c.classList.add('open');
+                    });
+                });
+            }
+
+            if (collapseAllBtn) {
+                collapseAllBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.collapsible').forEach(function(c) {
+                        c.classList.remove('open');
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

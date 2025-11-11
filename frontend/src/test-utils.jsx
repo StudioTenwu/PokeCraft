@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 export const mockAgent = {
   id: 'test-agent-1',
   name: 'Test Buddy',
-  backstory: 'A brave companion ready to explore the digital world!',
+  backstory: 'A brave pokemon ready to explore the digital world!',
   personality_traits: ['Brave', 'Curious', 'Helpful', 'Creative', 'Friendly'],
   avatar_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 };

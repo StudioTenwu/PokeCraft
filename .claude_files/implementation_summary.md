@@ -1,16 +1,16 @@
 # mflux Progress Indicator Implementation Summary
 
 ## Overview
-Successfully implemented real-time Server-Sent Events (SSE) streaming for avatar generation progress during AI companion creation. Users now see live updates showing step-by-step progress during the 30-40 second generation process.
+Successfully implemented real-time Server-Sent Events (SSE) streaming for avatar generation progress during AI pokemon creation. Users now see live updates showing step-by-step progress during the 30-40 second generation process.
 
 ## Problem Solved
-- **Before**: Users saw static "Hatching your companion..." message with no feedback during 30-40s avatar generation
+- **Before**: Users saw static "Hatching your pokemon..." message with no feedback during 30-40s avatar generation
 - **After**: Real-time progress updates showing:
   - Current phase (LLM generation vs avatar generation)
   - Step counter (Step 1/2, Step 2/2)
   - Percentage progress (0-100%)
   - Animated egg emoji (🥚 → 🐣 based on progress)
-  - Pokémon-themed progress bar
+  - Pokemon-themed progress bar
 
 ## Implementation Details
 
@@ -66,7 +66,7 @@ Successfully implemented real-time Server-Sent Events (SSE) streaming for avatar
   - Animated egg emoji transitions: 🥚 (0-49%) → 🐣 (50-100%)
   - Phase-specific messages: "Dreaming up..." → "Hatching..."
   - Step counter: "Step 1/2 - 50%"
-  - Pokémon-themed progress bar with gold/cream colors
+  - Pokemon-themed progress bar with gold/cream colors
   - Percentage display overlaid on progress bar
 - **Stream lifecycle management**:
   - Cleanup ref for stream cancellation
@@ -125,7 +125,7 @@ The following E2E tests should be performed:
 | Real-time progress updates | ✅ | SSE streaming implemented |
 | Percentage/step counter | ✅ | Shows "Step 1/2 - 50%" |
 | Animated egg emoji transitions | ✅ | 🥚 → 🐣 at 50% |
-| Pokémon-themed progress bar | ✅ | Gold/cream colors, pixel aesthetic |
+| Pokemon-themed progress bar | ✅ | Gold/cream colors, pixel aesthetic |
 | Graceful fallback on mflux failure | ✅ | Returns emoji SVG placeholder |
 | All existing tests pass | ⚠️ | No existing tests for this module |
 | New tests for streaming | ⏳ | Not implemented (time priority) |

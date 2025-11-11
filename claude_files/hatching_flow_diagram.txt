@@ -6,7 +6,7 @@ FRONTEND (React Component)
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ AgentCreation.jsx                                                           │
 │                                                                             │
-│  1. User enters description and clicks "Hatch Companion"                   │
+│  1. User enters description and clicks "Hatch Pokemon"                   │
 │  2. Calls: api.createAgentStream(description, callbacks)                   │
 │  3. Opens EventSource connection to backend                                │
 │  4. Displays animated UI with progress updates                             │

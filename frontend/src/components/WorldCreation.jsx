@@ -122,7 +122,7 @@ export default function WorldCreation({ agent, onWorldCreated }) {
               onClick={() => handleExampleClick(example)}
               className="text-left px-4 py-3 hover:bg-pokemon-cream hover:scale-105
                        text-xs border-2 border-pokemon-green transition-all
-                       font-sans rounded"
+                       font-pixel rounded"
               style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
               disabled={loading}
               aria-label={`Use example world: ${example.slice(0, 50)}...`}

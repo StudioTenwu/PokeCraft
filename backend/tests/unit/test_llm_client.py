@@ -122,7 +122,7 @@ class TestLLMClient:
         description = "A robot"
         mock_response = {
             "name": "RoboBot",
-            "backstory": "A helpful robot companion.",
+            "backstory": "A helpful robot pokemon.",
             "personality_traits": ["helpful", "curious"],
             "avatar_prompt": "A cute robot, pixel art",
         }

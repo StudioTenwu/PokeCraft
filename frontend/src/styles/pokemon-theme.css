@@ -17,7 +17,7 @@
 }
 
 [data-theme="dark"] {
-  /* Dark Mode - Pokémon Night Theme */
+  /* Dark Mode - Pokemon Night Theme */
   --bg-primary: #1A1A2E;
   --bg-secondary: #16213E;
   --bg-card: #16213E;
@@ -36,7 +36,7 @@ body {
   transition: background-color 0.3s ease;
 }
 
-/* Pokémon Button Styles */
+/* Pokemon Button Styles */
 @layer components {
   .pokemon-button {
     @apply px-6 py-3 font-pixel text-sm;

@@ -39,7 +39,7 @@ backend/tests/
 
 ### 1️⃣ **Initialization** (Frontend)
 - User enters agent description
-- Clicks "Hatch Companion" button
+- Clicks "Hatch Pokemon" button
 - Opens EventSource connection to `/api/agents/create/stream`
 
 ### 2️⃣ **LLM Generation** (Backend)
@@ -260,7 +260,7 @@ Backend: create_agent_stream()
     ↓
 Frontend: Receive events, update progress UI
     ↓
-Display: "Companion Hatched! ✨" with agent card
+Display: "Pokemon Hatched! ✨" with agent card
 ```
 
 ---

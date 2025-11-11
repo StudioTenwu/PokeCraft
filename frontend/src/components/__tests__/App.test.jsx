@@ -29,9 +29,9 @@ describe('App', () => {
     expect(screen.getByText('AICraft')).toBeInTheDocument()
   })
 
-  it('renders Pokémon Edition subtitle', () => {
+  it('renders Pokemon Edition subtitle', () => {
     render(<App />)
-    expect(screen.getByText('Pokémon Edition')).toBeInTheDocument()
+    expect(screen.getByText('Pokemon Edition')).toBeInTheDocument()
   })
 
   it('renders theme toggle button', () => {
@@ -45,7 +45,7 @@ describe('App', () => {
 
   it('renders AgentCreation component', () => {
     render(<App />)
-    expect(screen.getByText('Hatch Your Companion')).toBeInTheDocument()
+    expect(screen.getByText('Hatch Your Pokemon')).toBeInTheDocument()
   })
 
   it('shows backend connection info in footer', () => {
@@ -76,12 +76,12 @@ describe('App', () => {
     await user.type(textarea, 'Test bot')
 
     // Click create button
-    const createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    const createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // Wait for agent to be created and displayed in footer
     await waitFor(() => {
-      expect(screen.getByText(/1 companion hatched/i)).toBeInTheDocument()
+      expect(screen.getByText(/1 pokemon hatched/i)).toBeInTheDocument()
     })
   })
 
@@ -109,12 +109,12 @@ describe('App', () => {
     const textareas = screen.getAllByPlaceholderText(/brave explorer/i)
     await user.type(textareas[0], 'Test')
 
-    const createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    const createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // Wait for agent to appear - it shows in a success screen first
     await waitFor(() => {
-      expect(screen.getByText('Companion Hatched! ✨')).toBeInTheDocument()
+      expect(screen.getByText('Pokemon Hatched! ✨')).toBeInTheDocument()
     })
 
     // Now click "Hatch Another" to return to main view and see created agents
@@ -149,7 +149,7 @@ describe('App', () => {
     const textareas = screen.getAllByPlaceholderText(/brave explorer/i)
     await user.type(textareas[0], 'Test')
 
-    const createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    const createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // World creation should appear for the new agent
@@ -179,7 +179,7 @@ describe('App', () => {
     const textareas = screen.getAllByPlaceholderText(/brave explorer/i)
     await user.type(textareas[0], 'Test')
 
-    const createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    const createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // Check world creation appears
@@ -207,14 +207,14 @@ describe('App', () => {
     const mockAgent1 = {
       id: '1',
       name: 'First Bot',
-      backstory: 'First companion',
+      backstory: 'First pokemon',
       personality_traits: ['A'],
       avatar_url: null
     }
     const mockAgent2 = {
       id: '2',
       name: 'Second Bot',
-      backstory: 'Second companion',
+      backstory: 'Second pokemon',
       personality_traits: ['B'],
       avatar_url: null
     }
@@ -232,12 +232,12 @@ describe('App', () => {
     // Create first agent
     const textareas = screen.getAllByPlaceholderText(/brave explorer/i)
     await user.type(textareas[0], 'First agent')
-    let createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    let createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // Wait for first agent to complete
     await waitFor(() => {
-      expect(screen.getByText('Companion Hatched! ✨')).toBeInTheDocument()
+      expect(screen.getByText('Pokemon Hatched! ✨')).toBeInTheDocument()
       expect(screen.getByText('First Bot')).toBeInTheDocument()
     }, { timeout: 2000 })
 
@@ -256,12 +256,12 @@ describe('App', () => {
     // Create second agent
     const textareas2 = screen.getAllByPlaceholderText(/brave explorer/i)
     await user.type(textareas2[0], 'Second agent')
-    createButtons = screen.getAllByRole('button', { name: /hatch companion/i })
+    createButtons = screen.getAllByRole('button', { name: /hatch pokemon/i })
     await user.click(createButtons[0])
 
     // Wait for second agent
     await waitFor(() => {
-      expect(screen.getByText('Companion Hatched! ✨')).toBeInTheDocument()
+      expect(screen.getByText('Pokemon Hatched! ✨')).toBeInTheDocument()
       expect(screen.getByText('Second Bot')).toBeInTheDocument()
     }, { timeout: 2000 })
 
@@ -271,7 +271,7 @@ describe('App', () => {
 
     // Now check the footer shows both agents
     await waitFor(() => {
-      expect(screen.getByText(/2 companions hatched/i)).toBeInTheDocument()
+      expect(screen.getByText(/2 pokemons hatched/i)).toBeInTheDocument()
     })
   })
 

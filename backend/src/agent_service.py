@@ -1,8 +1,10 @@
 import logging
 import uuid
+import asyncio
+import random
 from pathlib import Path
 from time import sleep
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from avatar_generator import AvatarGenerator
 from database import async_session_factory
@@ -11,6 +13,61 @@ from models.db_models import AgentDB
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
+
+
+async def fake_progress_generator(
+    start_pct: int,
+    end_pct: int,
+    expected_duration: float,
+    event_name: str,
+    message_template: str
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Generate fake progress updates with Gaussian randomness.
+
+    Args:
+        start_pct: Starting percentage (e.g., 0)
+        end_pct: Ending percentage (e.g., 33)
+        expected_duration: Expected duration in seconds
+        event_name: Event name to yield (e.g., "llm_progress")
+        message_template: Message template with {pct} placeholder
+
+    Yields:
+        Progress events with realistic timing variance
+    """
+    import time
+
+    start_time = time.time()
+    last_pct = start_pct
+
+    while True:
+        elapsed = time.time() - start_time
+
+        # Calculate expected percentage based on elapsed time
+        expected_pct = start_pct + int((elapsed / expected_duration) * (end_pct - start_pct))
+        expected_pct = min(end_pct - 1, expected_pct)  # Don't reach end_pct yet
+
+        if expected_pct > last_pct:
+            last_pct = expected_pct
+
+            yield {
+                "event": event_name,
+                "data": {
+                    "percent": expected_pct,
+                    "message": message_template.format(pct=expected_pct)
+                }
+            }
+
+        # Stop when duration is exceeded
+        if elapsed >= expected_duration:
+            break
+
+        # Wait with Gaussian randomness around mean of 0.5s
+        # Variance = 0.5 * mean = 0.25
+        mean_wait = 0.5
+        variance = mean_wait / 2
+        wait_time = max(0.1, random.gauss(mean_wait, variance))
+
+        await asyncio.sleep(wait_time)
 
 
 class AgentService:
@@ -89,11 +146,31 @@ class AgentService:
             # Step 1: LLM Start (0%)
             yield {
                 "event": "llm_start",
-                "data": {"status": "generating", "message": "Dreaming up your companion..."}
+                "data": {"status": "generating", "message": "Dreaming up your pokemon..."}
             }
 
-            # Generate agent data with LLM
-            agent_data = await self.llm_client.generate_agent(description)
+            # Generate agent data with LLM in background while showing fake progress
+            # LLM takes ~10 seconds, show progress from 0% → 32%
+            logger.info("Starting LLM generation with fake progress...")
+
+            llm_task = asyncio.create_task(self.llm_client.generate_agent(description))
+
+            # Generate fake progress while LLM runs
+            async for progress_event in fake_progress_generator(
+                start_pct=0,
+                end_pct=33,
+                expected_duration=10.0,  # LLM takes ~10 seconds
+                event_name="llm_progress",
+                message_template="Dreaming up your pokemon... ({pct}%)"
+            ):
+                yield progress_event
+
+                # Check if LLM finished early
+                if llm_task.done():
+                    break
+
+            # Wait for LLM to complete (if not already done)
+            agent_data = await llm_task
             logger.debug(f"LLM generated: {agent_data.name}")
 
             # Step 2: LLM Complete (33%)
@@ -109,7 +186,7 @@ class AgentService:
 
             yield {
                 "event": "avatar_start",
-                "data": {"status": "generating", "message": "Hatching your companion..."}
+                "data": {"status": "generating", "message": "Hatching your pokemon..."}
             }
 
             # Step 4: Stream real avatar generation progress from mflux

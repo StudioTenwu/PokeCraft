@@ -23,24 +23,24 @@ describe('AgentCreation', () => {
   it('renders the form with description textarea', () => {
     render(<AgentCreation />)
     expect(screen.getByPlaceholderText(/brave explorer/i)).toBeInTheDocument()
-    expect(screen.getByText('Hatch Your Companion')).toBeInTheDocument()
+    expect(screen.getByText('Hatch Your Pokemon')).toBeInTheDocument()
   })
 
   it('shows error when submitting empty description', async () => {
     const user = userEvent.setup()
     render(<AgentCreation />)
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
-    expect(screen.getByText(/please describe your companion/i)).toBeInTheDocument()
+    expect(screen.getByText(/please describe your pokemon/i)).toBeInTheDocument()
   })
 
   it('does not call API when description is empty', async () => {
     const user = userEvent.setup()
     render(<AgentCreation />)
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     expect(api.api.createAgentStream).not.toHaveBeenCalled()
@@ -56,7 +56,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'A helpful robot')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     expect(api.api.createAgentStream).toHaveBeenCalledWith(
@@ -76,7 +76,7 @@ describe('AgentCreation', () => {
   it('shows loading state with egg emoji during creation', async () => {
     const user = userEvent.setup()
     api.api.createAgentStream.mockImplementation((desc, callbacks) => {
-      callbacks.onLLMStart?.({ message: 'Dreaming up your companion...' })
+      callbacks.onLLMStart?.({ message: 'Dreaming up your pokemon...' })
       return vi.fn()
     })
 
@@ -85,11 +85,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'A test bot')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     expect(screen.getByText('🥚')).toBeInTheDocument()
-    expect(screen.getByText(/dreaming up your companion/i)).toBeInTheDocument()
+    expect(screen.getByText(/dreaming up your pokemon/i)).toBeInTheDocument()
   })
 
   it('updates progress indicators from LLM to Avatar phase', async () => {
@@ -107,7 +107,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     // LLM phase
@@ -132,7 +132,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {
@@ -160,11 +160,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {
-      expect(screen.getByText('Companion Hatched! ✨')).toBeInTheDocument()
+      expect(screen.getByText('Pokemon Hatched! ✨')).toBeInTheDocument()
       expect(screen.getByText('Test Bot')).toBeInTheDocument()
     })
   })
@@ -190,7 +190,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {
@@ -210,11 +210,11 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to hatch your companion/i)).toBeInTheDocument()
+      expect(screen.getByText(/failed to hatch your pokemon/i)).toBeInTheDocument()
     })
   })
 
@@ -249,7 +249,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {
@@ -277,7 +277,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const createButton = screen.getByRole('button', { name: /hatch companion/i })
+    const createButton = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(createButton)
 
     await waitFor(() => {
@@ -289,7 +289,7 @@ describe('AgentCreation', () => {
 
     // Form should be back
     expect(screen.getByPlaceholderText(/brave explorer/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /hatch companion/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /hatch pokemon/i })).toBeInTheDocument()
   })
 
   it('disables textarea during loading', async () => {
@@ -301,7 +301,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     expect(textarea).toBeDisabled()
@@ -320,7 +320,7 @@ describe('AgentCreation', () => {
     const textarea = screen.getByPlaceholderText(/brave explorer/i)
     await user.type(textarea, 'Test')
 
-    const button = screen.getByRole('button', { name: /hatch companion/i })
+    const button = screen.getByRole('button', { name: /hatch pokemon/i })
     await user.click(button)
 
     await waitFor(() => {

@@ -17,7 +17,7 @@ Details:
     - Animated egg emoji (🥚 → 🐣)
     - Progress bar during avatar generation
     - Error handling with user-friendly messages
-    - Example companions quick select buttons
+    - Example pokemons quick select buttons
 
 Related Files:
   • API Client: /frontend/src/api.js (createAgentStream function)

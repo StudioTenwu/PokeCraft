@@ -11,7 +11,7 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        maxForks: 4,  // Limit to 4 workers max
+        maxForks: 1,  // Limit to 1 worker to minimize CPU usage
         minForks: 1
       }
     },

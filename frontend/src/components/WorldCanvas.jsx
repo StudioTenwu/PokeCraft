@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 
 const TILE_SIZE = 32 // pixels
 const COLORS = {
-  grass: '#8BC34A', // Pokémon GB green
+  grass: '#8BC34A', // Pokemon GB green
   wall: '#6D4C41',  // Brown
   water: '#42A5F5', // Blue
   path: '#FFF4E6',  // Cream

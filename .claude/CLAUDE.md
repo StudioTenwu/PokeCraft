@@ -4,7 +4,7 @@
 
 **Backend:** FastAPI (async) | SQLite + SQLAlchemy ORM | Claude Agent SDK | mflux (Schnell 3-bit) | Python 3.11+ with full type hints
 
-**Frontend:** React 18 + Vite | PixiJS | Tailwind CSS | Pokémon Game Boy Color theme
+**Frontend:** React 18 + Vite | PixiJS | Tailwind CSS | Pokemon Game Boy Color theme
 
 ---
 

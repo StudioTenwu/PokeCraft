@@ -18,7 +18,7 @@ class LLMClient:
         """Generate agent data using Claude via Agent SDK."""
         logger.debug(f"Generating agent from description: {description[:50]}...")
 
-        prompt = f"""Create an AI companion based on this description: {description}
+        prompt = f"""Create an AI pokemon based on this description: {description}
 
 You must return your response wrapped in XML <output> tags with CDATA containing a valid JSON object.
 
@@ -28,12 +28,13 @@ Return your response in this exact format:
     "name": "agent name",
     "backstory": "2-3 sentence backstory",
     "personality_traits": ["trait1", "trait2", "trait3"],
-    "avatar_prompt": "detailed prompt for image generation in Pokémon retro Game Boy style"
+    "avatar_prompt": "detailed prompt for image generation in Pokemon retro Game Boy style"
 }}
 ]]></output>
 
 Requirements:
-- The avatar_prompt should describe a Pokémon-style character in retro Game Boy Color aesthetic
+- The avatar_prompt should describe a Pokemon-style character in retro Game Boy Color aesthetic
+- The name should have a cute, Pokemon-like feel
 - Keep the backstory child-friendly and engaging
 - Make personality traits single words or short phrases
 - The JSON must be valid and properly formatted
@@ -77,7 +78,7 @@ Requirements:
             return AgentData(
                 name="Pixelmon",
                 backstory=(
-                    f"A companion inspired by: {description[:50]}... "
+                    f"A pokemon inspired by: {description[:50]}... "
                     "Ready for adventure in the digital world!"
                 ),
                 personality_traits=["friendly", "curious", "helpful"],

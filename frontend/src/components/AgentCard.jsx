@@ -1,5 +1,5 @@
 export default function AgentCard({ agent }) {
-  // Pokémon-themed color palette for personality badges
+  // Pokemon-themed color palette for personality badges
   const PERSONALITY_COLORS = [
     'personality-badge-brave',    // Red (Charizard)
     'personality-badge-curious',  // Blue (Squirtle)

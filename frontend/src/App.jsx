@@ -88,7 +88,7 @@ function App() {
               className="font-pixel text-2xl sm:text-3xl text-pokemon-gold"
               style={{ textShadow: '3px 3px 0px rgba(0,0,0,0.3)' }}
             >
-              AICraft <span className="text-xl">⚽ Pokémon Edition</span>
+              AICraft <span className="text-xl">⚽ Pokemon Edition</span>
             </h1>
           </div>
           <div className="flex-1 flex justify-end items-center gap-2">
@@ -184,7 +184,7 @@ function App() {
               {agents.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="font-pixel text-xs text-pokemon-gold">
-                    ✨ {agents.length} companion{agents.length > 1 ? 's' : ''} hatched
+                    ✨ {agents.length} pokemon{agents.length > 1 ? 's' : ''} hatched
                   </span>
                 </div>
               )}
