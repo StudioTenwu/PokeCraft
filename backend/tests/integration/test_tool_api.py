@@ -228,6 +228,19 @@ def test_create_tool_returns_action_id(client, temp_tools_file):
         assert "action_id" in data
         assert data["action_id"] == "move"
 
+def test_create_tool_422_without_world_id(client):
+    """Test POST /api/tools/create - verify world_id is required."""
+    # Test with missing world_id
+    response = client.post(
+        "/api/tools/create",
+        json={"agent_id": "test-agent-123", "description": "move forward"}
+    )
+
+    # Should return validation error
+    assert response.status_code == 422  # Unprocessable Entity
+    data = response.json()
+    assert "detail" in data
+
 def test_create_tool_error_handling(client):
     """Test POST /api/tools/create error handling."""
     # Test with invalid request (missing description)
