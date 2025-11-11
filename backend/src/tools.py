@@ -10,6 +10,7 @@ Each tool follows this format:
         return {"content": [{"type": "text", "text": "result"}]}
 """
 from typing import Any
+from claude_agent_sdk import tool
 
 # Custom tools will be appended below this line
 

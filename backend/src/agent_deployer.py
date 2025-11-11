@@ -5,10 +5,19 @@ from typing import AsyncGenerator, Any
 from datetime import datetime
 from dataclasses import dataclass
 
-from claude_agent_sdk import query, ClaudeAgentOptions
+from claude_agent_sdk import (
+    query,
+    ClaudeAgentOptions,
+    ClaudeSDKClient,
+    create_sdk_mcp_server,
+    tool as sdk_tool,
+)
 from tool_registry import create_user_tool_server, get_available_tools
 from action_registry import get_action_set_for_game, create_game_engine
 from game_engine import GameEngine
+import importlib.util
+import sys
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +42,37 @@ class AgentDeployer:
         """
         self.tool_service = tool_service
         self.world_service = world_service
+
+    def _load_tools_from_file(self, tools_file_path: str | None = None) -> list:
+        """Dynamically load tools from tools.py file."""
+        if tools_file_path is None:
+            tools_file_path = str(Path(__file__).parent / "tools.py")
+
+        logger.info(f"Loading tools from {tools_file_path}")
+
+        try:
+            spec = importlib.util.spec_from_file_location("custom_tools", tools_file_path)
+            if spec is None or spec.loader is None:
+                logger.warning(f"Could not load tools from {tools_file_path}")
+                return []
+
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["custom_tools"] = module
+            spec.loader.exec_module(module)
+
+            tools = []
+            for name in dir(module):
+                obj = getattr(module, name)
+                if callable(obj) and hasattr(obj, "__claude_tool__"):
+                    tools.append(obj)
+                    logger.info(f"Loaded tool: {name}")
+
+            logger.info(f"Successfully loaded {len(tools)} tools")
+            return tools
+
+        except Exception as e:
+            logger.error(f"Failed to load tools: {e}", exc_info=True)
+            return []
 
     async def deploy_agent(
         self, agent_id: str, world_id: str, goal: str
@@ -102,150 +142,174 @@ class AgentDeployer:
             tools = await self.tool_service.get_agent_tools(agent_id)
             logger.info(f"Loaded {len(tools)} tools for agent {agent_id}")
 
-            # 3. Create deployment prompt
+            # 4. Load tools from tools.py and create MCP server
+            tool_functions = self._load_tools_from_file()
+            if len(tool_functions) == 0:
+                logger.warning("No tools found - agent will run without custom tools")
+
+            # Create MCP server with user's custom tools
+            user_tool_server = create_sdk_mcp_server(
+                name="user_tools",
+                version="1.0.0",
+                tools=tool_functions
+            )
+            logger.info(f"Created MCP server with {len(tool_functions)} tools")
+
+            # Build allowed tools list
+            allowed_tools = [f"mcp__user_tools__{tool.__name__}" for tool in tool_functions]
+            logger.info(f"Allowed tools: {allowed_tools}")
+
+            # Configure Claude Agent SDK with MCP server
+            options = ClaudeAgentOptions(
+                mcp_servers={"user_tools": user_tool_server},
+                allowed_tools=allowed_tools if allowed_tools else None,
+            )
+
+            # 5. Create deployment prompt
             prompt = self._build_deployment_prompt(world, goal)
 
-            # 4. Stream agent execution with Claude Agent SDK
-            async for message in query(prompt=prompt):
-                # Parse message and yield appropriate events
+            # 6. Stream agent execution with Claude SDK Client + MCP server
+            async with ClaudeSDKClient(options=options) as client:
+                async for message in client.query(prompt=prompt):
+                    # Parse message and yield appropriate events
 
-                # Check for reasoning/thinking text
-                if hasattr(message, "result") and message.result:
-                    # This is reasoning text from Claude
-                    yield DeploymentEvent(
-                        event_type="reasoning",
-                        data={
-                            "text": message.result,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    )
-                    total_steps += 1
+                    # Check for reasoning/thinking text
+                    if hasattr(message, "result") and message.result:
+                        # This is reasoning text from Claude
+                        yield DeploymentEvent(
+                            event_type="reasoning",
+                            data={
+                                "text": message.result,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            },
+                        )
+                        total_steps += 1
 
-                # Check for tool use
-                if hasattr(message, "tool_use") and message.tool_use:
-                    tool_name = message.tool_use.tool_name
-                    parameters = message.tool_use.parameters
+                    # Check for tool use
+                    if hasattr(message, "tool_use") and message.tool_use:
+                        tool_name = message.tool_use.tool_name
+                        parameters = message.tool_use.parameters
 
-                    # Yield tool_call event
-                    yield DeploymentEvent(
-                        event_type="tool_call",
-                        data={
-                            "tool_name": tool_name,
-                            "parameters": parameters,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    )
-                    total_tools_used += 1
+                        # Yield tool_call event
+                        yield DeploymentEvent(
+                            event_type="tool_call",
+                            data={
+                                "tool_name": tool_name,
+                                "parameters": parameters,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            },
+                        )
+                        total_tools_used += 1
 
-                    # Execute tool (simulated for now)
-                    # In real implementation, would call actual tool
-                    tool_result = {"success": True, "message": f"Tool {tool_name} executed"}
+                        # Execute tool (simulated for now)
+                        # In real implementation, would call actual tool
+                        tool_result = {"success": True, "message": f"Tool {tool_name} executed"}
 
-                    # Yield tool_result event
-                    yield DeploymentEvent(
-                        event_type="tool_result",
-                        data={
-                            "tool_name": tool_name,
-                            "success": True,
-                            "result": str(tool_result),
-                            "duration_ms": 45,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    )
+                        # Yield tool_result event
+                        yield DeploymentEvent(
+                            event_type="tool_result",
+                            data={
+                                "tool_name": tool_name,
+                                "success": True,
+                                "result": str(tool_result),
+                                "duration_ms": 45,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            },
+                        )
 
-                    # Parse action field from tool result
-                    if isinstance(tool_result, dict) and "action" in tool_result:
-                        action_data = tool_result["action"]
-                        if isinstance(action_data, dict) and "action_id" in action_data:
-                            action_id = action_data["action_id"]
-                            parameters = action_data.get("parameters", {})
+                        # Parse action field from tool result
+                        if isinstance(tool_result, dict) and "action" in tool_result:
+                            action_data = tool_result["action"]
+                            if isinstance(action_data, dict) and "action_id" in action_data:
+                                action_id = action_data["action_id"]
+                                parameters = action_data.get("parameters", {})
 
-                            logger.info(f"Parsing action: {action_id} with params {parameters}")
+                                logger.info(f"Parsing action: {action_id} with params {parameters}")
 
-                            # Execute action through game engine
-                            if game_engine:
-                                try:
-                                    action_result = game_engine.execute_action(action_id, parameters)
+                                # Execute action through game engine
+                                if game_engine:
+                                    try:
+                                        action_result = game_engine.execute_action(action_id, parameters)
 
-                                    if action_result.success and action_result.state_delta:
-                                        # Update current position if it changed
-                                        if "agent_position" in action_result.state_delta:
-                                            current_position = action_result.state_delta["agent_position"]
+                                        if action_result.success and action_result.state_delta:
+                                            # Update current position if it changed
+                                            if "agent_position" in action_result.state_delta:
+                                                current_position = action_result.state_delta["agent_position"]
 
-                                        # Yield world_update event with state deltas
-                                        yield DeploymentEvent(
-                                            event_type="world_update",
-                                            data={
-                                                **action_result.state_delta,
-                                                "message": action_result.message,
-                                                "timestamp": datetime.utcnow().isoformat(),
-                                            },
-                                        )
-                                        logger.info(f"Action {action_id} executed successfully")
-                                    elif not action_result.success:
-                                        # Action failed - yield error event
+                                            # Yield world_update event with state deltas
+                                            yield DeploymentEvent(
+                                                event_type="world_update",
+                                                data={
+                                                    **action_result.state_delta,
+                                                    "message": action_result.message,
+                                                    "timestamp": datetime.utcnow().isoformat(),
+                                                },
+                                            )
+                                            logger.info(f"Action {action_id} executed successfully")
+                                        elif not action_result.success:
+                                            # Action failed - yield error event
+                                            yield DeploymentEvent(
+                                                event_type="error",
+                                                data={
+                                                    "error_type": "action_execution_failed",
+                                                    "message": action_result.error or action_result.message,
+                                                    "action_id": action_id,
+                                                    "recoverable": True,
+                                                    "timestamp": datetime.utcnow().isoformat(),
+                                                },
+                                            )
+                                            logger.warning(f"Action {action_id} failed: {action_result.error}")
+
+                                    except Exception as e:
+                                        logger.error(f"Failed to execute action {action_id}: {e}", exc_info=True)
                                         yield DeploymentEvent(
                                             event_type="error",
                                             data={
-                                                "error_type": "action_execution_failed",
-                                                "message": action_result.error or action_result.message,
+                                                "error_type": "action_execution_error",
+                                                "message": str(e),
                                                 "action_id": action_id,
                                                 "recoverable": True,
                                                 "timestamp": datetime.utcnow().isoformat(),
                                             },
                                         )
-                                        logger.warning(f"Action {action_id} failed: {action_result.error}")
 
-                                except Exception as e:
-                                    logger.error(f"Failed to execute action {action_id}: {e}", exc_info=True)
-                                    yield DeploymentEvent(
-                                        event_type="error",
-                                        data={
-                                            "error_type": "action_execution_error",
-                                            "message": str(e),
-                                            "action_id": action_id,
-                                            "recoverable": True,
-                                            "timestamp": datetime.utcnow().isoformat(),
-                                        },
-                                    )
+                    # Check for tool results that update position (legacy fallback)
+                    if hasattr(message, "tool_result") and message.tool_result:
+                        result = message.tool_result.result
+                        if isinstance(result, dict) and "new_position" in result:
+                            old_position = current_position
+                            current_position = result["new_position"]
 
-                # Check for tool results that update position (legacy fallback)
-                if hasattr(message, "tool_result") and message.tool_result:
-                    result = message.tool_result.result
-                    if isinstance(result, dict) and "new_position" in result:
-                        old_position = current_position
-                        current_position = result["new_position"]
-
-                        # Yield world_update event (DELTAS ONLY)
-                        yield DeploymentEvent(
-                            event_type="world_update",
-                            data={
-                                "agent_moved_from": old_position,
-                                "agent_moved_to": current_position,
-                                "cell_updated": {
-                                    "position": current_position,
-                                    "type": "visited",
+                            # Yield world_update event (DELTAS ONLY)
+                            yield DeploymentEvent(
+                                event_type="world_update",
+                                data={
+                                    "agent_moved_from": old_position,
+                                    "agent_moved_to": current_position,
+                                    "cell_updated": {
+                                        "position": current_position,
+                                        "type": "visited",
+                                    },
+                                    "timestamp": datetime.utcnow().isoformat(),
                                 },
+                            )
+
+                    # Check for errors
+                    if hasattr(message, "error") and message.error:
+                        yield DeploymentEvent(
+                            event_type="error",
+                            data={
+                                "error_type": "tool_execution_failed",
+                                "message": str(message.error),
+                                "recoverable": True,
                                 "timestamp": datetime.utcnow().isoformat(),
                             },
                         )
+                        # Continue streaming to allow Claude to retry
 
-                # Check for errors
-                if hasattr(message, "error") and message.error:
-                    yield DeploymentEvent(
-                        event_type="error",
-                        data={
-                            "error_type": "tool_execution_failed",
-                            "message": str(message.error),
-                            "recoverable": True,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                    )
-                    # Continue streaming to allow Claude to retry
-
-                # Check for completion
-                if hasattr(message, "stop_reason") and message.stop_reason:
-                    break
+                    # Check for completion
+                    if hasattr(message, "stop_reason") and message.stop_reason:
+                        break
 
             # Yield final complete event
             yield DeploymentEvent(
