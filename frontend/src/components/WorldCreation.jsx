@@ -3,6 +3,13 @@ import PropTypes from 'prop-types'
 import { createWorld } from '../api'
 import WorldCanvas from './WorldCanvas'
 
+const EXAMPLE_WORLDS = [
+  "A sparkling crystal cave filled with colorful gems, mysterious passages, and glowing rock formations",
+  "An ancient library tower with moving bookshelves, riddles carved in stone, and hidden chambers",
+  "A cozy village where items mysteriously disappear and reappear, with friendly neighbors and a magic fountain",
+  "An enchanted forest with creatures to help, glowing mushrooms, hidden paths, and magical springs"
+]
+
 export default function WorldCreation({ agent, onWorldCreated }) {
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,6 +38,14 @@ export default function WorldCreation({ agent, onWorldCreated }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleExampleClick = (example) => {
+    // If textarea has content, ask for confirmation before replacing
+    if (description.trim() && !window.confirm('Replace your current description?')) return
+
+    setDescription(example)
+    setError(null)
   }
 
   // If world was created, show it
@@ -92,6 +107,31 @@ export default function WorldCreation({ agent, onWorldCreated }) {
           {loading ? '🌱 Generating World...' : '✨ Create World'}
         </button>
       </form>
+
+      {/* Example worlds */}
+      <div className="mt-12 p-6 bg-pokemon-green/20 border-2 border-pokemon-green rounded"
+           role="region" aria-label="Example world descriptions">
+        <p className="font-pixel text-sm text-pokemon-green mb-4 text-center">
+          ✨ Example Worlds - Click to try!
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {EXAMPLE_WORLDS.map((example, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => handleExampleClick(example)}
+              className="text-left px-4 py-3 hover:bg-pokemon-cream hover:scale-105
+                       text-xs border-2 border-pokemon-green transition-all
+                       font-sans rounded"
+              style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              disabled={loading}
+              aria-label={`Use example world: ${example.slice(0, 50)}...`}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {loading && (
         <div className="mt-4 font-pixel text-xs text-center" style={{ color: 'var(--text-primary)' }}>
