@@ -32,7 +32,7 @@ class ToolGenerator:
         pass
 
     async def generate_tool(
-        self, description: str, agent_id: str, game_action_set: Any | None = None
+        self, description: str, agent_id: str, game_action_set: Any | None = None, world_context: dict[str, Any] | None = None
     ) -> ToolCode:
         """
         Generate a custom tool from natural language description.
@@ -52,6 +52,16 @@ class ToolGenerator:
 
         forbidden_list = ", ".join(sorted(self.FORBIDDEN_IMPORTS))
 
+        # Include world context if provided
+        world_info = ""
+        if world_context:
+            world_info = f"""
+
+    World Context:
+    - Size: {world_context.get('width', '?')}x{world_context.get('height', '?')}
+    - Game Type: {world_context.get('game_type', 'unknown')}
+"""
+
         # Include action information if provided
         action_info = ""
         if game_action_set:
@@ -66,7 +76,7 @@ class ToolGenerator:
         prompt = f"""Create a custom tool for an AI agent based on this description: {description}
 
     The tool will be used in a children's educational game where agents explore 2D grid worlds.
-{action_info}
+{world_info}{action_info}
 
     You must return your response wrapped in XML <output> tags with CDATA containing a valid JSON object.
 

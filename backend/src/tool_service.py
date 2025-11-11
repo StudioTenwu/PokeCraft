@@ -72,8 +72,15 @@ class ToolService:
 
         logger.info(f"Tool will be generated with {game_type} action context")
 
-        # Generate tool code using LLM with game action context
-        tool_code_obj = await self.tool_generator.generate_tool(description, agent_id, action_set)
+        # Prepare world context for tool generation
+        world_context = {
+            "width": world.get("width", 10),
+            "height": world.get("height", 10),
+            "game_type": game_type
+        }
+
+        # Generate tool code using LLM with game action context and world context
+        tool_code_obj = await self.tool_generator.generate_tool(description, agent_id, action_set, world_context)
 
         # Append tool to tools.py file
         append_tool_to_file(tool_code_obj.code)
