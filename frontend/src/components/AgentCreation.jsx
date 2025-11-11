@@ -3,6 +3,38 @@ import { api } from '../api'
 import AgentCard from './AgentCard'
 import PokemonButton from './PokemonButton'
 
+// Default starter Pokémon
+const DEFAULT_POKEMON = [
+  {
+    id: "pikachu",
+    name: "Pikachu",
+    avatar_url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
+    backstory: "I am Pikachu, an Electric-type Pokémon known for my lightning bolt-shaped tail and adorable cheeks that store electricity. I love adventures and making new friends!",
+    personality_traits: ["energetic", "loyal", "brave", "friendly", "playful"]
+  },
+  {
+    id: "charmander",
+    name: "Charmander",
+    avatar_url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png",
+    backstory: "I'm Charmander, a Fire-type Pokémon with a flame burning at the tip of my tail. The flame reflects my life force - when I'm happy, it burns bright! I dream of becoming a powerful Charizard one day.",
+    personality_traits: ["determined", "hot-headed", "courageous", "competitive", "passionate"]
+  },
+  {
+    id: "bulbasaur",
+    name: "Bulbasaur",
+    avatar_url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png",
+    backstory: "I'm Bulbasaur, a Grass/Poison-type Pokémon. I have a special plant bulb on my back that grows with me. I love sunny days because they help my bulb photosynthesize. I'm calm and nurturing by nature.",
+    personality_traits: ["calm", "nurturing", "patient", "wise", "protective"]
+  },
+  {
+    id: "squirtle",
+    name: "Squirtle",
+    avatar_url: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png",
+    backstory: "I'm Squirtle, a Water-type Pokémon! My shell is super tough and protects me. I can shoot powerful water blasts and I love swimming in the ocean. I'm part of the Squirtle Squad!",
+    personality_traits: ["cool", "playful", "mischievous", "confident", "tactical"]
+  }
+]
+
 export default function AgentCreation({ onAgentCreated }) {
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,6 +51,31 @@ export default function AgentCreation({ onAgentCreated }) {
   })
 
   const cleanupRef = useRef(null)
+
+  const handleLoadDefault = async (pokemon) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Create agent with pre-defined data
+      const response = await fetch('http://localhost:8000/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pokemon)
+      })
+
+      if (!response.ok) throw new Error('Failed to load Pokémon')
+
+      const data = await response.json()
+      setAgent(data)
+      if (onAgentCreated) onAgentCreated(data)
+    } catch (err) {
+      setError('Failed to load default Pokémon. Make sure the backend is running!')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleCreate = () => {
     if (!description.trim()) {
@@ -148,6 +205,57 @@ export default function AgentCreation({ onAgentCreated }) {
           Hatch Your First Pokémon
         </h2>
         <p className="text-base font-pixel" style={{color: 'var(--text-primary)', opacity: 0.9}}>
+          Choose a classic starter or describe your dream Pokémon!
+        </p>
+      </div>
+
+      {/* Default Starter Pokémon */}
+      <div className="mb-12">
+        <h3 className="font-pixel text-2xl text-pokemon-gold mb-6 text-center">
+          ✨ Classic Starter Pokémon
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {DEFAULT_POKEMON.map((pokemon) => (
+            <button
+              key={pokemon.id}
+              onClick={() => handleLoadDefault(pokemon)}
+              disabled={loading}
+              className="pokemon-container p-4 hover:scale-105 transition-transform
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <img
+                src={pokemon.avatar_url}
+                alt={pokemon.name}
+                className="w-24 h-24 mx-auto mb-2 pixelated"
+              />
+              <p className="font-pixel text-sm text-center"
+                 style={{color: 'var(--text-primary)'}}>
+                {pokemon.name}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="relative mb-12">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t-2 border-pokemon-gold opacity-20"></div>
+        </div>
+        <div className="relative flex justify-center">
+          <span className="px-4 font-pixel text-sm bg-pokemon-cream"
+                style={{color: 'var(--text-primary)', opacity: 0.7}}>
+            OR
+          </span>
+        </div>
+      </div>
+
+      {/* Hatch Your Own section header */}
+      <div className="text-center mb-8">
+        <h3 className="font-pixel text-2xl text-pokemon-gold mb-2">
+          🥚 Hatch Your Own Pokémon
+        </h3>
+        <p className="text-sm font-pixel" style={{color: 'var(--text-primary)', opacity: 0.8}}>
           Describe your dream Pokémon and watch them come to life!
         </p>
       </div>
