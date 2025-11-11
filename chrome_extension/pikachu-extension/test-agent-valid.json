@@ -1,0 +1,7 @@
+{
+  "id": "charmander",
+  "name": "Charmander",
+  "avatar_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png",
+  "backstory": "I'm Charmander, a Fire-type Pokémon with a flame burning at the tip of my tail. The flame reflects my life force - when I'm happy, it burns bright! I dream of becoming a powerful Charizard one day.",
+  "personality_traits": ["determined", "hot-headed", "courageous", "competitive", "passionate"]
+}

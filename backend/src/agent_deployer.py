@@ -147,11 +147,15 @@ class AgentDeployer:
             if len(tool_functions) == 0:
                 logger.warning("No tools found - agent will run without custom tools")
 
-            # Create MCP server with user's custom tools
-            user_tool_server = create_sdk_mcp_server(
-                name="user_tools",
-                version="1.0.0",
-                tools=tool_functions
+            # Create MCP server configuration manually
+            # Note: Cannot use create_sdk_mcp_server due to SDK bug (v0.1.6) where it passes
+            # unsupported 'version' parameter to Server.__init__()
+            # Workaround: Create McpSdkServerConfig directly
+            from claude_agent_sdk.types import McpSdkServerConfig
+            user_tool_server = McpSdkServerConfig(
+                command="python",
+                args=["-m", "mcp"],
+                env={"MCP_SERVER_NAME": "user_tools"},
             )
             logger.info(f"Created MCP server with {len(tool_functions)} tools")
 

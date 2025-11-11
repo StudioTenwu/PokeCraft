@@ -1,0 +1,13 @@
+{
+  "id": "charizard_001",
+  "name": "Charizard",
+  "avatar_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png",
+  "backstory": "I am Charizard, a powerful Fire/Flying-type Pokémon! I evolved from Charmeleon and love soaring through the skies with flames blazing from my tail. I'm fiercely loyal to my trainer and never back down from a challenge!",
+  "personality_traits": [
+    "brave",
+    "competitive",
+    "protective",
+    "confident",
+    "passionate"
+  ]
+}

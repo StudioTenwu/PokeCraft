@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{AGENT_NAME}} - AICraft Companion</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header with avatar and agent name -->
+    <header class="header">
+      <img id="agent-avatar" class="avatar" src="{{AVATAR_URL}}" alt="{{AGENT_NAME}}">
+
+      <!-- Agent Selector Dropdown -->
+      <div class="agent-selector-container">
+        <div id="agent-selector" class="agent-selector">
+          <span id="current-agent-name" class="current-agent-name">{{AGENT_NAME}}</span>
+          <span class="dropdown-arrow">▼</span>
+        </div>
+        <div id="agent-dropdown" class="agent-dropdown hidden">
+          <!-- Populated dynamically by panel.js -->
+        </div>
+      </div>
+
+      <button id="load-agents-button" class="upload-button" title="Load new agents from AICraft">
+        📥
+      </button>
+
+      <button id="import-json-button" class="upload-button" title="Import agent from JSON file">
+        📂
+      </button>
+      <input type="file" id="json-file-input" accept=".json" style="display: none;">
+
+      <button id="clear-history-button" class="clear-history-button" title="Clear conversation history">
+        🗑️
+      </button>
+    </header>
+
+    <!-- Chat area -->
+    <div id="chat-area" class="chat-area">
+      <!-- Messages will be dynamically added here -->
+    </div>
+
+    <!-- Input area -->
+    <div class="input-area">
+      <input 
+        type="text" 
+        id="message-input" 
+        class="message-input" 
+        placeholder="Type a message..."
+        autocomplete="off"
+      >
+      <button id="send-button" class="send-button">Send</button>
+    </div>
+  </div>
+
+  <!-- Pokemon color theming -->
+  <script src="pokemon-colors.js" type="module"></script>
+
+  <script src="panel.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+/* AICraft Companion - Dynamic Pokemon Theme */
+
+/* CSS Variables for dynamic theming */
+:root {
+  --primary-color: #FFD700;     /* Main background (body color) */
+  --secondary-color: #FFC700;   /* Header background */
+  --accent-color: #996600;      /* Borders and accents */
+  --text-color: #1A1A1A;        /* Dark text */
+  --light-text-color: #FFFACD;  /* Light text */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  background-color: var(--primary-color);
+  color: var(--text-color);
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 0.5s ease;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 100%;
+}
+
+/* Header */
+.header {
+  background-color: var(--secondary-color);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 4px solid var(--accent-color);
+  box-shadow: 0 4px 0 var(--accent-color);
+  transition: background-color 0.5s ease;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid #996600;
+  background-color: #FFEB99;
+  image-rendering: pixelated;
+}
+
+.agent-name {
+  font-size: 14px;
+  color: #1A1A1A;
+  text-shadow: 2px 2px 0 #FFE680;
+  flex: 1;
+}
+
+.clear-history-button {
+  background-color: #CC9900;
+  color: #FFFACD;
+  border: 2px solid #996600;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: all 0.1s;
+  line-height: 1;
+}
+
+.clear-history-button:hover {
+  background-color: #996600;
+  transform: translateY(-1px);
+}
+
+.clear-history-button:active {
+  transform: translateY(0);
+}
+
+/* Agent Selector Dropdown */
+.agent-selector-container {
+  position: relative;
+  flex: 1;
+}
+
+.agent-selector {
+  background-color: #CC9900;
+  color: #FFFACD;
+  border: 3px solid #996600;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.1s;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.agent-selector:hover {
+  background-color: #996600;
+  transform: translateY(-1px);
+}
+
+.agent-selector:active {
+  transform: translateY(0);
+}
+
+.current-agent-name {
+  flex: 1;
+  text-align: left;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.agent-selector.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.agent-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: #FFC700;
+  border: 3px solid #996600;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.agent-dropdown.hidden {
+  display: none;
+}
+
+.agent-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid #CC9900;
+  transition: background-color 0.1s;
+}
+
+.agent-option:last-child {
+  border-bottom: none;
+}
+
+.agent-option:hover {
+  background-color: #FFD700;
+}
+
+.agent-option.active {
+  background-color: #996600;
+  color: #FFFACD;
+}
+
+.agent-option-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #996600;
+  background-color: #FFEB99;
+  image-rendering: pixelated;
+}
+
+.agent-option-name {
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 10px;
+  color: #1A1A1A;
+  flex: 1;
+}
+
+.agent-option.active .agent-option-name {
+  color: #FFFACD;
+}
+
+/* Chat Area */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: var(--primary-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background-color 0.5s ease;
+}
+
+.message {
+  padding: 12px;
+  border-radius: 8px;
+  max-width: 90%;
+  word-wrap: break-word;
+  font-size: 11px;
+  line-height: 1.6;
+  border: 2px solid #996600;
+}
+
+.message.user {
+  background-color: #CC9900;
+  color: #FFFACD;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.message.agent {
+  background-color: #996600;
+  color: #FFFACD;
+  align-self: flex-start;
+}
+
+.message.system {
+  background-color: #FFC700;
+  color: #1A1A1A;
+  align-self: center;
+  text-align: center;
+  font-size: 10px;
+  border-style: dashed;
+}
+
+/* Loading indicator */
+.message.loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.loading-sprite {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-dots {
+  font-size: 14px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Input Area */
+.input-area {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--secondary-color);
+  border-top: 4px solid var(--accent-color);
+  transition: background-color 0.5s ease;
+}
+
+.message-input {
+  flex: 1;
+  padding: 12px;
+  border: 3px solid #996600;
+  background-color: #FFFACD;
+  color: #1A1A1A;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.message-input:focus {
+  outline: none;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFD700;
+}
+
+.send-button {
+  padding: 12px 20px;
+  background-color: #CC9900;
+  color: #FFFACD;
+  border: 3px solid #996600;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+}
+
+.send-button:hover {
+  background-color: #996600;
+  transform: translateY(-2px);
+}
+
+.send-button:active {
+  transform: translateY(0);
+}
+
+.send-button:disabled {
+  background-color: #E6B800;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Scrollbar styling */
+.chat-area::-webkit-scrollbar {
+  width: 12px;
+}
+
+.chat-area::-webkit-scrollbar-track {
+  background: #FFC700;
+  border: 2px solid #996600;
+}
+
+.chat-area::-webkit-scrollbar-thumb {
+  background: #CC9900;
+  border: 2px solid #996600;
+  border-radius: 4px;
+}
+
+.chat-area::-webkit-scrollbar-thumb:hover {
+  background: #996600;
+}
+
+/* Markdown Styles in Agent Messages */
+.message.agent p {
+  margin: 0 0 8px 0;
+}
+
+.message.agent p:last-child {
+  margin-bottom: 0;
+}
+
+.message.agent strong {
+  font-weight: bold;
+  color: #FFEB99;
+}
+
+.message.agent em {
+  font-style: italic;
+  color: #FFE680;
+}
+
+.message.agent code {
+  background-color: #CC9900;
+  color: #FFFACD;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  border: 1px solid #996600;
+}
+
+.message.agent pre {
+  background-color: #CC9900;
+  color: #FFFACD;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 8px 0;
+  border: 2px solid #996600;
+}
+
+.message.agent pre code {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.message.agent a {
+  color: #FFEB99;
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+.message.agent a:hover {
+  color: #FFE680;
+}
+
+.message.agent ul,
+.message.agent ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.message.agent li {
+  margin: 4px 0;
+}
+
+.message.agent blockquote {
+  border-left: 4px solid #FFE680;
+  padding-left: 12px;
+  margin: 8px 0;
+  color: #FFFACD;
+  font-style: italic;
+}
+
+.message.agent h1,
+.message.agent h2,
+.message.agent h3,
+.message.agent h4,
+.message.agent h5,
+.message.agent h6 {
+  color: #FFEB99;
+  margin: 8px 0 4px 0;
+  font-weight: bold;
+}
+
+.message.agent h1 { font-size: 13px; }
+.message.agent h2 { font-size: 12px; }
+.message.agent h3 { font-size: 11px; }
+.message.agent h4 { font-size: 11px; }
+.message.agent h5 { font-size: 10px; }
+.message.agent h6 { font-size: 10px; }
+
+/* Upload Button */
+.upload-button {
+  padding: 8px 12px;
+  background-color: #CC9900;
+  color: #FFFACD;
+  border: 2px solid #996600;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-size: 9px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.upload-button:hover {
+  background-color: #996600;
+  transform: translateY(-1px);
+}
+
+.upload-button:active {
+  transform: translateY(0);
+}
+
+/* Status Message */
+.status-message {
+  padding: 12px;
+  margin: 8px 16px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-align: center;
+  border: 2px solid;
+  transition: all 0.3s;
+}
+
+.status-message.hidden {
+  display: none;
+}
+
+.status-message.success {
+  background-color: #90EE90;
+  color: #1A1A1A;
+  border-color: #228B22;
+}
+
+.status-message.error {
+  background-color: #FFB6B6;
+  color: #8B0000;
+  border-color: #DC143C;
+}
+
+.status-message.loading {
+  background-color: #FFE680;
+  color: #1A1A1A;
+  border-color: #FFC700;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Thinking Bubble Styles */
+.message.thinking-bubble {
+  background-color: #FFD700;
+  border: 3px solid #996600;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-start;
+  max-width: 120px;
+  position: relative;
+}
+
+/* Speech bubble tail */
+.message.thinking-bubble::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  bottom: -10px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid #996600;
+}
+
+.message.thinking-bubble::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #FFD700;
+}
+
+/* Pokemon sprite with bounce animation */
+.thinking-pokemon {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  animation: pokemonBounce 1s ease-in-out infinite;
+}
+
+@keyframes pokemonBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Thinking dots animation */
+.thinking-text {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  color: #996600;
+  font-weight: bold;
+}
+
+.thinking-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.thinking-dots .dot {
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.thinking-dots .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.thinking-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}

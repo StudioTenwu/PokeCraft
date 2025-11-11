@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "AICraft Companion: Pikachu",
+  "version": "1.0.0",
+  "description": "I am Pikachu, an Electric-type Pokémon known for my lightning bolt-shaped tail and adorable cheeks that store electri...",
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://localhost:8080/*"
+  ],
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_title": "Chat with Pikachu"
+  }
+}

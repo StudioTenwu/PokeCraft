@@ -1,0 +1,84 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║           🎮 AICRAFT COMPANION - PIKACHU EXTENSION 🎮                   ║
+║                        Quick Start Guide                                 ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+📦 YOUR EXTENSION IS READY!
+══════════════════════════════════════════════════════════════════════════
+
+📁 Extension folder:
+   /Users/wz/.orchestra/subagents/AICraft-extension-export/chrome_extension/pikachu-extension
+
+📦 Zip file (shareable):
+   /Users/wz/.orchestra/subagents/AICraft-extension-export/chrome_extension/aicraft-companion-pikachu.zip
+
+══════════════════════════════════════════════════════════════════════════
+🚀 INSTALL IN 5 STEPS
+══════════════════════════════════════════════════════════════════════════
+
+1. Open Chrome → chrome://extensions/
+
+2. Turn ON "Developer mode" (top-right toggle)
+
+3. Click "Load unpacked"
+
+4. Select folder:
+   chrome_extension/pikachu-extension/
+
+5. Done! Extension appears in your list
+
+══════════════════════════════════════════════════════════════════════════
+💬 START CHATTING
+══════════════════════════════════════════════════════════════════════════
+
+1. Click the puzzle icon (🧩) in Chrome toolbar
+
+2. Pin "AICraft Companion: Pikachu"
+
+3. Click the extension icon
+
+4. Side panel opens → Start chatting!
+
+══════════════════════════════════════════════════════════════════════════
+🎨 WHAT TO EXPECT
+══════════════════════════════════════════════════════════════════════════
+
+✅ Retro Pokémon Game Boy Color green theme
+✅ Pikachu avatar (yellow circular icon)
+✅ Chat interface with message bubbles
+✅ Mock responses (random friendly messages)
+✅ Persistent chat history
+
+══════════════════════════════════════════════════════════════════════════
+📚 DOCUMENTATION
+══════════════════════════════════════════════════════════════════════════
+
+📖 Full guide:       HOW_TO_INSTALL.md
+✅ Test checklist:   TEST_CHECKLIST.md
+🎯 This quick ref:   QUICK_START.txt
+
+══════════════════════════════════════════════════════════════════════════
+🔧 TROUBLESHOOTING
+══════════════════════════════════════════════════════════════════════════
+
+Problem: Extension doesn't load
+→ Check "Developer mode" is ON
+→ Make sure you selected the pikachu-extension folder
+
+Problem: Icon not visible
+→ Click puzzle icon (🧩)
+→ Pin the extension
+
+Problem: Panel doesn't open  
+→ Update Chrome to latest version (need Chrome 114+)
+→ Try reloading extension (🔄 on chrome://extensions/)
+
+Problem: Chat not responding
+→ This is normal! Mock responses are built-in
+→ For real AI, backend integration needed
+
+══════════════════════════════════════════════════════════════════════════
+✨ ENJOY YOUR PIKACHU COMPANION! ⚡
+══════════════════════════════════════════════════════════════════════════
