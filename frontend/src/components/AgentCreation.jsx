@@ -69,7 +69,7 @@ export default function AgentCreation({ onAgentCreated }) {
           message: data.message || 'Hatching your companion...',
           avatarStep: 0,
           avatarTotal: 2,
-          avatarPercent: 0
+          avatarPercent: 33  // Stay at 33% when avatar starts
         }))
       },
 

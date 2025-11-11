@@ -109,7 +109,10 @@ class AgentService:
                 "data": {"status": "generating", "message": "Hatching your companion..."}
             }
 
-            # Step 4: Avatar Progress - First step (66%)
+            # Give UI time to show avatar_start before jumping to progress
+            await asyncio.sleep(0.5)
+
+            # Step 4: Avatar Progress - Starting generation (66%)
             yield {
                 "event": "avatar_progress",
                 "data": {
@@ -120,13 +123,13 @@ class AgentService:
                 }
             }
 
-            # Generate avatar
+            # Generate avatar (this is where the real work happens)
             avatar_url = self.avatar_generator.generate_avatar(
                 agent_id, agent_data.avatar_prompt
             )
             logger.info(f"Avatar generated: {avatar_url}")
 
-            # Step 5: Avatar Progress - Second step (100%)
+            # Step 5: Avatar Progress - Generation complete (100%)
             yield {
                 "event": "avatar_progress",
                 "data": {
