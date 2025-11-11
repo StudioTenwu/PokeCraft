@@ -88,6 +88,14 @@ class ToolService:
         # Parse action_id from tool code object
         action_id = tool_code_obj.action_id
 
+        # Validate action_id is in the world's action set
+        if action_id:
+            valid_action_ids = [action.action_id for action in action_set.actions]
+            if action_id not in valid_action_ids:
+                raise ValueError(
+                    f"Invalid action_id '{action_id}'. Must be one of: {', '.join(valid_action_ids)}"
+                )
+
         # Determine category based on action_id
         category = None
         if action_id:
