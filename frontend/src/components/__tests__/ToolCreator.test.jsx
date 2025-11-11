@@ -22,7 +22,7 @@ describe('ToolCreator', () => {
   it('renders tool creator form', () => {
     render(<ToolCreator agentId={mockAgentId} />)
     expect(screen.getByPlaceholderText(/Describe what you want/i)).toBeInTheDocument()
-    expect(screen.getByText('Teach Your Agent a New Skill!')).toBeInTheDocument()
+    expect(screen.getByText('Teach Your Pokemon a New Skill!')).toBeInTheDocument()
   })
 
   it('renders create button', () => {
@@ -60,7 +60,8 @@ describe('ToolCreator', () => {
       json: async () => mockResponse
     })
 
-    render(<ToolCreator agentId={mockAgentId} onToolCreated={mockOnToolCreated} />)
+    const mockWorldId = 'test-world-456'
+    render(<ToolCreator agentId={mockAgentId} worldId={mockWorldId} onToolCreated={mockOnToolCreated} />)
 
     const textarea = screen.getByPlaceholderText(/Describe what you want/i)
     await user.type(textarea, 'make a tool that jumps')
@@ -76,6 +77,7 @@ describe('ToolCreator', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agent_id: mockAgentId,
+            world_id: mockWorldId,
             description: 'make a tool that jumps'
           })
         })

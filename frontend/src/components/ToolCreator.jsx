@@ -6,9 +6,10 @@ import PokemonButton from './PokemonButton'
  * ToolCreator - Let children describe tools in natural language and see the generated code
  * @param {Object} props
  * @param {string} props.agentId - The agent ID to create tools for
+ * @param {string} props.worldId - The world ID to create context-aware tools for
  * @param {Function} props.onToolCreated - Callback when tool is created
  */
-export default function ToolCreator({ agentId, onToolCreated }) {
+export default function ToolCreator({ agentId, worldId, onToolCreated }) {
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [generatedTool, setGeneratedTool] = useState(null)
@@ -17,7 +18,7 @@ export default function ToolCreator({ agentId, onToolCreated }) {
 
   const createTool = async () => {
     if (!description.trim()) {
-      setError('Please describe what you want your agent to do!')
+      setError('Please describe what you want your pokemon to do!')
       return
     }
 
@@ -29,7 +30,11 @@ export default function ToolCreator({ agentId, onToolCreated }) {
       const response = await fetch('http://localhost:8000/api/tools/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_id: agentId, description: description.trim() })
+        body: JSON.stringify({
+          agent_id: agentId,
+          world_id: worldId,
+          description: description.trim()
+        })
       })
 
       if (!response.ok) {
@@ -62,13 +67,13 @@ export default function ToolCreator({ agentId, onToolCreated }) {
     <div className="pokemon-container">
       <h2 className="font-pixel text-pokemon-gold text-xl mb-4 text-center"
           style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.3)' }}>
-        Teach Your Agent a New Skill!
+        Teach Your Pokemon a New Skill!
       </h2>
 
       <div className="space-y-4">
         <textarea
           className="w-full p-4 border-4 border-pokemon-green rounded font-mono bg-white text-black focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-          placeholder="Describe what you want your agent to do... (e.g., 'make a tool that lets my agent jump over obstacles')"
+          placeholder="Describe what you want your pokemon to do... (e.g., 'make a tool that lets my pokemon jump over obstacles')"
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -152,5 +157,6 @@ export default function ToolCreator({ agentId, onToolCreated }) {
 
 ToolCreator.propTypes = {
   agentId: PropTypes.string.isRequired,
+  worldId: PropTypes.string,
   onToolCreated: PropTypes.func
 }
