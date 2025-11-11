@@ -24,7 +24,7 @@ export default function ActionDisplay({ worldId }) {
       setError(null)
 
       try {
-        const response = await fetch(`http://localhost:8000/api/worlds/${worldId}/actions`)
+        const response = await fetch(`http://localhost:8000/api/actions/${worldId}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch actions')

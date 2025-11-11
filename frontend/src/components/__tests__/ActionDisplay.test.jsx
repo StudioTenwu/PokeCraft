@@ -30,7 +30,7 @@ describe('ActionDisplay', () => {
     })
   })
 
-  it('should fetch actions for the given world ID', async () => {
+  it('should fetch actions from correct endpoint /api/actions/{worldId}', async () => {
     const mockActions = [
       { name: 'jump', description: 'Jump over obstacle' }
     ]
@@ -43,7 +43,7 @@ describe('ActionDisplay', () => {
     render(<ActionDisplay worldId="world-456" />)
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/worlds/world-456/actions')
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/api/actions/world-456')
     })
   })
 
