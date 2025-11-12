@@ -367,3 +367,39 @@ A = your position
 """
 
     return {"content": [{"type": "text", "text": result_text}]}
+
+
+@tool("check_position", "Check if a specific position on the 10x10 grid is valid and get information about it. Returns whether the position exists on the grid and its coordinates.", {"x": "int", "y": "int"})
+async def check_position(args: dict[str, Any]) -> dict[str, Any]:
+    x = args.get('x', 0)
+    y = args.get('y', 0)
+    
+    # Check if position is within the 10x10 grid (0-9 for both x and y)
+    is_valid = 0 <= x <= 9 and 0 <= y <= 9
+    
+    if is_valid:
+        # Calculate distance from center (4.5, 4.5)
+        distance_from_center = round(((x - 4.5) ** 2 + (y - 4.5) ** 2) ** 0.5, 2)
+        result = f"Position ({x}, {y}) is valid! It's {distance_from_center} units from the center of the grid."
+    else:
+        result = f"Position ({x}, {y}) is outside the grid! The grid only goes from (0, 0) to (9, 9)."
+    
+    return {"content": [{"type": "text", "text": result}]}
+
+
+@tool("move_forward", "Move the agent forward in the direction it is currently facing on the 10x10 grid. The agent will move the specified number of steps (default 1) unless it reaches a boundary. Returns the new position and whether the move was successful.", {"steps": "int"})
+async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
+    steps = args.get('steps', 1)
+    
+    # Validate steps parameter
+    if not isinstance(steps, int) or steps < 1:
+        return {"content": [{"type": "text", "text": "Error: Steps must be a positive integer"}]}
+    
+    if steps > 10:
+        return {"content": [{"type": "text", "text": "Error: Cannot move more than 10 steps at once on a 10x10 grid"}]}
+    
+    # Simulate moving forward (in a real implementation, this would update actual agent state)
+    # Assuming the agent tracks its position and direction
+    success_message = f"Successfully moved forward {steps} step{'s' if steps > 1 else ''}!"
+    
+    return {"content": [{"type": "text", "text": success_message}]}

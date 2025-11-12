@@ -8,19 +8,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import claude_agent_sdk  # Import module for patched create_sdk_mcp_server
 from action_registry import create_game_engine, get_action_set_for_game
 from claude_agent_sdk import (
+    AssistantMessage,
     ClaudeAgentOptions,
     ClaudeSDKClient,
-    AssistantMessage,
     ResultMessage,
     SystemMessage,
     TextBlock,
     ThinkingBlock,
-    ToolUseBlock,
     ToolResultBlock,
+    ToolUseBlock,
 )
-import claude_agent_sdk  # Import module for patched create_sdk_mcp_server
 from state_manager import state_manager
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ def _patch_create_sdk_mcp_server() -> None:
 
             @server.call_tool()
             async def call_tool_handler(
-                tool_name: str, arguments: dict[str, Any]
+                tool_name: str, arguments: dict[str, Any],
             ) -> list[TextContent | ImageContent]:
                 for t in tools:
                     if t.name == tool_name:
@@ -163,7 +163,7 @@ class AgentDeployer:
 
         try:
             spec = importlib.util.spec_from_file_location(
-                "custom_tools", tools_file_path
+                "custom_tools", tools_file_path,
             )
             if spec is None or spec.loader is None:
                 logger.warning(f"Could not load tools from {tools_file_path}")
@@ -486,7 +486,7 @@ class AgentDeployer:
             )
 
     def _build_deployment_prompt(
-        self, world: dict[str, Any], goal: str, world_id: str
+        self, world: dict[str, Any], goal: str, world_id: str,
     ) -> str:
         """Build the deployment prompt for Claude.
 

@@ -87,3 +87,55 @@ Multi-agent communication. What to tell others about what it is doing when accom
 * Personality is important
 * The child can customize multiple agents
 * Look at MindCraft. They have multi-agent collaboration benchmarks and the videos get a lot of views on YouTube also.
+
+## Full Demo Workflow
+
+Educational platform where children raise AI agents like Pokémon through natural language - creating avatars, deploying them in game worlds, teaching tools/capabilities, and exporting as deployable companions.
+
+---
+
+## Core Workflow (7 Phases)
+
+### 1. Agent Birth
+
+- Child describes agent → LLM generates backstory + personality
+- Avatar generated via mflux (Flux Schnell 3-bit, 2 steps)
+- Display agent card with traits
+- **Child can view/edit underlying Python code** with "Explain Code" button
+
+### 2. World Creation
+
+- Child describes world → LLM generates grid layout
+- 2D top-down rendering (PixiJS/Canvas)
+- Agent appears but can't move (no tools yet)
+
+### 3. Teaching Tools
+
+- Child describes tools in natural language → LLM generates Python code
+- Progressive: Movement → Perception → Interaction → Advanced → Meta
+- **Sandboxed execution environment**
+- Child can inspect/modify tool code
+
+### 4. Memory & Knowledge
+
+- Short-term: Last N actions (in-context)
+- Long-term: SQLite + RAG retrieval
+- **Child can inspect all memories** via UI
+- Inject knowledge: "Treasure is usually in corners"
+
+### 5. Agent Deployment
+
+- SSE streams agent reasoning in real-time
+- Child observes, can intervene
+- Iterate on tools/memory based on performance
+
+### 6. World Progression
+
+- Agent masters maze → unlock harder worlds
+- World templates: Maze, Collection, Combat, Puzzle, Cooking, Building
+- Tools/memory carry over when relevant
+
+### 7. Export Agent
+
+- Download as standalone Python package
+- Optional: Deploy to Discord, VS Code, CLI

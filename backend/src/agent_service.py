@@ -138,6 +138,79 @@ class AgentService:
             logger.error(f"Failed to create agent: {e}", exc_info=True)
             raise
 
+    async def create_agent_from_data(
+        self,
+        name: str,
+        backstory: str,
+        personality_traits: list[str],
+        avatar_url: str,
+        agent_id: str | None = None
+    ) -> dict[str, Any]:
+        """Create a new agent from pre-defined data (e.g., Pokémon templates).
+
+        Args:
+            name: Agent name
+            backstory: Agent backstory
+            personality_traits: List of personality traits
+            avatar_url: URL to avatar image (e.g., Pokemon sprite URL)
+            agent_id: Optional agent ID (generates UUID if not provided)
+
+        Returns:
+            dict: Complete agent data including ID and avatar URL
+        """
+        logger.info(f"Creating agent from pre-defined data: {name}")
+
+        try:
+            # Generate unique ID if not provided
+            if agent_id is None:
+                agent_id = str(uuid.uuid4())
+
+            logger.info(f"Using avatar URL: {avatar_url}")
+
+            # Store in database using SQLAlchemy (upsert logic for Pokemon)
+            async with async_session_factory() as session:
+                # Check if agent with this ID already exists
+                stmt = select(AgentDB).where(AgentDB.id == agent_id)
+                result = await session.execute(stmt)
+                existing_agent = result.scalar_one_or_none()
+
+                if existing_agent:
+                    # Update existing agent
+                    logger.info(f"Agent {agent_id} already exists, updating...")
+                    existing_agent.name = name
+                    existing_agent.backstory = backstory
+                    existing_agent.personality_traits = personality_traits
+                    existing_agent.avatar_url = avatar_url
+                else:
+                    # Create new agent
+                    db_agent = AgentDB(
+                        id=agent_id,
+                        name=name,
+                        backstory=backstory,
+                        personality_traits=personality_traits,
+                        avatar_url=avatar_url,
+                    )
+                    session.add(db_agent)
+
+                await session.commit()
+
+            logger.info(
+                f"Agent created successfully: {name} (ID: {agent_id})",
+                extra={"agent_id": agent_id, "agent_name": name}
+            )
+
+            # Return complete agent data
+            return {
+                "id": agent_id,
+                "name": name,
+                "backstory": backstory,
+                "personality_traits": personality_traits,
+                "avatar_url": avatar_url,
+            }
+        except Exception as e:
+            logger.error(f"Failed to create agent from data: {e}", exc_info=True)
+            raise
+
     async def create_agent_stream(self, description: str):
         """Create agent with streaming progress updates (async generator)."""
         logger.info(f"Creating agent (streaming) from: {description[:50]}...")

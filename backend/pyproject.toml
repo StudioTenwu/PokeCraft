@@ -119,12 +119,14 @@ module = "claude_agent_sdk.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
+# Exclude manual tests and e2e tests that require Playwright
+norecursedirs = ["tests/manual", "tests/e2e"]
 
 [tool.coverage.run]
 source = ["src"]

@@ -57,11 +57,12 @@ export default function AgentCreation({ onAgentCreated }) {
     setError(null)
 
     try {
-      // Create agent with pre-defined data
+      // Create agent with pre-defined data (omit id to let backend generate UUID)
+      const { id, ...pokemonData } = pokemon
       const response = await fetch('http://localhost:8000/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pokemon)
+        body: JSON.stringify(pokemonData)
       })
 
       if (!response.ok) throw new Error('Failed to load Pokémon')
