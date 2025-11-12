@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{AGENT_NAME}} - PokéCraft Companion</title>
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Markdown rendering libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -57,6 +61,9 @@
 
   <!-- Pokemon color theming -->
   <script src="pokemon-colors.js" type="module"></script>
+
+  <!-- Markdown renderer -->
+  <script src="markdown-renderer.js"></script>
 
   <script src="panel.js" type="module"></script>
 </body>

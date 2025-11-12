@@ -19,6 +19,7 @@ from claude_agent_sdk import (
     ToolResultBlock,
     ToolUseBlock,
 )
+from claude_agent_sdk.types import McpStdioServerConfig
 from state_manager import state_manager
 
 logger = logging.getLogger(__name__)
@@ -115,68 +116,42 @@ class AgentDeployer:
                 )
                 return
 
-            # 3. Load agent's custom tools - NO MCP SERVER NEEDED
-            # Running inside Claude Code causes MCP conflicts
-            # Solution: Pass tools directly to SDK without MCP wrapping
-            tools_db = await self.tool_service.get_agent_tools(agent_id)
-            logger.info(f"Loaded {len(tools_db)} tools from database for agent {agent_id}")
+            # 3. Configure standalone FastMCP server via stdio subprocess
+            # Solution: Use standalone FastMCP server to avoid Claude Code MCP conflicts
+            import shutil
+            uv_path = shutil.which("uv")
+            if not uv_path:
+                raise RuntimeError("uv not found in PATH")
 
-            # 4. Load SdkMcpTool instances from tools.py for direct SDK integration
-            # Import tools module to access @tool decorated functions
-            sys.path.insert(0, str(Path(__file__).parent))
-            from tools import (
-                celebrate_pixelmon_birth,
-                move_direction,
-                move_in_s_shape,
-                observe_world,
-                pixelmon_smiley_dance,
-            )
+            # Get absolute path to game_tools_mcp_server.py
+            server_path = Path(__file__).parent / "game_tools_mcp_server.py"
+            if not server_path.exists():
+                raise FileNotFoundError(f"MCP server not found: {server_path}")
 
-            # Collect all SDK tools
-            sdk_tools = [
-                move_direction,
-                observe_world,
-                move_in_s_shape,
-                pixelmon_smiley_dance,
-                celebrate_pixelmon_birth,
+            # Configure MCP server as stdio subprocess
+            game_tools_server: McpStdioServerConfig = {
+                "type": "stdio",
+                "command": uv_path,
+                "args": ["run", "fastmcp", "run", str(server_path)],
+            }
+            logger.info(f"✅ Configured FastMCP stdio server: {server_path}")
+
+            # Build allowed_tools list for the 5 game tools
+            allowed_tools = [
+                "mcp__game_tools__move_direction",
+                "mcp__game_tools__observe_world",
+                "mcp__game_tools__move_in_s_shape",
+                "mcp__game_tools__pixelmon_smiley_dance",
+                "mcp__game_tools__celebrate_pixelmon_birth",
             ]
-            logger.info(f"Loaded {len(sdk_tools)} SDK tools for deployment")
+            logger.info(f"   Allowed tools: {allowed_tools}")
 
-            # 5. Create MCP server with monkey-patch workaround
-            # Apply monkey-patch for SDK bug #323
-            from mcp.server import Server
-            _original_server_init = Server.__init__
-
-            def _patched_server_init(self, name: str, version: str = None, **kwargs):
-                # Ignore version parameter
-                _original_server_init(self, name)
-
-            Server.__init__ = _patched_server_init
-
-            try:
-                # Create SDK MCP server
-                import claude_agent_sdk
-                user_tool_server = claude_agent_sdk.create_sdk_mcp_server(
-                    name="user_tools",
-                    version="1.0.0",
-                    tools=sdk_tools,
-                )
-                logger.info(f"✅ MCP server created: {type(user_tool_server)}")
-                logger.info(f"   Server config: {user_tool_server}")
-
-                # Build allowed_tools list
-                allowed_tools = [f"mcp__user_tools__{tool.name}" for tool in sdk_tools]
-                logger.info(f"   Allowed tools: {allowed_tools}")
-
-                options = ClaudeAgentOptions(
-                    mcp_servers={"user_tools": user_tool_server},
-                    allowed_tools=allowed_tools,
-                )
-                logger.info(f"✅ Configured SDK with MCP server and {len(allowed_tools)} allowed tools")
-
-            finally:
-                # Restore original
-                Server.__init__ = _original_server_init
+            # Create ClaudeAgentOptions with stdio MCP server
+            options = ClaudeAgentOptions(
+                mcp_servers={"game_tools": game_tools_server},
+                allowed_tools=allowed_tools,
+            )
+            logger.info(f"✅ Configured SDK with stdio MCP server and {len(allowed_tools)} allowed tools")
 
             # 5. Create deployment prompt
             prompt = self._build_deployment_prompt(world, goal, world_id)
