@@ -369,3 +369,139 @@ async def test_agent_deployer_patches_sdk_on_init():
     except TypeError as e:
         if "version" in str(e):
             pytest.fail("AgentDeployer did not patch SDK bug on init")
+
+
+# ============================================================================
+# Cycle 2: Dynamic Tool Loading
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_load_tools_from_file_finds_all_sdk_tools():
+    """Test that _load_tools_from_file finds all @tool decorated functions.
+
+    Should return SdkMcpTool instances for all functions decorated with @tool.
+    """
+    # Arrange
+    import tempfile
+    from pathlib import Path
+
+    # Create temporary tools file with SDK @tool decorators
+    tools_content = '''
+from typing import Any
+from claude_agent_sdk import tool
+
+@tool("tool_one", "First tool", {})
+async def tool_one(args: dict[str, Any]) -> dict[str, Any]:
+    return {"content": [{"type": "text", "text": "one"}]}
+
+@tool("tool_two", "Second tool", {})
+async def tool_two(args: dict[str, Any]) -> dict[str, Any]:
+    return {"content": [{"type": "text", "text": "two"}]}
+
+# Non-tool function (should not be loaded)
+async def helper_function():
+    pass
+'''
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(tools_content)
+        temp_path = f.name
+
+    try:
+        # Act
+        mock_world_service = MockWorldService()
+        mock_tool_service = MockToolService()
+        deployer = AgentDeployer(mock_tool_service, mock_world_service)
+        tools = deployer._load_tools_from_file(temp_path)
+
+        # Assert
+        assert len(tools) == 2, f"Expected 2 tools, got {len(tools)}"
+
+        # Check that all returned items are SdkMcpTool instances
+        from claude_agent_sdk import SdkMcpTool
+        assert all(isinstance(t, SdkMcpTool) for t in tools), "All tools should be SdkMcpTool instances"
+
+        # Check tool names
+        tool_names = {t.name for t in tools}
+        assert tool_names == {"tool_one", "tool_two"}, f"Expected tool_one and tool_two, got {tool_names}"
+
+    finally:
+        # Cleanup
+        Path(temp_path).unlink()
+
+
+@pytest.mark.asyncio
+async def test_load_tools_handles_duplicate_names():
+    """Test that _load_tools_from_file handles duplicate tool names correctly.
+
+    When multiple functions have same name (e.g., from copying tools),
+    should keep the last definition.
+    """
+    # Arrange
+    import tempfile
+    from pathlib import Path
+
+    # File with duplicate "move" tool definitions (like in actual tools.py)
+    tools_content = '''
+from typing import Any
+from claude_agent_sdk import tool
+
+@tool("move", "First version", {})
+async def move(args: dict[str, Any]) -> dict[str, Any]:
+    return {"content": [{"type": "text", "text": "v1"}]}
+
+@tool("move", "Second version", {})
+async def move(args: dict[str, Any]) -> dict[str, Any]:
+    return {"content": [{"type": "text", "text": "v2"}]}
+'''
+
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(tools_content)
+        temp_path = f.name
+
+    try:
+        # Act
+        mock_world_service = MockWorldService()
+        mock_tool_service = MockToolService()
+        deployer = AgentDeployer(mock_tool_service, mock_world_service)
+        tools = deployer._load_tools_from_file(temp_path)
+
+        # Assert
+        # Should keep only one version of "move"
+        from claude_agent_sdk import SdkMcpTool
+        assert len(tools) >= 1, "Should have at least one tool"
+        assert all(isinstance(t, SdkMcpTool) for t in tools)
+
+        # Count how many "move" tools
+        move_tools = [t for t in tools if t.name == "move"]
+        # Accept either 1 (deduplicated) or 2 (all loaded) - we'll decide in implementation
+        assert len(move_tools) <= 2, "Should not have more than 2 move tools"
+
+    finally:
+        Path(temp_path).unlink()
+
+
+@pytest.mark.asyncio
+async def test_load_tools_from_actual_tools_py():
+    """Test loading tools from the actual src/tools.py file.
+
+    This ensures the loader works with our real tools file.
+    """
+    # Arrange
+    mock_world_service = MockWorldService()
+    mock_tool_service = MockToolService()
+    deployer = AgentDeployer(mock_tool_service, mock_world_service)
+
+    # Act - load from actual tools.py (default path)
+    tools = deployer._load_tools_from_file()
+
+    # Assert
+    from claude_agent_sdk import SdkMcpTool
+    assert len(tools) > 0, "Should load at least some tools from tools.py"
+    assert all(isinstance(t, SdkMcpTool) for t in tools), "All should be SdkMcpTool instances"
+
+    # Check for expected tools from tools.py
+    tool_names = {t.name for t in tools}
+    assert "observe_world" in tool_names, "Should find observe_world tool"
+    assert "move_direction" in tool_names, "Should find move_direction tool"

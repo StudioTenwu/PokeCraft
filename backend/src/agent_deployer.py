@@ -155,7 +155,13 @@ class AgentDeployer:
             return {"content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}]}
 
     def _load_tools_from_file(self, tools_file_path: str | None = None) -> list:
-        """Dynamically load tools from tools.py file."""
+        """Dynamically load SDK tools from tools.py file.
+
+        Returns:
+            List of SdkMcpTool instances found in the file
+        """
+        from claude_agent_sdk import SdkMcpTool
+
         if tools_file_path is None:
             tools_file_path = str(Path(__file__).parent / "tools.py")
 
@@ -171,14 +177,18 @@ class AgentDeployer:
             sys.modules["custom_tools"] = module
             spec.loader.exec_module(module)
 
-            tools = []
+            # Collect all SdkMcpTool instances from module
+            tools_dict = {}  # Use dict to deduplicate by tool name (keep last)
             for name in dir(module):
                 obj = getattr(module, name)
-                if callable(obj) and hasattr(obj, "__claude_tool__"):
-                    tools.append(obj)
-                    logger.info(f"Loaded tool: {name}")
+                # Check if it's an SdkMcpTool instance (created by @tool decorator)
+                if isinstance(obj, SdkMcpTool):
+                    # Use tool name as key to automatically handle duplicates
+                    tools_dict[obj.name] = obj
+                    logger.info(f"Loaded tool: {obj.name} (variable name: {name})")
 
-            logger.info(f"Successfully loaded {len(tools)} tools")
+            tools = list(tools_dict.values())
+            logger.info(f"Successfully loaded {len(tools)} unique tools")
             return tools
 
         except Exception as e:
@@ -274,7 +284,8 @@ class AgentDeployer:
             logger.info(f"Created MCP server with {len(tool_functions)} tools")
 
             # Build allowed tools list
-            allowed_tools = [f"mcp__user_tools__{tool.__name__}" for tool in tool_functions]
+            # SdkMcpTool instances have .name attribute, not __name__
+            allowed_tools = [f"mcp__user_tools__{tool.name}" for tool in tool_functions]
             logger.info(f"Allowed tools: {allowed_tools}")
 
             # Configure Claude Agent SDK with MCP server
