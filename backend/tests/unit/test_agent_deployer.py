@@ -138,17 +138,16 @@ async def test_deploy_agent_yields_tool_call_events():
         mock_client.query = AsyncMock()
 
         async def mock_stream():
-            # Use real SDK types (not MagicMock) so isinstance() works
-            tool_msg = AssistantMessage(
-                content=[ToolUseBlock(
-                    id="tool-1",
-                    name="move_forward",
-                    input={"steps": 1},
-                )],
-            )
+            # Create mock AssistantMessage with ToolUseBlock
+            tool_use_block = MagicMock(spec=ToolUseBlock)
+            tool_use_block.name = "move_forward"
+            tool_use_block.input = {"steps": 1}
+            tool_msg = MagicMock(spec=AssistantMessage)
+            tool_msg.content = [tool_use_block]
             yield tool_msg
             # Stop message
-            stop_msg = ResultMessage(stop_reason="end_turn")
+            stop_msg = MagicMock(spec=ResultMessage)
+            stop_msg.stop_reason = "end_turn"
             yield stop_msg
 
         mock_client.receive_response = mock_stream
@@ -189,23 +188,23 @@ async def test_deploy_agent_handles_tool_errors_with_retry():
 
         async def mock_stream():
             # Tool use message
-            tool_msg = AssistantMessage(
-                content=[ToolUseBlock(
-                    id="tool-1",
-                    name="move_forward",
-                    input={}
-                )]
-            )
+            tool_use_block = MagicMock(spec=ToolUseBlock)
+            tool_use_block.name = "move_forward"
+            tool_use_block.input = {}
+            tool_msg = MagicMock(spec=AssistantMessage)
+            tool_msg.content = [tool_use_block]
             yield tool_msg
 
             # After tool call, Claude sends text response
-            text_msg = AssistantMessage(
-                content=[TextBlock(text="I'll try a different direction")]
-            )
+            text_block = MagicMock(spec=TextBlock)
+            text_block.text = "I'll try a different direction"
+            text_msg = MagicMock(spec=AssistantMessage)
+            text_msg.content = [text_block]
             yield text_msg
 
             # Stop message
-            stop_msg = ResultMessage(stop_reason="end_turn")
+            stop_msg = MagicMock(spec=ResultMessage)
+            stop_msg.stop_reason = "end_turn"
             yield stop_msg
 
         mock_client.receive_response = mock_stream
@@ -249,17 +248,16 @@ async def test_world_update_events_use_deltas():
 
         async def mock_stream():
             # Tool use message
-            tool_msg = AssistantMessage(
-                content=[ToolUseBlock(
-                    id="tool-1",
-                    name="mcp__user_tools__move_direction",
-                    input={"direction": "north"}
-                )]
-            )
+            tool_use_block = MagicMock(spec=ToolUseBlock)
+            tool_use_block.name = "mcp__user_tools__move_direction"
+            tool_use_block.input = {"direction": "north"}
+            tool_msg = MagicMock(spec=AssistantMessage)
+            tool_msg.content = [tool_use_block]
             yield tool_msg
 
             # Stop message
-            stop_msg = ResultMessage(stop_reason="end_turn")
+            stop_msg = MagicMock(spec=ResultMessage)
+            stop_msg.stop_reason = "end_turn"
             yield stop_msg
 
         mock_client.receive_response = mock_stream
@@ -397,8 +395,10 @@ async def test_create_sdk_mcp_server_without_version_crash():
         return {"content": [{"type": "text", "text": "test"}]}
 
     # Act & Assert: Should not raise TypeError about 'version' parameter
+    # Use module reference to get patched version
+    import claude_agent_sdk
     try:
-        server = create_sdk_mcp_server(
+        server = claude_agent_sdk.create_sdk_mcp_server(
             name="test_server",
             version="1.0.0",
             tools=[test_tool],
@@ -430,8 +430,11 @@ async def test_agent_deployer_patches_sdk_on_init():
     async def test_tool(args: dict[str, Any]) -> dict[str, Any]:
         return {"content": [{"type": "text", "text": "test"}]}
 
+    # Use module reference to get patched version
+    import claude_agent_sdk
+
     try:
-        server = create_sdk_mcp_server(
+        server = claude_agent_sdk.create_sdk_mcp_server(
             name="test_server",
             version="1.0.0",
             tools=[test_tool],
