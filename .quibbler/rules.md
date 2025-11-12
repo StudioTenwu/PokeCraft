@@ -114,3 +114,20 @@ When modifying backend API endpoints (request/response structure), verify fronte
 **Why:** API contract mismatches cause silent failures that are hard to debug.
 
 **Check:** Before marking API endpoint changes complete, confirm corresponding frontend code was reviewed.
+
+### Rule: Check Full Error Tracebacks for SDK Failures
+
+When encountering SDK-related errors (Claude Agent SDK, MCP, etc.), always check full error tracebacks in log files, not just user-facing error messages.
+
+**Process:**
+1. Check `logs/errors.log` for FULL traceback with complete stack trace
+2. Identify exact failure point in SDK source code (file and line number)
+3. Read SDK source code at the failure point to understand what it expects
+4. Compare agent's implementation against SDK's internal processing logic
+5. Trace back through call stack to find root cause
+
+**Why:** SDK errors often surface deep in internal SDK code. User-facing error messages (e.g., "JSON serialization failed") don't reveal the root cause (e.g., wrong TypedDict keys). Full tracebacks show the exact SDK code path and failure point.
+
+**Example:** Error message "Object of type Server is not JSON serializable" → Check `logs/errors.log` → Find traceback pointing to `subprocess_cli.py:169` → Read SDK source → Discover TypedDict key mismatch (`server` vs `instance`).
+
+**Check:** Before claiming SDK-related bugs are fixed, verify the fix addresses the root cause identified in the full traceback, not just the user-facing symptom.
