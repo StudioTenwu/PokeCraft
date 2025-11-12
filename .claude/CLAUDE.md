@@ -1,4 +1,6 @@
-# AICraft Project Standards
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Technology Stack
 
@@ -8,113 +10,101 @@
 
 ---
 
-## Coding Standards
+## Architecture Overview
 
-### Python: Type Hints (MANDATORY)
+### Three-Phase System
+
+**Phase 1: Agent Creation**
+- LLM generates Pokemon-themed agent (name, backstory, personality)
+- Avatar generated with mflux (local Schnell 3-bit model)
+- Stored in SQLite via AgentService
+
+**Phase 2: World Creation**
+- LLM generates game worlds (grid_navigation, dungeon_crawler, etc.)
+- Default starter worlds available (Pallet Town, etc.)
+- WorldService manages grid-based environments
+
+**Phase 3: Agent Deployment** (Current Focus)
+- Agent explores world using custom tools
+- Tools loaded dynamically from `tools.py` via `@tool` decorator
+- Real-time SSE streaming to frontend showing agent's thinking/actions
+- Game engine executes actions and updates world state
+
+### Critical SDK Integration
+
+**Claude Agent SDK with MCP Servers:**
+
+The deployment system uses Claude Agent SDK's `ClaudeSDKClient` pattern with in-process MCP servers for custom tools. This replaced the deprecated `query()` pattern.
+
 ```python
-# ALL functions need complete type annotations
-async def generate_agent(self, description: str) -> AgentData:
-    response_text: str = ""
-    return agent_data
+# Official pattern (agent_deployer.py)
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+import claude_agent_sdk  # Module ref for patched create_sdk_mcp_server
+
+# Create MCP server with @tool decorated functions
+user_tool_server = claude_agent_sdk.create_sdk_mcp_server(
+    name="user_tools",
+    version="1.0.0",
+    tools=tool_functions  # List of SdkMcpTool from tools.py
+)
+
+# Configure options
+options = ClaudeAgentOptions(
+    mcp_servers={"user_tools": user_tool_server}
+)
+
+# Use async context manager
+async with ClaudeSDKClient(options=options) as client:
+    await client.query(prompt)
+    async for message in client.receive_response():
+        # Process AssistantMessage, ToolUseBlock, ToolResultBlock, etc.
+        ...
 ```
 
-### Python: Core Patterns
+**CRITICAL SDK Bug Workaround:**
+
+`agent_deployer.py` applies a monkey-patch on module import to fix SDK bug #323 (https://github.com/anthropics/claude-agent-sdk-python/issues/323). The patch:
+1. Fixes version parameter bug in `create_sdk_mcp_server()`
+2. Returns correct McpSdkServerConfig structure with keys: `type="sdk"`, `name`, `instance`
+
+**Why this matters:** SDK strips the `instance` field before JSON serialization (subprocess_cli.py:154-159). Wrong keys cause "Object of type Server is not JSON serializable" error. See `development/claude-sdk-debug/SKILL.md` snippet for comprehensive debugging guide.
+
+### Dynamic Tool Loading
+
+Tools are loaded from `backend/src/tools.py` using the `@tool` decorator:
+
 ```python
-# Pydantic models for validation
-class AgentData(BaseModel):
-    name: str
-    backstory: str
-    personality_traits: list[str]
+from claude_agent_sdk import tool
 
-# Logging (NOT print)
-logger.info(f"Agent created: {agent_id}")
-logger.error(f"Error: {e}", exc_info=True)
-
-# SQLAlchemy ORM (NOT raw SQL)
-async with session_factory() as session:
-    agent = AgentDB(id=id, name=name, ...)
-    session.add(agent)
-    await session.commit()
+@tool("move_direction", "Move in a direction", {"direction": str})
+async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
+    # Tool implementation
+    return {"content": [{"type": "text", "text": "Moved north"}]}
 ```
 
-### LLM: Claude Agent SDK (NOT Anthropic API)
-```python
-from claude_agent_sdk import query
+The deployer automatically discovers all `@tool` decorated functions via `_load_tools_from_file()` which uses `isinstance(obj, SdkMcpTool)` checks. Tools are deduplicated by name.
 
-async def generate_with_llm(self, prompt: str) -> str:
-    response_text = ""
-    async for message in query(prompt=prompt):
-        if hasattr(message, "result") and message.result:
-            response_text = message.result
-    return response_text
-```
+### SSE Event Stream
 
-**Why Agent SDK:** Seamless Claude Code integration, no API keys, tool use support, streaming, session management
+Deployment streams events to frontend via Server-Sent Events:
 
-### LLM: XML + JSON Output Format
-```python
-# Request format
-prompt = """Return response as:
-<output><![CDATA[
-{"field1": "value", "field2": ["item1", "item2"]}
-]]></output>
-"""
+- `thinking` - Agent's reasoning (from ThinkingBlock)
+- `text` - Agent's text responses (from TextBlock)
+- `tool_call` - Tool invocations (from ToolUseBlock)
+- `tool_result` - Tool execution results (from ToolResultBlock)
+- `world_update` - Grid state changes (from game engine)
+- `complete` - Deployment finished
+- `error` - Failures (recoverable vs fatal)
 
-# Parse
-import xml.etree.ElementTree as ET
-root = ET.fromstring(response_text)
-data_dict = json.loads(root.text.strip())
-```
-
-**Why:** Prevents markdown interference, clear boundaries, robust parsing
-
-### Image Generation: mflux
-```bash
-mflux-generate --model schnell --path ~/.AICraft/models/schnell-3bit --prompt "character, pokemon-style art, Game Boy Color aesthetic" --steps 2
-```
-
-### Frontend: Component Standards
-```jsx
-// JSDoc + PropTypes
-export function AgentCreation({ agentId, onComplete }) {
-  const [loading, setLoading] = useState(false);
-  // Use EventSource for SSE streaming
-  const eventSource = new EventSource(`http://localhost:8000/api/...`);
-}
-```
-
-### Testing: TDD Required
-```python
-@pytest.mark.asyncio
-async def test_agent_creation():
-    service = AgentService(db_path=":memory:")
-    result = await service.create_agent("test")
-    assert result["name"]
-```
-
-**Rules:** Write tests BEFORE implementation | pytest-asyncio | Mock externals | >80% coverage
-
-### Commits: Conventional Format
-```bash
-feat(backend): add streaming endpoint
-fix(frontend): resolve toggle state
-refactor(database): migrate to ORM
-```
+SDK handles tool execution automatically via MCP server. Results come back as `ToolResultBlock` messages.
 
 ---
 
-## Development Setup
+## Development Commands
 
-### Prerequisites
-- Python 3.11+ | Node.js 18+ | uv | mflux | mflux model at `~/.AICraft/models/schnell-3bit/`
+### Setup
 
-### Quick Setup
 ```bash
-# Root
-git clone <url> && cd AICraft
-uv venv && source .venv/bin/activate
-uv pip install -e .
-
 # Backend
 cd backend
 uv pip install -e ".[dev]"
@@ -124,7 +114,8 @@ uv run python -c "from src.database import init_db; import asyncio; asyncio.run(
 cd frontend && npm install
 ```
 
-### Run Application
+### Running
+
 ```bash
 # Terminal 1: Backend (http://localhost:8000)
 cd backend && uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
@@ -133,119 +124,234 @@ cd backend && uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 cd frontend && npm run dev
 ```
 
-### Run Tests
+### Testing
+
 ```bash
-cd backend && uv run pytest tests/ -v              # 111 tests
-cd frontend && npm test                             # 138 tests
-cd backend && uv run pytest tests/ --cov=src        # With coverage
+# All tests
+cd backend && uv run pytest tests/ -v
+
+# Single test file
+uv run pytest tests/unit/test_agent_deployer.py -v
+
+# Single test
+uv run pytest tests/unit/test_agent_deployer.py::test_deploy_agent_yields_tool_call_events -xvs
+
+# With coverage
+uv run pytest tests/ --cov=src --cov-report=html
+
+# Frontend tests
+cd frontend && npm test
 ```
 
-### Project Structure
-```
-AICraft/
-├── backend/src/
-│   ├── main.py              # FastAPI app
-│   ├── database.py          # SQLAlchemy async
-│   ├── agent_service.py     # Agent CRUD
-│   ├── world_service.py     # World CRUD
-│   ├── agent_deployer.py    # Phase 3: Deployment
-│   ├── llm_*.py             # Claude Agent SDK
-│   ├── avatar_generator.py  # mflux
-│   └── models/              # Pydantic + SQLAlchemy
-├── backend/tests/
-│   ├── unit/                # Unit tests
-│   └── integration/         # Integration tests
-├── frontend/src/
-│   ├── App.jsx              # Main app
-│   ├── api.js               # API client
-│   └── components/
-│       ├── AgentCreation.jsx    # Phase 1
-│       ├── WorldCreation.jsx    # Phase 2
-│       ├── WorldCanvas.jsx      # PixiJS renderer
-│       ├── ToolCreator.jsx      # Phase 3
-│       ├── ToolLibrary.jsx      # Phase 3
-│       └── AgentRunner.jsx      # Phase 3
-└── .orchestra/
-    ├── designer.md          # Task planning
-    └── docs/                # Documentation
-```
+### Database Reset
 
-### Environment Configuration
-Create `backend/.env`:
 ```bash
-DATABASE_URL=sqlite+aiosqlite:///agents.db
-AVATAR_MODEL_PATH=/Users/username/.AICraft/models/schnell-3bit
-LOG_LEVEL=INFO
-ALLOWED_ORIGINS=http://localhost:3000
-```
-
-### Common Commands
-```bash
-# Dependencies
-uv pip install <package>             # Python
-npm install <package>                # Node
-
-# Database
-rm agents.db && uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
-
-# API Docs
-# http://localhost:8000/docs (Swagger)
-# http://localhost:8000/redoc (ReDoc)
-```
-
-### Troubleshooting
-```bash
-# Backend won't start
-python --version                     # Check 3.11+
-cd backend && rm -rf .venv && uv venv && uv pip install -e ".[dev]"
-
-# Frontend won't start
-cd frontend && rm -rf node_modules package-lock.json && npm install
-
-# Tests failing
+# Clean start (required for E2E tests)
+rm -f backend/agents.db
 cd backend && uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
-cd frontend && rm -rf coverage .vitest && npm test
-
-# Avatar errors
-which mflux-generate
-ls ~/.AICraft/models/schnell-3bit/
-mflux-generate --model schnell --path ~/.AICraft/models/schnell-3bit --prompt "test" --steps 2
 ```
 
-### Development Workflow
-1. Create branch: `git checkout -b feature-name`
-2. Write tests (TDD)
-3. Implement following standards
-4. Run all tests (backend + frontend)
-5. Manual test at http://localhost:3000
-6. Commit with conventional format
-7. Create PR
+### Debugging
 
----
+```bash
+# Check backend logs for SDK errors (CRITICAL for debugging)
+tail -50 backend/logs/errors.log
 
-## File Organization
+# Grep for specific errors
+grep "JSON serializable" backend/logs/errors.log | tail -5
 
-```
-backend/src/
-├── main.py              # FastAPI app
-├── config.py            # Configuration
-├── database.py          # SQLAlchemy setup
-├── models/              # Pydantic + SQLAlchemy models
-│   ├── agent.py
-│   ├── world.py
-│   └── db_models.py
-├── agent_service.py     # Agent CRUD
-├── world_service.py     # World CRUD
-├── llm_client.py        # Claude Agent SDK wrapper
-└── avatar_generator.py  # mflux integration
+# Watch logs in real-time
+tail -f backend/logs/aicraft.log
 ```
 
 ---
 
-## Common Patterns
+## Coding Standards
+
+### Python Type Hints (MANDATORY)
+
+ALL functions require complete type annotations:
 
 ```python
-# Error handling
+async def generate_agent(self, description: str) -> AgentData:
+    response_text: str = ""
+    return agent_data
+```
+
+### Claude Agent SDK Patterns
+
+**Use ClaudeSDKClient, NOT query():**
+
+```python
+# Correct (new pattern)
+async with ClaudeSDKClient(options=options) as client:
+    await client.query(prompt)
+    async for message in client.receive_response():
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, ThinkingBlock):
+                    # Handle thinking
+                elif isinstance(block, ToolUseBlock):
+                    # Handle tool call
+                elif isinstance(block, ToolResultBlock):
+                    # Handle tool result
+
+# Deprecated (old pattern)
+async for message in query(prompt=prompt, options=options):
+    # Don't use this
+```
+
+**TypedDict Contracts:**
+
+When working with SDK types, match exact TypedDict keys expected by SDK internal processing:
+
+```python
+# McpSdkServerConfig requires these exact keys
+McpSdkServerConfig(
+    type="sdk",        # SDK checks: config.get("type") == "sdk"
+    name="server_name",
+    instance=server    # SDK strips before JSON: k != "instance"
+)
+```
+
+### LLM XML + JSON Output
+
+```python
+prompt = """Return response as:
+<output><![CDATA[
+{"field1": "value", "field2": ["item1", "item2"]}
+]]></output>
+"""
+
+import xml.etree.ElementTree as ET
+root = ET.fromstring(response_text)
+data_dict = json.loads(root.text.strip())
+```
+
+### Logging (NOT print)
+
+```python
+logger.info(f"Agent created: {agent_id}")
+logger.error(f"Error: {e}", exc_info=True)
+```
+
+### SQLAlchemy ORM (NOT raw SQL)
+
+```python
+async with session_factory() as session:
+    agent = AgentDB(id=id, name=name, ...)
+    session.add(agent)
+    await session.commit()
+```
+
+---
+
+## Testing Guidelines
+
+### TDD Required
+
+Write tests BEFORE implementation | pytest-asyncio | Mock externals | >80% coverage
+
+### E2E Test Database Reset
+
+**CRITICAL:** Before running E2E tests, reset database to prevent flaky tests:
+
+```bash
+rm -f backend/agents.db
+cd backend && uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
+```
+
+**Why:** Prevents UNIQUE constraint violations and UUID conflicts.
+
+### Playwright Selector Specificity
+
+Use attribute-based selectors, NOT positional:
+
+```python
+# Good
+page.locator('textarea[placeholder="World description"]')
+page.locator('button:has-text("Create World")')
+
+# Bad
+page.locator('textarea').first
+page.locator('button').nth(2)
+```
+
+### Form Button Pattern
+
+Fill inputs BEFORE clicking submit buttons:
+
+```python
+# 1. Fill fields
+input_field.fill("value")
+
+# 2. Wait for button enabled
+button = page.locator('button:has-text("Submit")')
+expect(button).to_be_enabled(timeout=5000)
+
+# 3. Then click
+button.click()
+```
+
+---
+
+## Debugging SDK Errors
+
+### Check Full Tracebacks
+
+SDK errors surface deep in internal code. User-facing errors hide root causes.
+
+**Always check logs:**
+
+```bash
+tail -50 backend/logs/errors.log
+grep "TypeError" backend/logs/errors.log
+```
+
+### Read SDK Source
+
+When SDK errors occur:
+
+1. Find traceback in `logs/errors.log` with file:line (e.g., `subprocess_cli.py:169`)
+2. Locate SDK source: `find .venv/lib -name "subprocess_cli.py"`
+3. Read SDK code at failure point to understand expectations
+4. Compare your implementation vs SDK's internal processing logic
+
+**Example:** "Object of type Server is not JSON serializable" → Check traceback → Find `subprocess_cli.py:169` → Read SDK's stripping logic at lines 154-159 → Discover TypedDict key mismatch.
+
+See `development/claude-sdk-debug/SKILL.md` snippet for comprehensive guide.
+
+---
+
+## Project-Specific Patterns
+
+### Frontend UUID Generation
+
+When POSTing entities, OMIT id field - let backend generate UUIDs:
+
+```javascript
+// Good
+const { id, ...pokemonData } = pokemon
+fetch('/api/agents', { body: JSON.stringify(pokemonData) })
+
+// Bad - causes UNIQUE constraint violations
+fetch('/api/agents', { body: JSON.stringify(pokemon) })  // includes id
+```
+
+### SSE Streaming Format
+
+```python
+async def stream_progress():
+    yield f"data: {json.dumps({'status': 'started'})}\n\n"
+    # Work...
+    yield f"data: {json.dumps({'status': 'complete'})}\n\n"
+
+return StreamingResponse(stream_progress(), media_type="text/event-stream")
+```
+
+### Error Handling
+
+```python
 try:
     result = await risky_operation()
     logger.info("Success")
@@ -256,18 +362,65 @@ except ValidationError as ve:
 except Exception as e:
     logger.error(f"Error: {e}", exc_info=True)
     return fallback_value()
+```
 
-# Async context managers
-async with session_factory() as session:
-    await session.commit()
+---
 
-# Streaming responses
-async def stream_progress():
-    yield f"data: {json.dumps({'status': 'started'})}\n\n"
-    # Do work...
-    yield f"data: {json.dumps({'status': 'complete'})}\n\n"
+## File Structure
 
-return StreamingResponse(stream_progress(), media_type="text/event-stream")
+```
+backend/src/
+├── main.py              # FastAPI app + API endpoints
+├── agent_deployer.py    # SDK integration + MCP servers + SSE streaming
+├── agent_service.py     # Agent CRUD
+├── world_service.py     # World CRUD
+├── tool_service.py      # Tool CRUD
+├── tools.py             # @tool decorated functions for MCP
+├── game_engine.py       # Grid state + action execution
+├── action_registry.py   # Game-specific action sets
+├── state_manager.py     # World state tracking
+├── llm_client.py        # Agent SDK wrapper
+├── database.py          # SQLAlchemy setup
+└── models/              # Pydantic + SQLAlchemy models
+
+backend/tests/
+├── unit/                # Unit tests (mocked dependencies)
+├── integration/         # Integration tests (real SDK, mocked services)
+└── e2e/                 # End-to-end with Playwright
+
+frontend/src/
+├── App.jsx              # Main app
+├── api.js               # API client
+└── components/
+    ├── AgentCreation.jsx
+    ├── WorldCreation.jsx
+    ├── AgentRunner.jsx      # Deployment UI + SSE handling
+    └── WorldCanvas.jsx      # PixiJS renderer
+```
+
+---
+
+## Quality Checks
+
+See `.quibbler/rules.md` for comprehensive project-specific rules including:
+- E2E test database reset
+- Playwright selector specificity
+- Form button patterns
+- Frontend UUID generation
+- Type hint completeness
+- API contract verification
+- **SDK error traceback checking**
+
+---
+
+## Commit Format
+
+```bash
+feat(backend): add streaming endpoint
+fix(frontend): resolve toggle state
+refactor(database): migrate to ORM
+test(e2e): add deployment flow test
+docs(quibbler): add SDK debugging rule
 ```
 
 ---
