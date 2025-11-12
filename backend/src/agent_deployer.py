@@ -15,6 +15,7 @@ from claude_agent_sdk import (
 from tool_registry import create_user_tool_server, get_available_tools
 from action_registry import get_action_set_for_game, create_game_engine
 from game_engine import GameEngine
+from state_manager import state_manager
 import importlib.util
 import sys
 from pathlib import Path
@@ -42,6 +43,22 @@ class AgentDeployer:
         """
         self.tool_service = tool_service
         self.world_service = world_service
+
+    async def _execute_tool(self, tool_name: str, parameters: dict[str, Any]) -> dict[str, Any]:
+        """Execute MCP tool and return result.
+
+        For now, route to known tools. In full implementation, would use MCP client.
+        """
+        # Import tools
+        from tools import observe_world, move_direction
+
+        # Route to appropriate tool
+        if "observe_world" in tool_name:
+            return await observe_world(parameters)
+        elif "move_direction" in tool_name:
+            return await move_direction(parameters)
+        else:
+            return {"content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}]}
 
     def _load_tools_from_file(self, tools_file_path: str | None = None) -> list:
         """Dynamically load tools from tools.py file."""
@@ -120,6 +137,9 @@ class AgentDeployer:
             current_position = world["agent_position"]
             game_type = world.get("game_type", "grid_navigation")
 
+            # Store world state in state manager for tool access
+            state_manager.set_world(world_id, world)
+
             # 2. Initialize game engine for action execution
             try:
                 action_set = get_action_set_for_game(game_type)
@@ -170,7 +190,7 @@ class AgentDeployer:
             )
 
             # 5. Create deployment prompt
-            prompt = self._build_deployment_prompt(world, goal)
+            prompt = self._build_deployment_prompt(world, goal, world_id)
 
             # 6. Stream agent execution with Claude SDK + MCP server
             # IMPORTANT: Use standalone query() function with options parameter
@@ -207,9 +227,8 @@ class AgentDeployer:
                     )
                     total_tools_used += 1
 
-                    # Execute tool (simulated for now)
-                    # In real implementation, would call actual tool
-                    tool_result = {"success": True, "message": f"Tool {tool_name} executed"}
+                    # Execute tool for real
+                    tool_result = await self._execute_tool(tool_name, parameters)
 
                     # Yield tool_result event
                     yield DeploymentEvent(
@@ -241,6 +260,8 @@ class AgentDeployer:
                                         # Update current position if it changed
                                         if "agent_position" in action_result.state_delta:
                                             current_position = action_result.state_delta["agent_position"]
+                                            # Update state manager so observe_world() sees new position
+                                            state_manager.update_position(world_id, current_position)
 
                                         # Yield world_update event with state deltas
                                         yield DeploymentEvent(
@@ -342,12 +363,13 @@ class AgentDeployer:
                 },
             )
 
-    def _build_deployment_prompt(self, world: dict[str, Any], goal: str) -> str:
+    def _build_deployment_prompt(self, world: dict[str, Any], goal: str, world_id: str) -> str:
         """Build the deployment prompt for Claude.
 
         Args:
             world: World state dictionary
             goal: Agent's goal
+            world_id: World identifier for observe_world calls
 
         Returns:
             Formatted prompt string
@@ -368,11 +390,17 @@ Current World State:
 - Grid layout:
 {grid_str}
 
+Available Tools:
+- move_direction(direction, steps): Move north/south/east/west
+- observe_world(world_id="{world_id}"): See current surroundings and position
+
+⚠️ IMPORTANT: After EVERY action you take, call observe_world(world_id="{world_id}") to see the results!
+
 Instructions:
 1. Analyze the world state and goal
 2. Plan your actions step by step
-3. Use your tools to navigate and interact with the world
-4. Update me on your reasoning and progress
+3. Use move_direction to navigate
+4. ALWAYS call observe_world after moving to see where you are
 5. If you encounter obstacles, try alternative approaches
 
 Begin your mission!"""

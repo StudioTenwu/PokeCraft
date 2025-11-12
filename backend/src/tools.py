@@ -184,3 +184,186 @@ async def plant_heart_flag(args: dict[str, Any]) -> dict[str, Any]:
     
     return {"content": [{"type": "text", "text": result}]}
 
+
+
+from typing import Any
+
+@tool("move_direction", "Move the agent in a cardinal direction: north, south, east, or west", {"direction": "string", "steps": "int"})
+async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'north')
+    steps = args.get('steps', 1)
+    
+    # Validate direction
+    valid_directions = ['north', 'south', 'east', 'west']
+    if direction.lower() not in valid_directions:
+        return {
+            "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}],
+            "action": None
+        }
+    
+    # Validate steps
+    if steps < 1:
+        return {
+            "content": [{"type": "text", "text": "Steps must be at least 1."}],
+            "action": None
+        }
+    
+    return {
+        "content": [{"type": "text", "text": f"Moving {steps} step{'s' if steps > 1 else ''} {direction}!"}],
+        "action": {"action_id": "move", "parameters": {"direction": direction.lower(), "steps": steps}}
+    }
+
+
+from typing import Any
+
+@tool("move_direction", "Move the agent in a cardinal direction (north, south, east, or west) for a specified number of steps", {"direction": "string", "steps": "int"})
+async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'north')
+    steps = args.get('steps', 1)
+    
+    # Validate direction
+    valid_directions = ['north', 'south', 'east', 'west']
+    if direction.lower() not in valid_directions:
+        return {
+            "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}]
+        }
+    
+    # Validate steps
+    if steps < 1:
+        return {
+            "content": [{"type": "text", "text": "Steps must be at least 1."}]
+        }
+    
+    direction_lower = direction.lower()
+    return {
+        "content": [{"type": "text", "text": f"Moving {steps} step(s) {direction_lower}!"}],
+        "action": {"action_id": "move", "parameters": {"direction": direction_lower, "steps": steps}}
+    }
+
+
+from typing import Any
+
+@tool("move_direction", "Move the agent in a cardinal direction (north, south, east, or west) for a specified number of steps", {"direction": "string", "steps": "int"})
+async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
+    direction = args.get('direction', 'north')
+    steps = args.get('steps', 1)
+    
+    # Validate direction
+    valid_directions = ['north', 'south', 'east', 'west']
+    if direction.lower() not in valid_directions:
+        return {
+            "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}],
+            "action": None
+        }
+    
+    # Validate steps
+    if steps < 1:
+        return {
+            "content": [{"type": "text", "text": "Steps must be at least 1."}],
+            "action": None
+        }
+    
+    direction_lower = direction.lower()
+
+    return {
+        "content": [{"type": "text", "text": f"Moving {direction_lower} {steps} step{'s' if steps > 1 else ''}. Call observe_world() to see your new position!"}],
+        "action": {"action_id": "move", "parameters": {"direction": direction_lower, "steps": steps}}
+    }
+
+
+@tool("check_position", "Check if a position on the grid is valid and within bounds. Returns whether the position exists and if it's safe to move there.", {"x": "int", "y": "int"})
+async def check_position(args: dict[str, Any]) -> dict[str, Any]:
+    x = args.get('x', 0)
+    y = args.get('y', 0)
+    
+    # Grid is 10x10 (0-9 for both x and y)
+    is_valid = 0 <= x <= 9 and 0 <= y <= 9
+    
+    if is_valid:
+        message = f"Position ({x}, {y}) is valid! You can move here safely."
+    else:
+        message = f"Position ({x}, {y}) is outside the grid! Stay within 0-9 for both x and y."
+    
+    return {"content": [{"type": "text", "text": message}]}
+
+
+@tool("move_forward", "Move the agent forward in the direction it is currently facing on the 10x10 grid. The agent will move the specified number of steps (default 1) if the path is clear and within bounds.", {"steps": "int"})
+async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
+    steps = args.get('steps', 1)
+    
+    # Validate steps is positive
+    if steps < 1:
+        return {"content": [{"type": "text", "text": "Cannot move forward with less than 1 step. Please choose a positive number!"}]}
+    
+    # Check if steps exceed grid size (10x10)
+    if steps > 10:
+        return {"content": [{"type": "text", "text": f"That's too far! The grid is only 10x10. Try moving {min(steps, 10)} or fewer steps."}]}
+    
+    # Success message
+    step_word = "step" if steps == 1 else "steps"
+    return {"content": [{"type": "text", "text": f"Moving forward {steps} {step_word}! 🚀"}]}
+
+
+@tool(
+    "observe_world",
+    "Get current world state, your position, and surroundings. Call this after every action to see what happened.",
+    {"world_id": "string"}
+)
+async def observe_world(args: dict[str, Any]) -> dict[str, Any]:
+    """Allow agent to perceive current world state.
+
+    Args:
+        args: Must contain "world_id" key
+
+    Returns:
+        Formatted world state description
+    """
+    from state_manager import state_manager
+
+    world_id = args.get("world_id")
+    if not world_id:
+        return {"content": [{"type": "text", "text": "Error: world_id is required"}]}
+
+    world = state_manager.get_world(world_id)
+    if not world:
+        return {"content": [{"type": "text", "text": f"Error: World {world_id} not found"}]}
+
+    # Format world state for agent
+    position = world.get("agent_position", [0, 0])
+    width = world.get("width", 10)
+    height = world.get("height", 10)
+    grid = world.get("grid", [])
+
+    # Create 5x5 view around agent
+    x, y = position
+    view_lines = []
+    for dy in range(-2, 3):
+        row = []
+        for dx in range(-2, 3):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < width and 0 <= ny < height:
+                cell = grid[ny][nx] if grid else "."
+                if dx == 0 and dy == 0:
+                    cell = "A"  # Agent marker
+                row.append(cell)
+            else:
+                row.append("#")  # Out of bounds
+        view_lines.append("".join(row))
+
+    grid_view = "\n".join(view_lines)
+
+    result_text = f"""🗺️ WORLD STATE 🗺️
+
+Current Position: [{x}, {y}]
+World Size: {width}x{height}
+
+5x5 View (A = You):
+{grid_view}
+
+Legend:
+. = empty
+# = boundary/obstacle
+A = your position
+"""
+
+    return {"content": [{"type": "text", "text": result_text}]}
