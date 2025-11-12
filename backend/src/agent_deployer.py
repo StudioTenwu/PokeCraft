@@ -112,7 +112,11 @@ def _patch_create_sdk_mcp_server() -> None:
 
                 return [TextContent(type="text", text=f"Tool {tool_name} not found")]
 
-        return McpSdkServerConfig(server=server, name=name)
+        # Return McpSdkServerConfig with correct keys
+        # - type: "sdk" (identifies this as an SDK MCP server)
+        # - name: server name for identification
+        # - instance: the Server object (will be stripped by SDK before JSON serialization)
+        return McpSdkServerConfig(type="sdk", name=name, instance=server)
 
     # Replace the SDK function
     claude_agent_sdk.create_sdk_mcp_server = patched_create_sdk_mcp_server
