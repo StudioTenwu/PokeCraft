@@ -153,8 +153,7 @@ export default function GameWorldView({ worldState, events, deploying, avatarUrl
 
     // Redraw agent at current position if available
     if (displayPosition) {
-      ctx.font = '48px serif'
-      ctx.fillText('🤖', displayPosition[0] * TILE_SIZE + 8, displayPosition[1] * TILE_SIZE + 48)
+      drawAgent(ctx, displayPosition[0], displayPosition[1])
     }
   }
 
@@ -273,9 +272,8 @@ export default function GameWorldView({ worldState, events, deploying, avatarUrl
     ctx.fillStyle = TILE_COLORS.goal
     ctx.fillRect(toPos[0] * TILE_SIZE, toPos[1] * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
-    // Phase 2: Larger agent sprite (48px instead of 24px)
-    ctx.font = '48px serif'
-    ctx.fillText('🤖', toPos[0] * TILE_SIZE + 8, toPos[1] * TILE_SIZE + 48)
+    // Draw new agent with avatar
+    drawAgent(ctx, toPos[0], toPos[1])
   }
 
   // Mark cell as visited (Phase 2: Enhanced with 64px tiles and colors)

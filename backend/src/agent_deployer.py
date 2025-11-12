@@ -1,5 +1,4 @@
 """Agent deployment with Claude Agent SDK and SSE streaming."""
-import importlib.util
 import logging
 import sys
 from collections.abc import AsyncGenerator
@@ -8,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import claude_agent_sdk  # Import module for patched create_sdk_mcp_server
 from action_registry import create_game_engine, get_action_set_for_game
 from claude_agent_sdk import (
     AssistantMessage,
@@ -24,111 +22,6 @@ from claude_agent_sdk import (
 from state_manager import state_manager
 
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# SDK Bug #323 Workaround
-# Apply patch immediately on module import (before any code uses create_sdk_mcp_server)
-# ============================================================================
-
-
-_SDK_PATCHED = False  # Module-level flag to track if patch has been applied
-
-
-def _patch_create_sdk_mcp_server() -> None:
-    """Monkey-patch create_sdk_mcp_server to fix version parameter bug.
-
-    Bug: https://github.com/anthropics/claude-agent-sdk-python/issues/323
-
-    The SDK's create_sdk_mcp_server() passes an unsupported 'version' parameter
-    to MCP's Server.__init__(), which only accepts 'name'. This causes a TypeError.
-
-    This patch replaces the buggy function with a fixed version that doesn't pass
-    the version parameter to Server.__init__().
-
-    This is a temporary workaround until the SDK is fixed upstream.
-    """
-    global _SDK_PATCHED  # noqa: PLW0603 - Intentional global for patch tracking
-
-    from typing import Any
-
-    import claude_agent_sdk
-    from claude_agent_sdk import SdkMcpTool
-    from claude_agent_sdk.types import McpSdkServerConfig
-
-    # Check if already patched (defensive programming)
-    if _SDK_PATCHED:
-        return
-
-    def patched_create_sdk_mcp_server(
-        name: str,
-        version: str = "1.0.0",  # noqa: ARG001 - Kept for API compatibility
-        tools: list[SdkMcpTool[Any]] | None = None,
-    ) -> McpSdkServerConfig:
-        """Patched version without version parameter bug."""
-        from mcp.server import Server
-        from mcp.types import ImageContent, TextContent, Tool
-
-        # FIX: Don't pass version to Server.__init__() - it doesn't accept it
-        # Original SDK incorrectly used: Server(name, version=version)
-        server = Server(name)
-
-        # Register tools if provided
-        if tools:
-
-            @server.list_tools()
-            async def list_tools_handler() -> list[Tool]:
-                return [
-                    Tool(
-                        name=t.name,
-                        description=t.description or "",
-                        inputSchema=t.input_schema or {},
-                    )
-                    for t in tools
-                ]
-
-            @server.call_tool()
-            async def call_tool_handler(
-                tool_name: str, arguments: dict[str, Any],
-            ) -> list[TextContent | ImageContent]:
-                for t in tools:
-                    if t.name == tool_name:
-                        result = await t.handler(arguments)
-
-                        if isinstance(result, dict) and "content" in result:
-                            content_list = result["content"]
-                            return [
-                                TextContent(type="text", text=item["text"])
-                                if item.get("type") == "text"
-                                else ImageContent(
-                                    type="image",
-                                    data=item["data"],
-                                    mimeType=item.get("mimeType", "image/png"),
-                                )
-                                for item in content_list
-                            ]
-
-                        return [TextContent(type="text", text=str(result))]
-
-                return [TextContent(type="text", text=f"Tool {tool_name} not found")]
-
-        # Return McpSdkServerConfig with correct keys
-        # - type: "sdk" (identifies this as an SDK MCP server)
-        # - name: server name for identification
-        # - instance: the Server object (will be stripped by SDK before JSON serialization)
-        return McpSdkServerConfig(type="sdk", name=name, instance=server)
-
-    # Replace the SDK function
-    claude_agent_sdk.create_sdk_mcp_server = patched_create_sdk_mcp_server
-
-    # Mark as patched globally
-    _SDK_PATCHED = True
-
-    logger.info("Applied SDK bug #323 workaround for create_sdk_mcp_server")
-
-
-# Apply patch immediately when this module is imported
-_patch_create_sdk_mcp_server()
 
 
 @dataclass
@@ -151,49 +44,6 @@ class AgentDeployer:
         """
         self.tool_service = tool_service
         self.world_service = world_service
-
-    def _load_tools_from_file(self, tools_file_path: str | None = None) -> list:
-        """Dynamically load SDK tools from tools.py file.
-
-        Returns:
-            List of SdkMcpTool instances found in the file
-        """
-        from claude_agent_sdk import SdkMcpTool
-
-        if tools_file_path is None:
-            tools_file_path = str(Path(__file__).parent / "tools.py")
-
-        logger.info(f"Loading tools from {tools_file_path}")
-
-        try:
-            spec = importlib.util.spec_from_file_location(
-                "custom_tools", tools_file_path,
-            )
-            if spec is None or spec.loader is None:
-                logger.warning(f"Could not load tools from {tools_file_path}")
-                return []
-
-            module = importlib.util.module_from_spec(spec)
-            sys.modules["custom_tools"] = module
-            spec.loader.exec_module(module)
-
-            # Collect all SdkMcpTool instances from module
-            tools_dict = {}  # Use dict to deduplicate by tool name (keep last)
-            for name in dir(module):
-                obj = getattr(module, name)
-                # Check if it's an SdkMcpTool instance (created by @tool decorator)
-                if isinstance(obj, SdkMcpTool):
-                    # Use tool name as key to automatically handle duplicates
-                    tools_dict[obj.name] = obj
-                    logger.info(f"Loaded tool: {obj.name} (variable name: {name})")
-
-            tools = list(tools_dict.values())
-            logger.info(f"Successfully loaded {len(tools)} unique tools")
-            return tools
-
-        except Exception as e:
-            logger.error(f"Failed to load tools: {e}", exc_info=True)
-            return []
 
     async def deploy_agent(
         self,
@@ -269,26 +119,24 @@ class AgentDeployer:
             tools = await self.tool_service.get_agent_tools(agent_id)
             logger.info(f"Loaded {len(tools)} tools for agent {agent_id}")
 
-            # 4. Load tools from tools.py and create MCP server with SDK tools
-            tool_functions = self._load_tools_from_file()
-            if len(tool_functions) == 0:
-                logger.warning("No tools found - agent will run without custom tools")
+            # 4. Configure MCP server via stdio transport
+            # Launch mcp_server_runtime.py as a subprocess that communicates via stdio
+            # This replaces the buggy SDK create_sdk_mcp_server() approach
+            import os
+            mcp_server_path = Path(__file__).parent / "mcp_server_runtime.py"
+            python_path = sys.executable  # Use the same Python interpreter
 
-            # Create MCP server using patched create_sdk_mcp_server (bug #323 fixed)
-            # Pass tools directly - SDK handles tool registration
-            # Use module reference to get patched version
-            user_tool_server = claude_agent_sdk.create_sdk_mcp_server(
-                name="user_tools",
-                version="1.0.0",
-                tools=tool_functions if tool_functions else None,
-            )
-            logger.info(f"Created MCP server with {len(tool_functions)} tools")
-
-            # Configure Claude Agent SDK with MCP server
-            # No need for allowed_tools - SDK auto-registers tools from server
+            # Configure Claude Agent SDK with stdio MCP server
             options = ClaudeAgentOptions(
-                mcp_servers={"user_tools": user_tool_server},
+                mcp_servers={
+                    "user_tools": {
+                        "command": python_path,
+                        "args": [str(mcp_server_path)],
+                        "env": os.environ.copy(),  # Pass current environment
+                    }
+                },
             )
+            logger.info(f"Configured stdio MCP server at {mcp_server_path}")
 
             # 5. Create deployment prompt
             prompt = self._build_deployment_prompt(world, goal, world_id)

@@ -30,3 +30,6 @@ class Config:
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
     API_PORT = int(os.getenv("API_PORT", "8000"))
     API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+
+    # Claude API Key (Required for agent deployment)
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")

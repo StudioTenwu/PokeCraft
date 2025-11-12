@@ -143,7 +143,7 @@ async def create_agent_from_data(request: AgentCreateFromDataRequest, req: Reque
             backstory=request.backstory,
             personality_traits=request.personality_traits,
             avatar_url=request.avatar_url,
-            agent_id=request.id
+            agent_id=request.id,
         )
         return agent
     except Exception as e:
@@ -183,6 +183,65 @@ async def create_agent_stream(description: str, req: Request):
         },
     )
 
+# Debug deployment endpoint for testing (returns structured JSON instead of SSE)
+class DebugDeployRequest(BaseModel):
+    """Request model for debug deployment."""
+    agent_id: str
+    world_id: str
+    goal: str
+
+
+@app.post("/api/debug/deploy")
+async def debug_deploy_agent(request: DebugDeployRequest, req: Request):
+    """Deploy agent and return structured event log for debugging.
+
+    Unlike the streaming SSE endpoint, this collects all events and returns
+    them as structured JSON for testing and debugging purposes.
+
+    Returns:
+        {
+            "events": [...],  # All deployment events
+            "thinking_traces": [...],  # Extracted thinking blocks
+            "final_status": "success"|"error"
+        }
+    """
+    from agent_deployer import AgentDeployer
+
+    deployer = AgentDeployer(
+        req.app.state.tool_service, req.app.state.world_service,
+    )
+
+    # Collect all events
+    events = []
+    thinking_traces = []
+
+    async for event in deployer.deploy_agent(
+        request.agent_id, request.world_id, request.goal,
+    ):
+        # Store event
+        events.append({
+            "event_type": event.event_type,
+            "data": event.data,
+        })
+
+        # Extract thinking traces
+        if event.event_type == "thinking":
+            thinking_traces.append(event.data.get("text", ""))
+
+    # Determine final status
+    final_status = "success"
+    if events and events[-1]["event_type"] == "error":
+        final_status = "error"
+    elif events and events[-1]["event_type"] == "complete":
+        final_status = "success"
+
+    return {
+        "events": events,
+        "thinking_traces": thinking_traces,
+        "final_status": final_status,
+    }
+
+
 # Deploy endpoint MUST come before /api/agents/{agent_id} to avoid route collision
 @app.get("/api/agents/deploy")
 async def deploy_agent(agent_id: str, world_id: str, goal: str, req: Request):
@@ -200,11 +259,11 @@ async def deploy_agent(agent_id: str, world_id: str, goal: str, req: Request):
         from agent_deployer import AgentDeployer
 
         deployer = AgentDeployer(
-            req.app.state.tool_service, req.app.state.world_service
+            req.app.state.tool_service, req.app.state.world_service,
         )
 
         async for event in deployer.deploy_agent(
-            agent_id, world_id, goal
+            agent_id, world_id, goal,
         ):
             # Convert DeploymentEvent to SSE format
             sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
@@ -231,6 +290,26 @@ async def get_agent(agent_id: str, req: Request):
         raise HTTPException(status_code=404, detail="Agent not found")
     return agent
 
+@app.get("/api/agents/{agent_id}/export")
+async def export_agent_for_extension(agent_id: str, req: Request):
+    """Export agent in chrome extension format.
+
+    Returns agent data compatible with AICraft Companion chrome extension.
+    Includes all required fields: id, name, avatar_url, backstory, personality_traits.
+    """
+    agent = await req.app.state.agent_service.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    # Return in extension-compatible format
+    return {
+        "id": agent["id"],
+        "name": agent["name"],
+        "avatar_url": agent["avatar_url"],
+        "backstory": agent["backstory"],
+        "personality_traits": agent["personality_traits"],
+    }
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
@@ -255,7 +334,7 @@ async def create_world_from_data(request: WorldFromDataRequest, req: Request):
     try:
         world = await req.app.state.world_service.create_world_from_data(
             request.agent_id,
-            request.world_data
+            request.world_data,
         )
         return world
     except Exception as e:
@@ -281,7 +360,7 @@ async def get_world_actions(world_id: str, req: Request):
     grouped_actions: dict[str, list[dict[str, Any]]] = {
         "Movement": [],
         "Perception": [],
-        "Interaction": []
+        "Interaction": [],
     }
 
     for action in action_set.actions:
@@ -296,7 +375,7 @@ async def get_world_actions(world_id: str, req: Request):
             "parameters": [
                 {"name": p.name, "type": p.type, "description": p.description}
                 for p in action.parameters
-            ]
+            ],
         })
 
     return {
@@ -305,9 +384,9 @@ async def get_world_actions(world_id: str, req: Request):
             "name": world["name"],
             "width": world.get("width", 10),
             "height": world.get("height", 10),
-            "game_type": world["game_type"]
+            "game_type": world["game_type"],
         },
-        "actions": grouped_actions
+        "actions": grouped_actions,
     }
 
 @app.get("/api/worlds/{world_id}")
@@ -332,7 +411,7 @@ async def create_tool(request: ToolCreateRequest, req: Request):
         result = await req.app.state.tool_service.create_tool(
             request.agent_id,
             request.world_id,
-            request.description
+            request.description,
         )
         return ToolCreateResponse(**result)
     except Exception as e:

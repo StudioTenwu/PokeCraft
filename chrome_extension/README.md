@@ -49,6 +49,8 @@ chrome_extension/
 - 💾 **Persistent History**: Chat saves between sessions
 - 🎯 **Side Panel API**: Modern Chrome extension using Side Panel
 - 📱 **Responsive Design**: Works with different panel widths
+- 🔗 **Direct Server Integration**: Fetch agents directly from AICraft backend (http://localhost:8000)
+- 📂 **Manual Import**: Import agent JSON files manually
 
 ## 🎯 Testing Status
 
@@ -90,6 +92,26 @@ The extension features:
 3. **Chat Interface**: Simple HTML/JS/CSS interface
 4. **Storage**: Saves chat history using Chrome's storage API
 5. **Mock AI**: Random friendly responses (placeholder for real AI)
+
+## 🔗 Agent Loading Options
+
+The extension supports three ways to load agents:
+
+### 1. Fetch from AICraft Server (🔗 button)
+- Click the 🔗 button in the extension header
+- Enter an agent ID from your AICraft backend
+- Agent will be fetched from `http://localhost:8000/api/agents/{id}/export`
+- Requires AICraft backend server running
+
+### 2. Auto-Load from Backend Server (📥 button)
+- Click the 📥 button to check for new agents
+- Automatically loads agents from the companion backend server (port 8080)
+- Uses the separate `backend_server.py` for serving agents
+
+### 3. Manual JSON Import (📂 button)
+- Click the 📂 button to import an agent JSON file
+- Select a JSON file with agent data
+- Useful for offline testing or custom agents
 
 ## 🔮 Future Integration
 

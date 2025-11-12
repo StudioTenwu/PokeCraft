@@ -6,38 +6,144 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Backend:** FastAPI (async) | SQLite + SQLAlchemy ORM | Claude Agent SDK | mflux (Schnell 3-bit) | Python 3.11+ with full type hints
 
-**Frontend:** React 18 + Vite | PixiJS | Tailwind CSS | Pokemon Game Boy Color theme
+**Frontend:** React 18 + Vite | Canvas 2D | Tailwind CSS | Pokemon Game Boy Color theme
 
 ---
 
 ## Architecture Overview
 
-### Three-Phase System
+### Three-Phase System (ALL COMPLETE)
 
-**Phase 1: Agent Creation**
+**Phase 1: Agent Creation** ✅
 - LLM generates Pokemon-themed agent (name, backstory, personality)
-- Avatar generated with mflux (local Schnell 3-bit model)
+- Avatar generated with mflux (local Schnell 3-bit model, 2 steps)
+- SSE streaming for real-time progress (fake progress + mflux parsing)
 - Stored in SQLite via AgentService
+- Frontend: AgentCreation.jsx, AgentCard.jsx, AgentPanel.jsx, ThemeToggle.jsx
 
-**Phase 2: World Creation**
-- LLM generates game worlds (grid_navigation, dungeon_crawler, etc.)
+**Phase 2: World Creation** ✅
+- LLM generates game worlds from descriptions OR instant creation from pre-defined data
 - Default starter worlds available (Pallet Town, etc.)
 - WorldService manages grid-based environments
+- Frontend: WorldCreation.jsx, WorldCanvas.jsx, WorldSelector.jsx, GameWorldView.jsx
 
-**Phase 3: Agent Deployment** (Current Focus)
-- Agent explores world using custom tools
-- Tools loaded dynamically from `tools.py` via `@tool` decorator
-- Real-time SSE streaming to frontend showing agent's thinking/actions
-- Game engine executes actions and updates world state
+**Phase 3: Tool System** ✅
+- Child describes tool → LLM generates Python code with `@tool` decorator
+- Tools validated (AST parsing, forbidden imports check)
+- Dynamic tool discovery via `_load_tools_from_file()`
+- Tools appended to `tools.py` and saved to database
+- Tool-action binding mechanism (tools specify game action IDs)
+- Frontend: ToolWorkshop.jsx, ToolCreator.jsx, ToolLibrary.jsx
+
+**Phase 4: Agent Deployment** ✅
+- Agent explores world using custom tools via Claude Agent SDK
+- Real-time SSE streaming (thinking, tool_call, tool_result, world_update, error, complete)
+- Game engine executes actions and returns state deltas (only changed values)
+- Three-column deployment UI: ThinkingPanel (left) | GameWorldView (center) | EventLogSidebar (right)
+- Frontend: AgentRunner.jsx, ThinkingPanel.jsx, EventLogSidebar.jsx, ActionDisplay.jsx
+
+---
+
+### Game System Architecture
+
+**Action System:**
+```python
+# models/game_actions.py - Defines action schemas
+class GameAction(BaseModel):
+    action_id: str
+    name: str
+    description: str
+    parameters: list[ActionParameter]
+    category: str | None  # Movement, Perception, Interaction
+
+class GameActionSet(BaseModel):
+    game_type: str
+    actions: list[GameAction]
+
+# Predefined action set for grid_navigation
+GRID_NAVIGATION_ACTIONS = [
+    move (direction: north/south/east/west),
+    pickup (no params),
+    wait (turns: int)
+]
+```
+
+**Game Engine Pattern:**
+```python
+# game_engine.py - Abstract base + concrete implementations
+class GameEngine(ABC):
+    def execute_action(self, action_id: str, parameters: dict) -> ActionResult
+    @abstractmethod
+    def _execute_action_impl(...) -> ActionResult
+
+class GridNavigationEngine(GameEngine):
+    def _execute_action_impl(...):
+        if action_id == "move":
+            return self._execute_move(parameters)
+        # ...
+```
+
+**State Delta Pattern:**
+Only changed state is returned to frontend for efficient updates:
+```python
+ActionResult(
+    success=True,
+    state_delta={  # Only changed values
+        "agent_position": [3, 5],
+        "agent_moved_from": [2, 5],
+        "agent_moved_to": [3, 5]
+    },
+    message="Moved east to position [3, 5]"
+)
+```
+
+**Action Registry:**
+- `action_registry.py` - Maps game types to action sets
+- Factory pattern for game engine creation
+- GET `/api/actions/{world_id}` - Fetch available actions for world
+
+---
+
+### Tool-Action Binding Mechanism
+
+**Critical pattern:** Tools specify which game action they invoke via `action` field in return value:
+
+```python
+@tool("move_direction", "Move in a direction", {"direction": str, "steps": int})
+async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
+    # Tool validates and formats parameters
+    return {
+        "content": [{"type": "text", "text": f"Moving {steps} steps {direction}!"}],
+        "action": {
+            "action_id": "move",  # References GRID_NAVIGATION_ACTIONS
+            "parameters": {"direction": direction, "steps": steps}
+        }
+    }
+```
+
+**Execution flow:**
+1. Agent uses tool via Claude Agent SDK
+2. Tool returns result with `action` field
+3. Deployer extracts `action_id` and `parameters`
+4. Game engine executes action via `execute_action()`
+5. State delta yielded as `world_update` SSE event
+6. Frontend updates GameWorldView with delta
+
+**Tool categories:** Movement, Perception, Interaction (stored in ToolDB)
+
+---
 
 ### Critical SDK Integration
 
-**Claude Agent SDK with MCP Servers:**
+**Two SDK Patterns in Codebase:**
 
-The deployment system uses Claude Agent SDK's `ClaudeSDKClient` pattern with in-process MCP servers for custom tools. This replaced the deprecated `query()` pattern.
+1. **Old pattern** (`query()`) - Used in tool_generator.py, llm_client.py, llm_world_generator.py
+2. **New pattern** (`ClaudeSDKClient`) - Used in agent_deployer.py
 
+**Why both?** Migration in progress. Use `ClaudeSDKClient` for new code with MCP servers.
+
+**Deployment pattern (agent_deployer.py):**
 ```python
-# Official pattern (agent_deployer.py)
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 import claude_agent_sdk  # Module ref for patched create_sdk_mcp_server
 
@@ -57,8 +163,20 @@ options = ClaudeAgentOptions(
 async with ClaudeSDKClient(options=options) as client:
     await client.query(prompt)
     async for message in client.receive_response():
-        # Process AssistantMessage, ToolUseBlock, ToolResultBlock, etc.
-        ...
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, ThinkingBlock):
+                    yield SSE event: thinking
+                elif isinstance(block, TextBlock):
+                    yield SSE event: text
+                elif isinstance(block, ToolUseBlock):
+                    yield SSE event: tool_call
+                elif isinstance(block, ToolResultBlock):
+                    yield SSE event: tool_result
+                    # Extract action from tool result
+                    if "action" in result:
+                        action_result = game_engine.execute_action(...)
+                        yield SSE event: world_update
 ```
 
 **CRITICAL SDK Bug Workaround:**
@@ -69,34 +187,192 @@ async with ClaudeSDKClient(options=options) as client:
 
 **Why this matters:** SDK strips the `instance` field before JSON serialization (subprocess_cli.py:154-159). Wrong keys cause "Object of type Server is not JSON serializable" error. See `development/claude-sdk-debug/SKILL.md` snippet for comprehensive debugging guide.
 
-### Dynamic Tool Loading
+---
 
-Tools are loaded from `backend/src/tools.py` using the `@tool` decorator:
+### SSE Event Streaming
 
-```python
-from claude_agent_sdk import tool
+**Complete event types:**
 
-@tool("move_direction", "Move in a direction", {"direction": str})
-async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
-    # Tool implementation
-    return {"content": [{"type": "text", "text": "Moved north"}]}
-```
+**Agent creation streaming:**
+- `llm_start`, `llm_progress`, `llm_complete` - LLM generation
+- `avatar_start`, `avatar_progress`, `avatar_complete` - mflux avatar generation
 
-The deployer automatically discovers all `@tool` decorated functions via `_load_tools_from_file()` which uses `isinstance(obj, SdkMcpTool)` checks. Tools are deduplicated by name.
-
-### SSE Event Stream
-
-Deployment streams events to frontend via Server-Sent Events:
-
+**Agent deployment streaming:**
+- `system` - SystemMessage from SDK
 - `thinking` - Agent's reasoning (from ThinkingBlock)
 - `text` - Agent's text responses (from TextBlock)
 - `tool_call` - Tool invocations (from ToolUseBlock)
 - `tool_result` - Tool execution results (from ToolResultBlock)
-- `world_update` - Grid state changes (from game engine)
-- `complete` - Deployment finished
-- `error` - Failures (recoverable vs fatal)
+- `world_update` - Grid state changes (state deltas only)
+- `error` - Action failures, tool errors, deployment errors
+- `complete` - Final status with metrics
 
 SDK handles tool execution automatically via MCP server. Results come back as `ToolResultBlock` messages.
+
+---
+
+## Complete API Reference
+
+### Agent Endpoints
+```
+POST /api/agents/create
+  Input: { description }
+  Output: AgentData (blocking)
+
+GET /api/agents/create/stream
+  Input: ?description=...
+  Output: SSE stream (llm_start, llm_progress, avatar_start, etc.)
+
+POST /api/agents
+  Input: AgentData (pre-defined, no id)
+  Output: AgentData
+  Note: For instant agent creation (default Pokemon templates)
+
+GET /api/agents/{agent_id}
+  Output: AgentData
+
+GET /api/agents/deploy
+  Input: ?agent_id=...&world_id=...&goal=...
+  Output: SSE stream (thinking, tool_call, world_update, complete)
+  Note: Changed from POST to GET for SSE compatibility
+```
+
+### World Endpoints
+```
+POST /api/worlds/create
+  Input: { agent_id, description }
+  Output: WorldData (LLM-generated)
+
+POST /api/worlds/create-from-data
+  Input: WorldData (pre-defined, no id)
+  Output: WorldData
+  Note: For instant world creation (starter worlds)
+
+GET /api/worlds/{world_id}
+  Output: WorldData
+
+GET /api/worlds/agent/{agent_id}
+  Output: [WorldData] (all worlds for agent)
+
+GET /api/actions/{world_id}
+  Output: GameActionSet (available actions for world's game_type)
+```
+
+### Tool Endpoints
+```
+POST /api/tools/create
+  Input: { agent_id, description }
+  Output: { tool_name, code, explanation, category }
+
+GET /api/tools/agent/{agent_id}
+  Output: [ToolData] (all tools for agent)
+
+DELETE /api/tools/{tool_name}
+  Output: { message }
+```
+
+---
+
+## Frontend Architecture
+
+### Component Hierarchy
+
+**Main App Layout (App.jsx):**
+- Fixed-width left sidebar (320px): AgentPanel
+- Flexible right section: WorldSelector + ToolWorkshop
+
+**Agent Creation Phase:**
+- AgentCreation.jsx - Agent creation UI with SSE streaming
+- AgentCard.jsx - Display agent info
+- AgentPanel.jsx - Agent details with equipped tools
+- ThemeToggle.jsx - Day/Night mode toggle
+
+**World Creation Phase:**
+- WorldCreation.jsx - World creation UI
+- WorldCanvas.jsx - Canvas-based world renderer
+- WorldSelector.jsx - Select from multiple worlds
+- GameWorldView.jsx - Deployment world visualization
+
+**Tool System:**
+- ToolWorkshop.jsx - Collapsible workshop panel
+- ToolCreator.jsx - Tool creation UI
+- ToolLibrary.jsx - Tool management
+
+**Deployment UI:**
+- AgentRunner.jsx - Full deployment UI with SSE
+- Three-column layout:
+  - Left (30%): ThinkingPanel - Agent reasoning
+  - Center (45%): GameWorldView - Real-time world visualization
+  - Right (25%): EventLogSidebar - Event stream
+- ActionDisplay.jsx - Action visualization
+
+**Shared Components:**
+- PokemonButton.jsx - Themed button component
+
+### SSE Event Handling Pattern
+
+```javascript
+const eventSource = new EventSource(`/api/agents/create/stream?description=${desc}`)
+
+eventSource.addEventListener('llm_progress', (e) => {
+  const data = JSON.parse(e.data)
+  setProgress(data.progress)
+})
+
+eventSource.addEventListener('complete', (e) => {
+  const data = JSON.parse(e.data)
+  setAgent(data.agent)
+  eventSource.close()
+})
+
+eventSource.addEventListener('error', (e) => {
+  console.error('SSE error:', e)
+  eventSource.close()
+})
+```
+
+---
+
+## Database Schema
+
+### Tables
+
+**agents:**
+```python
+id: String (UUID)
+name: String
+backstory: Text
+personality_traits: JSON (list[str])
+avatar_url: String
+created_at: DateTime
+```
+
+**worlds:**
+```python
+id: String (UUID)
+agent_id: String (FK to agents.id)
+name: String
+description: Text
+grid_data: Text (JSON serialized)
+agent_position_x: Integer
+agent_position_y: Integer
+width: Integer
+height: Integer
+game_type: String (default: "grid_navigation")
+created_at: DateTime
+```
+
+**tools:**
+```python
+id: String (UUID)
+agent_id: String (FK to agents.id)
+name: String (unique)
+description: Text
+code: Text (full Python function with @tool decorator)
+category: String (Movement, Perception, Interaction)
+expected_action_id: String | None
+created_at: DateTime
+```
 
 ---
 
@@ -107,12 +383,26 @@ SDK handles tool execution automatically via MCP server. Results come back as `T
 ```bash
 # Backend
 cd backend
+
+# 1. Install dependencies
 uv pip install -e ".[dev]"
+
+# 2. Create .env file with API key (REQUIRED for agent deployment)
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY=sk-ant-...
+
+# 3. Initialize database
 uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
 
 # Frontend
 cd frontend && npm install
 ```
+
+**CRITICAL:** The `ANTHROPIC_API_KEY` environment variable MUST be set for agent deployment to work. Without it:
+- MCP server initialization will fail
+- Custom tools won't be available
+- Agent will try to use built-in tools (like Bash) instead
+- You'll see `mcp_servers: [{'name': 'user_tools', 'status': 'failed'}]`
 
 ### Running
 
@@ -127,7 +417,7 @@ cd frontend && npm run dev
 ### Testing
 
 ```bash
-# All tests
+# Backend - All tests (98 total: 36 unit, 28 integration, 34 e2e)
 cd backend && uv run pytest tests/ -v
 
 # Single test file
@@ -139,14 +429,19 @@ uv run pytest tests/unit/test_agent_deployer.py::test_deploy_agent_yields_tool_c
 # With coverage
 uv run pytest tests/ --cov=src --cov-report=html
 
-# Frontend tests
+# E2E tests (requires database reset first!)
+rm -f backend/agents.db
+uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
+uv run pytest tests/e2e/ -v
+
+# Frontend tests (62 total with Vitest)
 cd frontend && npm test
 ```
 
 ### Database Reset
 
 ```bash
-# Clean start (required for E2E tests)
+# Clean start (REQUIRED before E2E tests)
 rm -f backend/agents.db
 cd backend && uv run python -c "from src.database import init_db; import asyncio; asyncio.run(init_db())"
 ```
@@ -180,10 +475,10 @@ async def generate_agent(self, description: str) -> AgentData:
 
 ### Claude Agent SDK Patterns
 
-**Use ClaudeSDKClient, NOT query():**
+**Use ClaudeSDKClient for new code with MCP servers:**
 
 ```python
-# Correct (new pattern)
+# Correct (new pattern - use for MCP server integration)
 async with ClaudeSDKClient(options=options) as client:
     await client.query(prompt)
     async for message in client.receive_response():
@@ -196,9 +491,10 @@ async with ClaudeSDKClient(options=options) as client:
                 elif isinstance(block, ToolResultBlock):
                     # Handle tool result
 
-# Deprecated (old pattern)
-async for message in query(prompt=prompt, options=options):
-    # Don't use this
+# Old pattern (still used in tool_generator.py, llm_client.py)
+async for message in query(prompt=prompt):
+    if hasattr(message, "result") and message.result:
+        response_text = message.result
 ```
 
 **TypedDict Contracts:**
@@ -375,27 +671,81 @@ backend/src/
 ├── agent_service.py     # Agent CRUD
 ├── world_service.py     # World CRUD
 ├── tool_service.py      # Tool CRUD
+├── tool_generator.py    # LLM-based tool code generation
+├── tool_registry.py     # Dynamic tool discovery + append to tools.py
 ├── tools.py             # @tool decorated functions for MCP
 ├── game_engine.py       # Grid state + action execution
 ├── action_registry.py   # Game-specific action sets
 ├── state_manager.py     # World state tracking
 ├── llm_client.py        # Agent SDK wrapper
+├── llm_world_generator.py  # World generation via LLM
+├── avatar_generator.py  # mflux integration
 ├── database.py          # SQLAlchemy setup
+├── config.py            # Environment configuration
 └── models/              # Pydantic + SQLAlchemy models
+    ├── agent.py
+    ├── world.py
+    ├── tool.py
+    ├── game_actions.py
+    └── db_models.py
 
 backend/tests/
-├── unit/                # Unit tests (mocked dependencies)
-├── integration/         # Integration tests (real SDK, mocked services)
-└── e2e/                 # End-to-end with Playwright
+├── unit/                # Unit tests (36 tests)
+├── integration/         # Integration tests (28 tests)
+└── e2e/                 # End-to-end with Playwright (34 tests)
+    ├── helpers.py
+    ├── test_pokemon_creation.py
+    ├── test_world_creation.py
+    ├── test_tool_creation.py
+    └── test_agent_deployment.py
 
 frontend/src/
 ├── App.jsx              # Main app
 ├── api.js               # API client
 └── components/
     ├── AgentCreation.jsx
+    ├── AgentCard.jsx
+    ├── AgentPanel.jsx
     ├── WorldCreation.jsx
-    ├── AgentRunner.jsx      # Deployment UI + SSE handling
-    └── WorldCanvas.jsx      # PixiJS renderer
+    ├── WorldCanvas.jsx
+    ├── WorldSelector.jsx
+    ├── GameWorldView.jsx
+    ├── ToolWorkshop.jsx
+    ├── ToolCreator.jsx
+    ├── ToolLibrary.jsx
+    ├── AgentRunner.jsx
+    ├── ThinkingPanel.jsx
+    ├── EventLogSidebar.jsx
+    ├── ActionDisplay.jsx
+    ├── ThemeToggle.jsx
+    └── PokemonButton.jsx
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Avatar Generation
+AVATAR_MODEL_PATH="~/.AICraft/models/schnell-3bit"
+
+# Server
+API_HOST="0.0.0.0"
+API_PORT=8000
+API_BASE_URL="http://localhost:8000"
+
+# CORS
+CORS_ORIGINS="http://localhost:3000,http://localhost:5173"
+
+# Database
+DB_PATH="backend/agents.db"
+
+# Logging
+LOG_LEVEL="INFO"
+LOG_DIR="backend/logs"
+LOG_FORMAT="json"  # or 'text'
 ```
 
 ---
@@ -409,7 +759,8 @@ See `.quibbler/rules.md` for comprehensive project-specific rules including:
 - Frontend UUID generation
 - Type hint completeness
 - API contract verification
-- **SDK error traceback checking**
+- SDK error traceback checking
+- Tool-action binding validation
 
 ---
 

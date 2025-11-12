@@ -403,3 +403,86 @@ async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
     success_message = f"Successfully moved forward {steps} step{'s' if steps > 1 else ''}!"
     
     return {"content": [{"type": "text", "text": success_message}]}
+
+
+@tool("move_in_s_shape", "Move Pixelmon in an S-shaped pattern on the grid. The S shape goes: right, down-right, down, down-left, left. Perfect for exploring in a curvy snake pattern!", {"size": "int"})
+async def move_in_s_shape(args: dict[str, Any]) -> dict[str, Any]:
+    size = args.get('size', 2)
+    
+    # Validate size
+    if size < 1:
+        size = 1
+    elif size > 3:
+        size = 3
+    
+    # S-shape pattern: right, down-right diagonal (right then down), down, down-left diagonal (left then down), left
+    # We'll break diagonals into separate moves and create a sequence
+    moves = []
+    
+    # Top curve of S: move right
+    moves.append({"action_id": "move", "parameters": {"direction": "east", "steps": size}})
+    
+    # Diagonal down-right: move down
+    moves.append({"action_id": "move", "parameters": {"direction": "south", "steps": size}})
+    
+    # Middle of S: move down
+    moves.append({"action_id": "move", "parameters": {"direction": "south", "steps": size}})
+    
+    # Bottom curve of S: move left
+    moves.append({"action_id": "move", "parameters": {"direction": "west", "steps": size}})
+    
+    # For the first move, we return the eastward movement
+    # Note: In a real implementation, you'd need to handle the sequence of moves
+    # For this single-action return, we'll do the first move (right)
+    
+    total_distance = size * 4
+    message = f"🐍 Pixelmon is moving in a cool S-shape! Starting by going right {size} steps. The S pattern will cover about {total_distance} spaces total!"
+    
+    return {
+        "content": [{"type": "text", "text": message}],
+        "action": {"action_id": "move", "parameters": {"direction": "east", "steps": size}}
+    }
+
+
+@tool("pixelmon_smiley_dance", "Makes Pixelmon dance in a smiley face pattern! Pixelmon will move around to trace a happy face shape on the grid.", {})
+async def pixelmon_smiley_dance(args: dict[str, Any]) -> dict[str, Any]:
+    import random
+    
+    dance_moves = [
+        "north",
+        "east",
+        "east",
+        "south",
+        "south",
+        "west",
+        "west",
+        "north"
+    ]
+    
+    direction = random.choice(dance_moves)
+    
+    emojis = ["😊", "😄", "🎉", "✨", "💃", "🕺"]
+    random_emoji = random.choice(emojis)
+    
+    messages = [
+        f"Pixelmon is dancing in a smiley face pattern! {random_emoji}",
+        f"Watch Pixelmon groove and move! Dancing {direction}! {random_emoji}",
+        f"Pixelmon's happy dance continues! Spinning {direction}! {random_emoji}",
+        f"Pixelmon dances joyfully in a smile shape! Moving {direction}! {random_emoji}"
+    ]
+    
+    message = random.choice(messages)
+    
+    return {
+        "content": [{"type": "text", "text": message}],
+        "action": {"action_id": "move", "parameters": {"direction": direction, "steps": 1}}
+    }
+
+
+@tool("celebrate_pixelmon_birth", "Celebrate the birth of a new Pixelmon by waiting and watching the special moment", {"turns": "int"})
+async def celebrate_pixelmon_birth(args: dict[str, Any]) -> dict[str, Any]:
+    turns = args.get('turns', 1)
+    return {
+        "content": [{"type": "text", "text": f"🎉 A new Pixelmon is born! Celebrating this magical moment for {turns} turn(s). Welcome to the world, little Pixelmon! 🥚✨"}],
+        "action": {"action_id": "wait", "parameters": {"turns": turns}}
+    }

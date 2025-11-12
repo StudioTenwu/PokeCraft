@@ -1,5 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 /**
  * ThinkingItem - Renders a single thinking event with expandable JSON
@@ -8,11 +10,11 @@ function ThinkingItem({ event }) {
   const [expanded, setExpanded] = useState(false)
 
   const eventConfig = {
-    system: { icon: '🔧', color: 'text-gray-400', label: 'System' },
+    system: { icon: '🔧', color: 'text-gray-400', label: 'System Info' },
     text: { icon: '💬', color: 'text-blue-400', label: 'Response' },
     thinking: { icon: '🧠', color: 'text-yellow-400', label: 'Thinking' },
-    tool_call: { icon: '🔨', color: 'text-green-400', label: 'Tool Call' },
-    tool_result: { icon: '✅', color: 'text-cyan-400', label: 'Tool Result' },
+    tool_call: { icon: '🔨', color: 'text-green-400', label: 'Action' },
+    tool_result: { icon: '✅', color: 'text-cyan-400', label: 'Result' },
     world_update: { icon: '🗺️', color: 'text-purple-400', label: 'World Update' },
     error: { icon: '❌', color: 'text-red-400', label: 'Error' },
     complete: { icon: '🎯', color: 'text-yellow-500', label: 'Complete' }
@@ -35,6 +37,21 @@ function ThinkingItem({ event }) {
     return typeof data === 'object' && data !== null
   }
 
+  // Helper to extract simple description from tool call
+  const getToolDescription = (toolName, parameters) => {
+    if (!parameters) return ''
+
+    // Common parameter patterns to extract
+    if (parameters.direction) return `Going ${parameters.direction}`
+    if (parameters.message) return parameters.message
+    if (parameters.x !== undefined && parameters.y !== undefined) {
+      return `Moving to (${parameters.x}, ${parameters.y})`
+    }
+    if (parameters.target) return `Target: ${parameters.target}`
+
+    return ''
+  }
+
   return (
     <div className="p-3 border-b border-gray-700 hover:bg-gray-800 transition-colors">
       {/* Header */}
@@ -52,29 +69,62 @@ function ThinkingItem({ event }) {
 
       {/* Content */}
       <div className="mt-2 ml-7">
-        {/* Text-based events */}
-        {(event.type === 'system' || event.type === 'text' || event.type === 'thinking') && (
-          <div className={`text-sm ${config.color}`}>
-            {event.text}
+        {/* System events - hidden by default */}
+        {event.type === 'system' && (
+          <div>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs text-gray-400 hover:text-gray-200 mb-1"
+            >
+              {expanded ? '▼' : '▶'} Show Details
+            </button>
+            {expanded && (
+              <div className={`text-sm ${config.color}`}>
+                {event.text}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Tool Call */}
+        {/* Text events */}
+        {event.type === 'text' && (
+          <div className="text-sm prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {event.text}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Thinking events - render with markdown */}
+        {event.type === 'thinking' && (
+          <div className="text-sm prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {event.text}
+            </ReactMarkdown>
+          </div>
+        )}
+
+        {/* Tool Call - Simplified view with optional details */}
         {event.type === 'tool_call' && (
           <div className="text-sm">
-            <div className="text-green-400 font-semibold mb-1">
+            <div className="text-green-400 font-semibold">
               {event.tool_name}
+              {getToolDescription(event.tool_name, event.parameters) && (
+                <span className="text-green-300 font-normal ml-2">
+                  - {getToolDescription(event.tool_name, event.parameters)}
+                </span>
+              )}
             </div>
             {event.parameters && isStructured(event.parameters) && (
-              <div>
+              <div className="mt-1">
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="text-xs text-gray-400 hover:text-gray-200 mb-1"
+                  className="text-xs text-gray-400 hover:text-gray-200"
                 >
-                  {expanded ? '▼' : '▶'} Parameters
+                  {expanded ? '▼' : '▶'} Show Details
                 </button>
                 {expanded && (
-                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300">
+                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300 mt-1">
                     {formatData(event.parameters)}
                   </pre>
                 )}
@@ -83,25 +133,25 @@ function ThinkingItem({ event }) {
           </div>
         )}
 
-        {/* Tool Result */}
+        {/* Tool Result - Simplified view with brief message */}
         {event.type === 'tool_result' && (
           <div className="text-sm">
-            <div className={`mb-1 ${event.success ? 'text-green-400' : 'text-red-400'}`}>
-              {event.success ? 'Success' : 'Failed'} • {event.tool_name}
+            <div className={`${event.success ? 'text-green-400' : 'text-red-400'}`}>
+              {event.success ? '✓ Success' : '✗ Failed'}
               {event.duration_ms && (
                 <span className="text-gray-400 text-xs ml-2">({event.duration_ms}ms)</span>
               )}
             </div>
             {event.result && (
-              <div>
+              <div className="mt-1">
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="text-xs text-gray-400 hover:text-gray-200 mb-1"
+                  className="text-xs text-gray-400 hover:text-gray-200"
                 >
-                  {expanded ? '▼' : '▶'} Result
+                  {expanded ? '▼' : '▶'} Show Details
                 </button>
                 {expanded && (
-                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300">
+                  <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300 mt-1">
                     {formatData(event.result)}
                   </pre>
                 )}
@@ -110,27 +160,27 @@ function ThinkingItem({ event }) {
           </div>
         )}
 
-        {/* World Update */}
+        {/* World Update - Simplified location info */}
         {event.type === 'world_update' && (
           <div className="text-sm">
             {event.message && (
               <div className="text-purple-400 mb-1">{event.message}</div>
             )}
-            {event.agent_position && (
-              <div className="text-purple-300 text-xs">
-                Position: [{event.agent_position.join(', ')}]
+            {event.agent_moved_to && (
+              <div className="text-purple-300">
+                Moved to ({event.agent_moved_to.join(', ')})
               </div>
             )}
-            {event.agent_moved_to && (
-              <div className="text-purple-300 text-xs">
-                Moved to: [{event.agent_moved_to.join(', ')}]
+            {event.agent_position && !event.agent_moved_to && (
+              <div className="text-purple-300">
+                Position: ({event.agent_position.join(', ')})
               </div>
             )}
             <button
               onClick={() => setExpanded(!expanded)}
               className="text-xs text-gray-400 hover:text-gray-200 mt-1"
             >
-              {expanded ? '▼' : '▶'} Details
+              {expanded ? '▼' : '▶'} Show Details
             </button>
             {expanded && (
               <pre className="text-xs bg-gray-900 p-2 rounded overflow-x-auto text-gray-300 mt-1">
@@ -155,23 +205,18 @@ function ThinkingItem({ event }) {
           </div>
         )}
 
-        {/* Complete */}
+        {/* Complete - Child-friendly summary */}
         {event.type === 'complete' && (
           <div className="text-sm">
             <div className="text-yellow-500 font-semibold mb-2">
-              Status: {event.status}
+              Finished! {event.goal_achieved ? '🎉 Goal achieved!' : '❌ Goal not reached'}
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="text-xs text-gray-300">
               {event.total_steps !== undefined && (
-                <div className="text-gray-300">Steps: {event.total_steps}</div>
+                <div>📊 {event.total_steps} steps taken</div>
               )}
               {event.total_tools_used !== undefined && (
-                <div className="text-gray-300">Tools: {event.total_tools_used}</div>
-              )}
-              {event.goal_achieved !== undefined && (
-                <div className={event.goal_achieved ? 'text-green-400' : 'text-red-400'}>
-                  Goal: {event.goal_achieved ? 'Achieved' : 'Not Achieved'}
-                </div>
+                <div>🎯 {event.total_tools_used} actions used</div>
               )}
             </div>
           </div>
@@ -211,7 +256,7 @@ ThinkingItem.propTypes = {
  * @param {Array} props.events - Array of thinking events to display
  * @param {boolean} props.isActive - Whether agent is currently thinking
  */
-export default function ThinkingPanel({ events, isActive }) {
+export default function ThinkingPanel({ events = [], isActive = false }) {
   const panelRef = useRef(null)
   const [autoScroll, setAutoScroll] = useState(true)
 
@@ -283,16 +328,16 @@ export default function ThinkingPanel({ events, isActive }) {
         )}
       </div>
 
-      {/* Stats */}
+      {/* Stats - Child-friendly visual format */}
       {events.length > 0 && (
         <div className="mt-3 p-2 bg-gray-900 rounded border border-gray-700">
           <div className="font-pixel text-xs grid grid-cols-3 gap-2" style={{ color: 'var(--text-primary)' }}>
-            <div>📊 Total: {stats.total}</div>
-            <div>🧠 Thinking: {stats.thinking}</div>
-            <div>💬 Text: {stats.text}</div>
-            <div>🔨 Tools: {stats.tools}</div>
-            <div>🗺️ Updates: {stats.updates}</div>
-            <div>❌ Errors: {stats.errors}</div>
+            <div>📊 {stats.total} events</div>
+            <div>🧠 {stats.thinking} thoughts</div>
+            <div>💬 {stats.text} messages</div>
+            <div>🎯 {stats.tools} actions</div>
+            <div>🗺️ {stats.updates} moves</div>
+            {stats.errors > 0 && <div>❌ {stats.errors} errors</div>}
           </div>
         </div>
       )}
@@ -300,7 +345,7 @@ export default function ThinkingPanel({ events, isActive }) {
       {/* Legend */}
       <div className="mt-2 text-xs opacity-70" style={{ color: 'var(--text-primary)' }}>
         <p className="font-pixel">
-          Legend: 🔧 System • 💬 Text • 🧠 Thinking • 🔨 Tool • ✅ Result • 🗺️ Update
+          Legend: 🔧 Info • 💬 Message • 🧠 Thinking • 🎯 Action • ✅ Result • 🗺️ Move
         </p>
       </div>
     </div>
@@ -310,9 +355,4 @@ export default function ThinkingPanel({ events, isActive }) {
 ThinkingPanel.propTypes = {
   events: PropTypes.array,
   isActive: PropTypes.bool
-}
-
-ThinkingPanel.defaultProps = {
-  events: [],
-  isActive: false
 }

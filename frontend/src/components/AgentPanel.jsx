@@ -124,12 +124,12 @@ export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) 
                   transition: 'all 0.2s'
                 }}
               >
-                <div className="flex-1">
-                  <p className="font-pixel text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                <div className="flex-1 min-w-0">
+                  <p className="font-pixel text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                     {tool.tool_name || tool.name}
                   </p>
                   {tool.description && (
-                    <p className="font-pixel text-xs mt-1"
+                    <p className="font-pixel text-xs mt-1 truncate"
                        style={{ color: 'var(--text-primary)', opacity: 0.7, fontSize: '0.65rem' }}>
                       {tool.description.substring(0, 50)}...
                     </p>
