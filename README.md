@@ -6,15 +6,15 @@ PokéCraft is a game that allows you to create your own Pokémon! You can descri
 
 ## Demos
 
-| Creating Your Pokémon | Hatching Animation | Agent Created |
-|:---:|:---:|:---:|
+|                             Creating Your Pokémon                              |                                Hatching Animation                                 |                                   Agent Created                                    |
+| :----------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
 | ![PokéCraft Pokemon creation screen](static/PokeCraft1-PokemonHatchScreen.png) | ![Pokemon hatching with avatar generation](static/PokeCraft2-HatchingPokemon.png) | ![Completed agent with avatar and personality](static/PokeCraft3-AgentCreated.png) |
-| *Describe your dream Pokémon and watch the creation process begin* | *Real-time avatar generation using mflux Schnell 3-bit model* | *Your Pokémon is born with unique personality traits and backstory* |
+|       _Describe your dream Pokémon and watch the creation process begin_       |           _Real-time avatar generation using mflux Schnell 3-bit model_           |        _Your Pokémon is born with unique personality traits and backstory_         |
 
-| World Creation | Tool Workshop | Deployed Pokémon |
-|:---:|:---:|:---:|
+|                          World Creation                          |                         Tool Workshop                          |                               Deployed Pokémon                               |
+| :--------------------------------------------------------------: | :------------------------------------------------------------: | :--------------------------------------------------------------------------: |
 | ![Generated 2D game world](static/PokeCraft4-WorldGenerated.png) | ![Tool creation interface](static/PokeCraft5-ToolWorkshop.png) | ![Pokemon exploring world with tools](static/PokeCraft7-DeployedPokemon.png) |
-| *LLM-generated 2D worlds with terrain, items, and obstacles* | *Teach your Pokémon custom tools through natural language* | *Watch your Pokémon explore autonomously using the tools you taught them* |
+|   _LLM-generated 2D worlds with terrain, items, and obstacles_   |   _Teach your Pokémon custom tools through natural language_   |  _Watch your Pokémon explore autonomously using the tools you taught them_   |
 
 ---
 
@@ -27,6 +27,7 @@ PokéCraft has two parts: **Frontend** (Pokémon creation, world building, tool 
 **Prerequisites:** Python 3.11+, Node.js 16+, [uv](https://docs.astral.sh/uv/), [mflux](https://github.com/filipstrand/mflux), Flux Schnell 3-bit model
 
 1. **Backend** (Terminal 1):
+
    ```bash
    cd backend
    uv pip install -e ".[dev]"
@@ -34,6 +35,7 @@ PokéCraft has two parts: **Frontend** (Pokémon creation, world building, tool 
    ```
 
 2. **Frontend** (Terminal 2):
+
    ```bash
    cd frontend
    npm install
@@ -47,6 +49,7 @@ PokéCraft has two parts: **Frontend** (Pokémon creation, world building, tool 
 The extension lets you chat with your Pokémon anywhere on the web.
 
 1. **Extension Backend** (Terminal 3):
+
    ```bash
    cd chrome_extension
    python backend_server.py  # Runs on port 8080
@@ -65,16 +68,7 @@ The extension lets you chat with your Pokémon anywhere on the web.
 
 ## Architecture & Documentation
 
-**For detailed information**, see [`.claude/CLAUDE.md`](.claude/CLAUDE.md):
-- Complete architecture overview
-- Three-phase system (Agent Creation → World Creation → Tool System)
-- API reference
-- Claude Agent SDK integration
-- SSE streaming events
-- Database schema
-- Testing guidelines
-- Development commands
-- Troubleshooting
+**For detailed architectural overview**, see [`.claude/CLAUDE.md`](.claude/CLAUDE.md):
 
 ---
 
@@ -93,4 +87,4 @@ MIT
 
 ## Credits
 
-Built with [Claude Code](https://claude.ai/code), [Claude](https://claude.ai), [mflux](https://github.com/filipstrand/mflux), [FastAPI](https://fastapi.tiangolo.com/)
+Built with [Claude Code](https://claude.ai/code), [Claude](https://claude.ai), [mflux](https://github.com/filipstrand/mflux), [FastAPI](https://fastapi.tiangolo.com/). Uses [orchestra](https://github.com/fulcrumresearch/orchestra) for our Agentic Development Environment.

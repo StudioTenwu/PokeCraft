@@ -76,3 +76,11 @@ frontend/dist/
 
 # Misc
 .cache/
+
+# Documentation and research (not tracked)
+research/
+docs/
+claude_files/
+.claude_files/
+prototypes/
+.orchestra/

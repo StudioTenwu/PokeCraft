@@ -115,28 +115,68 @@ class AgentDeployer:
                 )
                 return
 
-            # 3. Load agent's custom tools from tool_service
-            tools = await self.tool_service.get_agent_tools(agent_id)
-            logger.info(f"Loaded {len(tools)} tools for agent {agent_id}")
+            # 3. Load agent's custom tools - NO MCP SERVER NEEDED
+            # Running inside Claude Code causes MCP conflicts
+            # Solution: Pass tools directly to SDK without MCP wrapping
+            tools_db = await self.tool_service.get_agent_tools(agent_id)
+            logger.info(f"Loaded {len(tools_db)} tools from database for agent {agent_id}")
 
-            # 4. Configure MCP server via stdio transport
-            # Launch mcp_server_runtime.py as a subprocess that communicates via stdio
-            # This replaces the buggy SDK create_sdk_mcp_server() approach
-            import os
-            mcp_server_path = Path(__file__).parent / "mcp_server_runtime.py"
-            python_path = sys.executable  # Use the same Python interpreter
-
-            # Configure Claude Agent SDK with stdio MCP server
-            options = ClaudeAgentOptions(
-                mcp_servers={
-                    "user_tools": {
-                        "command": python_path,
-                        "args": [str(mcp_server_path)],
-                        "env": os.environ.copy(),  # Pass current environment
-                    }
-                },
+            # 4. Load SdkMcpTool instances from tools.py for direct SDK integration
+            # Import tools module to access @tool decorated functions
+            sys.path.insert(0, str(Path(__file__).parent))
+            from tools import (
+                celebrate_pixelmon_birth,
+                move_direction,
+                move_in_s_shape,
+                observe_world,
+                pixelmon_smiley_dance,
             )
-            logger.info(f"Configured stdio MCP server at {mcp_server_path}")
+
+            # Collect all SDK tools
+            sdk_tools = [
+                move_direction,
+                observe_world,
+                move_in_s_shape,
+                pixelmon_smiley_dance,
+                celebrate_pixelmon_birth,
+            ]
+            logger.info(f"Loaded {len(sdk_tools)} SDK tools for deployment")
+
+            # 5. Create MCP server with monkey-patch workaround
+            # Apply monkey-patch for SDK bug #323
+            from mcp.server import Server
+            _original_server_init = Server.__init__
+
+            def _patched_server_init(self, name: str, version: str = None, **kwargs):
+                # Ignore version parameter
+                _original_server_init(self, name)
+
+            Server.__init__ = _patched_server_init
+
+            try:
+                # Create SDK MCP server
+                import claude_agent_sdk
+                user_tool_server = claude_agent_sdk.create_sdk_mcp_server(
+                    name="user_tools",
+                    version="1.0.0",
+                    tools=sdk_tools,
+                )
+                logger.info(f"✅ MCP server created: {type(user_tool_server)}")
+                logger.info(f"   Server config: {user_tool_server}")
+
+                # Build allowed_tools list
+                allowed_tools = [f"mcp__user_tools__{tool.name}" for tool in sdk_tools]
+                logger.info(f"   Allowed tools: {allowed_tools}")
+
+                options = ClaudeAgentOptions(
+                    mcp_servers={"user_tools": user_tool_server},
+                    allowed_tools=allowed_tools,
+                )
+                logger.info(f"✅ Configured SDK with MCP server and {len(allowed_tools)} allowed tools")
+
+            finally:
+                # Restore original
+                Server.__init__ = _original_server_init
 
             # 5. Create deployment prompt
             prompt = self._build_deployment_prompt(world, goal, world_id)
@@ -144,6 +184,10 @@ class AgentDeployer:
             # 6. Stream agent execution with official ClaudeSDKClient pattern
             # Use async context manager + client.query() + client.receive_response()
             async with ClaudeSDKClient(options=options) as client:
+                # Wait for MCP server to initialize
+                import asyncio
+                await asyncio.sleep(0.5)
+
                 # Send query
                 await client.query(prompt)
 
@@ -213,21 +257,28 @@ class AgentDeployer:
                             # Handle ToolResultBlock - SDK executes tools automatically
                             elif isinstance(block, ToolResultBlock):
                                 tool_name = getattr(block, "name", "unknown")
+                                logger.info(f"📥 Received ToolResultBlock for tool: {tool_name}")
+                                logger.info(f"   ToolResultBlock attributes: {dir(block)}")
+                                logger.info(f"   ToolResultBlock.content type: {type(getattr(block, 'content', None))}")
 
                                 # SDK has already executed the tool - we get the result here
                                 try:
                                     # Extract tool result from ToolResultBlock
                                     tool_result = None
                                     if hasattr(block, "content"):
+                                        logger.info(f"   ToolResultBlock.content length: {len(block.content)}")
                                         # ToolResultBlock.content is a list of content blocks
-                                        for content_item in block.content:
+                                        for i, content_item in enumerate(block.content):
+                                            logger.info(f"   Content item {i}: type={type(content_item)}, value={content_item}")
                                             if isinstance(content_item, TextBlock):
                                                 # Try to parse as JSON if it looks like a dict
                                                 import json
                                                 try:
                                                     tool_result = json.loads(content_item.text)
+                                                    logger.info(f"   ✅ Parsed tool result as JSON: {tool_result}")
                                                 except (json.JSONDecodeError, AttributeError):
                                                     tool_result = {"content": [{"type": "text", "text": content_item.text}]}
+                                                    logger.info(f"   ⚠️ Failed to parse as JSON, wrapped in content: {tool_result}")
 
                                     # Yield tool_result event
                                     yield DeploymentEvent(

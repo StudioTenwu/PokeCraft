@@ -17,6 +17,7 @@ dependencies = [
     "aiosqlite==0.20.0",
     "sqlalchemy[asyncio]==2.0.36",
     "greenlet==3.1.1",
+    "fastmcp>=2.13.0",
 ]
 
 # Development dependencies (from requirements-dev.txt)
@@ -26,7 +27,7 @@ dev = [
     "pytest-asyncio==0.21.1",
     "pytest-cov==4.1.0",
     "pytest-mock==3.12.0",
-    "httpx==0.25.2",
+    "httpx==0.28.1",
     "black==23.11.0",
     "isort==5.12.0",
     "ruff==0.1.6",
