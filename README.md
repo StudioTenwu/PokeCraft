@@ -8,12 +8,12 @@ PokéCraft is a game that allows you to create your own Pokémon! You can descri
 
 |                             Creating Your Pokémon                              |                                Hatching Animation                                 |                                   Agent Created                                    |
 | :----------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
-| ![PokéCraft Pokemon creation screen](static/PokeCraft1-PokemonHatchScreen.png) | ![Pokemon hatching with avatar generation](static/PokeCraft2-HatchingPokemon.png) | ![Completed agent with avatar and personality](static/PokeCraft3-AgentCreated.png) |
+| ![PokéCraft Pokémon creation screen](static/PokeCraft1-PokemonHatchScreen.png) | ![Pokémon hatching with avatar generation](static/PokeCraft2-HatchingPokemon.png) | ![Completed agent with avatar and personality](static/PokeCraft3-AgentCreated.png) |
 |       _Describe your dream Pokémon and watch the creation process begin_       |           _Real-time avatar generation using mflux Schnell 3-bit model_           |        _Your Pokémon is born with unique personality traits and backstory_         |
 
 |                          World Creation                          |                         Tool Workshop                          |                               Deployed Pokémon                               |
 | :--------------------------------------------------------------: | :------------------------------------------------------------: | :--------------------------------------------------------------------------: |
-| ![Generated 2D game world](static/PokeCraft4-WorldGenerated.png) | ![Tool creation interface](static/PokeCraft5-ToolWorkshop.png) | ![Pokemon exploring world with tools](static/PokeCraft7-DeployedPokemon.png) |
+| ![Generated 2D game world](static/PokeCraft4-WorldGenerated.png) | ![Tool creation interface](static/PokeCraft5-ToolWorkshop.png) | ![Pokémon exploring world with tools](static/PokeCraft7-DeployedPokemon.png) |
 |   _LLM-generated 2D worlds with terrain, items, and obstacles_   |   _Teach your Pokémon custom tools through natural language_   |  _Watch your Pokémon explore autonomously using the tools you taught them_   |
 
 ---
