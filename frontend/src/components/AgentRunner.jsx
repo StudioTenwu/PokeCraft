@@ -10,8 +10,9 @@ import { getWorld } from '../api'
  * @param {Object} props
  * @param {string} props.agentId - The agent ID to deploy
  * @param {string} props.worldId - The world ID to deploy in
+ * @param {string} props.avatarUrl - The agent's avatar URL
  */
-export default function AgentRunner({ agentId, worldId }) {
+export default function AgentRunner({ agentId, worldId, avatarUrl }) {
   const [goal, setGoal] = useState('')
   const [events, setEvents] = useState([])
   const [deploying, setDeploying] = useState(false)
@@ -237,6 +238,7 @@ export default function AgentRunner({ agentId, worldId }) {
             worldState={worldState}
             events={events}
             deploying={deploying}
+            avatarUrl={avatarUrl}
           />
         </div>
 
@@ -255,5 +257,6 @@ export default function AgentRunner({ agentId, worldId }) {
 
 AgentRunner.propTypes = {
   agentId: PropTypes.string.isRequired,
-  worldId: PropTypes.string.isRequired
+  worldId: PropTypes.string.isRequired,
+  avatarUrl: PropTypes.string
 }

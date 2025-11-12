@@ -210,6 +210,7 @@ function App() {
               <AgentRunner
                 agentId={selectedAgent.id}
                 worldId={selectedWorld.id}
+                avatarUrl={selectedAgent.avatar_url}
               />
             </div>
           </div>

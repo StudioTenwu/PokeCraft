@@ -22,13 +22,44 @@ const TILE_COLORS = {
  * @param {Object} props.worldState - World state with agent position, width, height
  * @param {Array} props.events - Events array
  * @param {boolean} props.deploying - Whether agent is currently deploying
+ * @param {string} props.avatarUrl - Agent avatar URL to display
  */
-export default function GameWorldView({ worldState, events, deploying }) {
+export default function GameWorldView({ worldState, events, deploying, avatarUrl }) {
   const canvasRef = useRef(null)
+  const avatarImageRef = useRef(null)
 
   // Phase 3: Animation state
   const [animatingMove, setAnimatingMove] = useState(false)
   const [displayPosition, setDisplayPosition] = useState(null)
+
+  // Load avatar image when avatarUrl changes
+  useEffect(() => {
+    if (avatarUrl) {
+      const img = new Image()
+      img.src = avatarUrl
+      img.onload = () => {
+        avatarImageRef.current = img
+      }
+    }
+  }, [avatarUrl])
+
+  // Helper function to draw agent (avatar or emoji fallback)
+  const drawAgent = (ctx, x, y) => {
+    if (avatarImageRef.current) {
+      // Draw avatar image centered in tile
+      ctx.drawImage(
+        avatarImageRef.current,
+        x * TILE_SIZE,
+        y * TILE_SIZE,
+        TILE_SIZE,
+        TILE_SIZE
+      )
+    } else {
+      // Fallback to emoji
+      ctx.font = '48px serif'
+      ctx.fillText('🤖', x * TILE_SIZE + 8, y * TILE_SIZE + 48)
+    }
+  }
 
   // Initialize canvas with world grid (Phase 2: Enhanced 640x640 rendering)
   useEffect(() => {
@@ -76,11 +107,10 @@ export default function GameWorldView({ worldState, events, deploying }) {
     // Draw initial agent position if available
     if (worldState.agentPosition) {
       const [agentX, agentY] = worldState.agentPosition
-      ctx.font = '48px serif'
-      ctx.fillText('🤖', agentX * TILE_SIZE + 8, agentY * TILE_SIZE + 48)
+      drawAgent(ctx, agentX, agentY)
       setDisplayPosition(worldState.agentPosition)
     }
-  }, [worldState])
+  }, [worldState, avatarUrl])
 
   // Phase 3: Helper function to redraw grid
   const redrawGrid = () => {
@@ -204,8 +234,7 @@ export default function GameWorldView({ worldState, events, deploying }) {
           ctx.fillStyle = TILE_COLORS.goal
           ctx.fillRect(Math.floor(x) * TILE_SIZE, Math.floor(y) * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
-          ctx.font = '48px serif'
-          ctx.fillText('🤖', x * TILE_SIZE + 8, y * TILE_SIZE + 48)
+          drawAgent(ctx, x, y)
         }
       }
 
@@ -262,12 +291,11 @@ export default function GameWorldView({ worldState, events, deploying }) {
     ctx.fillRect(position[0] * TILE_SIZE, position[1] * TILE_SIZE, TILE_SIZE, TILE_SIZE)
     ctx.globalAlpha = 1.0
 
-    // Redraw agent if on this cell with larger sprite
+    // Redraw agent if on this cell
     if (worldState?.agentPosition &&
         worldState.agentPosition[0] === position[0] &&
         worldState.agentPosition[1] === position[1]) {
-      ctx.font = '48px serif'
-      ctx.fillText('🤖', position[0] * TILE_SIZE + 8, position[1] * TILE_SIZE + 48)
+      drawAgent(ctx, position[0], position[1])
     }
   }
 
@@ -348,7 +376,8 @@ GameWorldView.propTypes = {
     grid: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.string))
   }),
   events: PropTypes.array,
-  deploying: PropTypes.bool
+  deploying: PropTypes.bool,
+  avatarUrl: PropTypes.string
 }
 
 GameWorldView.defaultProps = {
