@@ -197,7 +197,7 @@ function App() {
       <div className="max-w-[1600px] mx-auto">
         {/* Deployment View */}
         {showDeployment && selectedAgent && selectedWorld ? (
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-[1600px] mx-auto">
             <div className="pokemon-container">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-title text-xl" style={{ color: 'var(--text-primary)' }}>
