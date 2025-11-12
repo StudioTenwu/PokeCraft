@@ -228,7 +228,21 @@ function addMessageToUI(role, content) {
   const chatArea = document.getElementById('chat-area');
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${role}`;
-  messageDiv.textContent = content;
+
+  // Render markdown for agent messages if renderMarkdown is available
+  if (role === 'agent' && typeof window.renderMarkdown === 'function') {
+    try {
+      const renderedContent = window.renderMarkdown(content);
+      messageDiv.innerHTML = renderedContent;
+    } catch (error) {
+      console.error('Error rendering markdown:', error);
+      // Fallback to plain text
+      messageDiv.textContent = content;
+    }
+  } else {
+    messageDiv.textContent = content;
+  }
+
   chatArea.appendChild(messageDiv);
   scrollToBottom();
 }
