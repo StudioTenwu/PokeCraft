@@ -1,26 +1,120 @@
 """Agent deployment with Claude Agent SDK and SSE streaming."""
-import asyncio
-import logging
-from typing import AsyncGenerator, Any
-from datetime import datetime
-from dataclasses import dataclass
-
-from claude_agent_sdk import (
-    query,
-    ClaudeAgentOptions,
-    ClaudeSDKClient,
-    create_sdk_mcp_server,
-    tool as sdk_tool,
-)
-from tool_registry import create_user_tool_server, get_available_tools
-from action_registry import get_action_set_for_game, create_game_engine
-from game_engine import GameEngine
-from state_manager import state_manager
 import importlib.util
+import logging
 import sys
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
+from action_registry import create_game_engine, get_action_set_for_game
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    query,
+)
+from state_manager import state_manager
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# SDK Bug #323 Workaround
+# Apply patch immediately on module import (before any code uses create_sdk_mcp_server)
+# ============================================================================
+
+
+_SDK_PATCHED = False  # Module-level flag to track if patch has been applied
+
+
+def _patch_create_sdk_mcp_server() -> None:
+    """Monkey-patch create_sdk_mcp_server to fix version parameter bug.
+
+    Bug: https://github.com/anthropics/claude-agent-sdk-python/issues/323
+
+    The SDK's create_sdk_mcp_server() passes an unsupported 'version' parameter
+    to MCP's Server.__init__(), which only accepts 'name'. This causes a TypeError.
+
+    This patch replaces the buggy function with a fixed version that doesn't pass
+    the version parameter to Server.__init__().
+
+    This is a temporary workaround until the SDK is fixed upstream.
+    """
+    global _SDK_PATCHED  # noqa: PLW0603 - Intentional global for patch tracking
+
+    from typing import Any
+
+    import claude_agent_sdk
+    from claude_agent_sdk import SdkMcpTool
+    from claude_agent_sdk.types import McpSdkServerConfig
+
+    # Check if already patched (defensive programming)
+    if _SDK_PATCHED:
+        return
+
+    def patched_create_sdk_mcp_server(
+        name: str,
+        version: str = "1.0.0",  # noqa: ARG001 - Kept for API compatibility
+        tools: list[SdkMcpTool[Any]] | None = None,
+    ) -> McpSdkServerConfig:
+        """Patched version without version parameter bug."""
+        from mcp.server import Server
+        from mcp.types import ImageContent, TextContent, Tool
+
+        # FIX: Don't pass version to Server.__init__() - it doesn't accept it
+        # Original SDK incorrectly used: Server(name, version=version)
+        server = Server(name)
+
+        # Register tools if provided
+        if tools:
+
+                @server.list_tools()
+                async def list_tools_handler() -> list[Tool]:
+                    return [
+                        Tool(
+                            name=t.name,
+                            description=t.description or "",
+                            inputSchema=t.input_schema or {},
+                        )
+                        for t in tools
+                    ]
+
+                @server.call_tool()
+                async def call_tool_handler(tool_name: str, arguments: dict[str, Any]) -> list[TextContent | ImageContent]:
+                    for t in tools:
+                        if t.name == tool_name:
+                            result = await t.handler(arguments)
+
+                            if isinstance(result, dict) and "content" in result:
+                                content_list = result["content"]
+                                return [
+                                    TextContent(type="text", text=item["text"])
+                                    if item.get("type") == "text"
+                                    else ImageContent(
+                                        type="image",
+                                        data=item["data"],
+                                        mimeType=item.get("mimeType", "image/png"),
+                                    )
+                                    for item in content_list
+                                ]
+
+                            return [TextContent(type="text", text=str(result))]
+
+                    return [TextContent(type="text", text=f"Tool {tool_name} not found")]
+
+        return McpSdkServerConfig(server=server, name=name)
+
+    # Replace the SDK function
+    claude_agent_sdk.create_sdk_mcp_server = patched_create_sdk_mcp_server
+
+    # Mark as patched globally
+    _SDK_PATCHED = True
+
+    logger.info("Applied SDK bug #323 workaround for create_sdk_mcp_server")
+
+
+# Apply patch immediately when this module is imported
+_patch_create_sdk_mcp_server()
 
 
 @dataclass
@@ -50,7 +144,7 @@ class AgentDeployer:
         For now, route to known tools. In full implementation, would use MCP client.
         """
         # Import tools
-        from tools import observe_world, move_direction
+        from tools import move_direction, observe_world
 
         # Route to appropriate tool
         if "observe_world" in tool_name:
@@ -92,7 +186,7 @@ class AgentDeployer:
             return []
 
     async def deploy_agent(
-        self, agent_id: str, world_id: str, goal: str
+        self, agent_id: str, world_id: str, goal: str,
     ) -> AsyncGenerator[DeploymentEvent, None]:
         """Deploy agent with streaming updates.
 

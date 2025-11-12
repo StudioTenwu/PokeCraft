@@ -7,7 +7,10 @@ from typing import Any
 
 import pytest
 
+# IMPORTANT: Import agent_deployer FIRST to apply SDK bug patch
 from src.agent_deployer import AgentDeployer, DeploymentEvent
+# Then import SDK functions - they will use the patched version
+from claude_agent_sdk import create_sdk_mcp_server, tool
 
 
 class MockWorldService:
@@ -298,3 +301,71 @@ async def test_deploy_agent_loads_world_state():
 
         # Assert - no errors should occur
         assert len(events_list) > 0
+
+
+# ============================================================================
+# Cycle 1: SDK Bug #323 - create_sdk_mcp_server version parameter
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_create_sdk_mcp_server_without_version_crash():
+    """Test that create_sdk_mcp_server can be called without crashing.
+
+    This tests the fix for SDK bug #323:
+    https://github.com/anthropics/claude-agent-sdk-python/issues/323
+
+    The bug: create_sdk_mcp_server() passes unsupported 'version' parameter
+    to Server.__init__(), causing TypeError.
+
+    Expected behavior after patch: Should create server without crash.
+    """
+    # Arrange: Create simple test tool
+    @tool("test_tool", "A test tool", {})
+    async def test_tool(args: dict[str, Any]) -> dict[str, Any]:
+        return {"content": [{"type": "text", "text": "test"}]}
+
+    # Act & Assert: Should not raise TypeError about 'version' parameter
+    try:
+        server = create_sdk_mcp_server(
+            name="test_server",
+            version="1.0.0",
+            tools=[test_tool]
+        )
+        # If we get here, the patch worked
+        assert server is not None
+    except TypeError as e:
+        if "version" in str(e):
+            pytest.fail(f"SDK bug #323 not patched: {e}")
+        else:
+            raise
+
+
+@pytest.mark.asyncio
+async def test_agent_deployer_patches_sdk_on_init():
+    """Test that AgentDeployer patches create_sdk_mcp_server on initialization.
+
+    This ensures the SDK bug fix is applied when AgentDeployer is created.
+    """
+    # Arrange
+    mock_world_service = MockWorldService()
+    mock_tool_service = MockToolService()
+
+    # Act: Create deployer (should apply patch in __init__)
+    deployer = AgentDeployer(mock_tool_service, mock_world_service)
+
+    # Assert: create_sdk_mcp_server should now work without crashing
+    @tool("test_tool", "A test tool", {})
+    async def test_tool(args: dict[str, Any]) -> dict[str, Any]:
+        return {"content": [{"type": "text", "text": "test"}]}
+
+    try:
+        server = create_sdk_mcp_server(
+            name="test_server",
+            version="1.0.0",
+            tools=[test_tool]
+        )
+        assert server is not None
+    except TypeError as e:
+        if "version" in str(e):
+            pytest.fail("AgentDeployer did not patch SDK bug on init")
