@@ -7,7 +7,10 @@ Each tool follows this format:
     @tool("tool_name", "Tool description", {"param": "type"})
     async def tool_name(args: dict[str, Any]) -> dict[str, Any]:
         # Implementation
-        return {"content": [{"type": "text", "text": "result"}]}
+        return {
+            "content": [{"type": "text", "text": "result"}],
+            "action": {"action_id": "...", "parameters": {...}}  # REQUIRED for game integration
+        }
 """
 from typing import Any
 from claude_agent_sdk import tool
@@ -15,184 +18,11 @@ from claude_agent_sdk import tool
 # Custom tools will be appended below this line
 
 
-from typing import Any
-
-@tool("jump", "Make the agent jump up in the air", {"height": "int"})
-async def jump(args: dict[str, Any]) -> dict[str, Any]:
-    height = args.get('height', 1)
-    
-    # Ensure height is within safe bounds for children's game
-    if height < 1:
-        height = 1
-    elif height > 5:
-        height = 5
-    
-    # Create a fun jumping message
-    jump_sound = "Boing!" * height
-    message = f"{jump_sound} Your agent jumped {height} block{'s' if height != 1 else ''} high!"
-    
-    return {"content": [{"type": "text", "text": message}]}
-
-
-from typing import Any
-
-@tool("move", "Move the agent in a direction on the grid", {"direction": "string", "steps": "int"})
-async def move(args: dict[str, Any]) -> dict[str, Any]:
-    direction = args.get('direction', 'north').lower()
-    steps = args.get('steps', 1)
-    
-    # Validate direction
-    valid_directions = ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']
-    if direction not in valid_directions:
-        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try: north, south, east, west, up, down, left, or right."}]}
-    
-    # Ensure steps is positive
-    if steps < 1:
-        return {"content": [{"type": "text", "text": "You need to move at least 1 step!"}]}
-    
-    # Normalize direction names
-    if direction == 'up':
-        direction = 'north'
-    elif direction == 'down':
-        direction = 'south'
-    
-    # Create friendly response
-    emoji_map = {
-        'north': '⬆️',
-        'south': '⬇️',
-        'east': '➡️',
-        'west': '⬅️',
-        'left': '⬅️',
-        'right': '➡️'
-    }
-    
-    emoji = emoji_map.get(direction, '🚶')
-    step_word = "step" if steps == 1 else "steps"
-    
-    return {"content": [{"type": "text", "text": f"{emoji} Moved {steps} {step_word} {direction}!"}]}
-
-
-@tool("move", "Move the agent in a direction on the 2D grid", {"direction": "string", "steps": "int"})
-async def move(args: dict[str, Any]) -> dict[str, Any]:
-    direction = args.get('direction', 'north').lower()
-    steps = args.get('steps', 1)
-    
-    # Validate direction
-    valid_directions = ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right']
-    if direction not in valid_directions:
-        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try: north, south, east, west, up, down, left, or right."}]}
-    
-    # Validate steps
-    if steps < 1:
-        return {"content": [{"type": "text", "text": "You need to move at least 1 step!"}]}
-    
-    if steps > 10:
-        return {"content": [{"type": "text", "text": "Whoa! That's too far! Try moving 10 steps or less at a time."}]}
-    
-    # Normalize directions
-    direction_map = {
-        'up': 'north',
-        'down': 'south',
-        'right': 'east',
-        'left': 'west'
-    }
-    display_direction = direction_map.get(direction, direction)
-    
-    # Create fun movement message
-    step_word = "step" if steps == 1 else "steps"
-    emoji_map = {
-        'north': '⬆️',
-        'south': '⬇️',
-        'east': '➡️',
-        'west': '⬅️'
-    }
-    emoji = emoji_map.get(display_direction, '🚶')
-    
-    return {"content": [{"type": "text", "text": f"{emoji} Moving {display_direction} {steps} {step_word}! New position reached."}]}
-
-
-@tool("move", "Move the agent in a direction on the 2D grid. Direction can be 'up', 'down', 'left', or 'right'. Steps determines how many grid spaces to move (default 1).", {"direction": "string", "steps": "int"})
-async def move(args: dict[str, Any]) -> dict[str, Any]:
-    direction = args.get('direction', 'up')
-    steps = args.get('steps', 1)
-    
-    valid_directions = ['up', 'down', 'left', 'right']
-    
-    if direction.lower() not in valid_directions:
-        return {"content": [{"type": "text", "text": f"Oops! '{direction}' is not a valid direction. Try 'up', 'down', 'left', or 'right'."}]}
-    
-    if steps < 1:
-        return {"content": [{"type": "text", "text": "Steps must be at least 1!"}]}
-    
-    direction_emoji = {
-        'up': '⬆️',
-        'down': '⬇️',
-        'left': '⬅️',
-        'right': '➡️'
-    }
-    
-    emoji = direction_emoji.get(direction.lower(), '🎯')
-    step_word = "step" if steps == 1 else "steps"
-    
-    return {"content": [{"type": "text", "text": f"{emoji} Moved {direction} {steps} {step_word}!"}]}
-
-
-@tool("move_vertical", "Move the agent up or down on the grid. Use positive numbers to move up and negative numbers to move down.", {"steps": "int"})
-async def move_vertical(args: dict[str, Any]) -> dict[str, Any]:
-    steps = args.get('steps', 0)
-    
-    if steps == 0:
-        return {"content": [{"type": "text", "text": "No movement - steps cannot be 0!"}]}
-    
-    direction = "up" if steps > 0 else "down"
-    abs_steps = abs(steps)
-    
-    return {"content": [{"type": "text", "text": f"Moved {direction} {abs_steps} step{'s' if abs_steps != 1 else ''}! 🎈"}]}
-
-
-@tool("launch_rocket", "Launch a rocket ship that moves upward on the grid, leaving a patriotic trail of red, white, and blue stars. The rocket travels in a straight line upward for the specified number of spaces.", {"spaces": "int"})
-async def launch_rocket(args: dict[str, Any]) -> dict[str, Any]:
-    spaces = args.get('spaces', 3)
-    if spaces < 1:
-        spaces = 1
-    if spaces > 10:
-        spaces = 10
-    
-    trail_colors = ["red", "white", "blue"]
-    trail_description = ", ".join([trail_colors[i % 3] for i in range(spaces)])
-    
-    result_message = f"🚀 Rocket launched! Traveled {spaces} spaces upward, leaving a sparkling trail of {trail_description} stars behind! Great adventure!"
-    
-    return {"content": [{"type": "text", "text": result_message}]}
-
-
-@tool("plant_heart_flag", "Plant a special flag with hearts on it at the current location to show kindness and teamwork. This spreads love and marks important spots on the map where the agent has done something helpful.", {"message": "string"})
-async def plant_heart_flag(args: dict[str, Any]) -> dict[str, Any]:
-    message = args.get('message', 'Kindness makes us great!')
-    
-    flag_designs = [
-        "💗🇺🇸 Flag planted with love! 🇺🇸💗",
-        "⭐💙 Teamwork flag raised! 💙⭐",
-        "🤝❤️ Friendship marker placed! ❤️🤝",
-        "✨💕 Caring checkpoint created! 💕✨"
-    ]
-    
-    import random
-    flag_type = random.choice(flag_designs)
-    
-    result = f"{flag_type}\n\nYour message: '{message}'\n\nThis spot now radiates kindness and shows that working together and caring for each other makes everything better!"
-    
-    return {"content": [{"type": "text", "text": result}]}
-
-
-
-from typing import Any
-
-@tool("move_direction", "Move the agent in a cardinal direction: north, south, east, or west", {"direction": "string", "steps": "int"})
+@tool("move_direction", "Move the agent in a cardinal direction (north, south, east, or west) for a specified number of steps", {"direction": "string", "steps": "int"})
 async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
     direction = args.get('direction', 'north')
     steps = args.get('steps', 1)
-    
+
     # Validate direction
     valid_directions = ['north', 'south', 'east', 'west']
     if direction.lower() not in valid_directions:
@@ -200,108 +30,20 @@ async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
             "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}],
             "action": None
         }
-    
+
     # Validate steps
     if steps < 1:
         return {
             "content": [{"type": "text", "text": "Steps must be at least 1."}],
             "action": None
         }
-    
-    return {
-        "content": [{"type": "text", "text": f"Moving {steps} step{'s' if steps > 1 else ''} {direction}!"}],
-        "action": {"action_id": "move", "parameters": {"direction": direction.lower(), "steps": steps}}
-    }
 
-
-from typing import Any
-
-@tool("move_direction", "Move the agent in a cardinal direction (north, south, east, or west) for a specified number of steps", {"direction": "string", "steps": "int"})
-async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
-    direction = args.get('direction', 'north')
-    steps = args.get('steps', 1)
-    
-    # Validate direction
-    valid_directions = ['north', 'south', 'east', 'west']
-    if direction.lower() not in valid_directions:
-        return {
-            "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}]
-        }
-    
-    # Validate steps
-    if steps < 1:
-        return {
-            "content": [{"type": "text", "text": "Steps must be at least 1."}]
-        }
-    
-    direction_lower = direction.lower()
-    return {
-        "content": [{"type": "text", "text": f"Moving {steps} step(s) {direction_lower}!"}],
-        "action": {"action_id": "move", "parameters": {"direction": direction_lower, "steps": steps}}
-    }
-
-
-from typing import Any
-
-@tool("move_direction", "Move the agent in a cardinal direction (north, south, east, or west) for a specified number of steps", {"direction": "string", "steps": "int"})
-async def move_direction(args: dict[str, Any]) -> dict[str, Any]:
-    direction = args.get('direction', 'north')
-    steps = args.get('steps', 1)
-    
-    # Validate direction
-    valid_directions = ['north', 'south', 'east', 'west']
-    if direction.lower() not in valid_directions:
-        return {
-            "content": [{"type": "text", "text": f"Invalid direction '{direction}'. Please use: north, south, east, or west."}],
-            "action": None
-        }
-    
-    # Validate steps
-    if steps < 1:
-        return {
-            "content": [{"type": "text", "text": "Steps must be at least 1."}],
-            "action": None
-        }
-    
     direction_lower = direction.lower()
 
     return {
         "content": [{"type": "text", "text": f"Moving {direction_lower} {steps} step{'s' if steps > 1 else ''}. Call observe_world() to see your new position!"}],
         "action": {"action_id": "move", "parameters": {"direction": direction_lower, "steps": steps}}
     }
-
-
-@tool("check_position", "Check if a position on the grid is valid and within bounds. Returns whether the position exists and if it's safe to move there.", {"x": "int", "y": "int"})
-async def check_position(args: dict[str, Any]) -> dict[str, Any]:
-    x = args.get('x', 0)
-    y = args.get('y', 0)
-    
-    # Grid is 10x10 (0-9 for both x and y)
-    is_valid = 0 <= x <= 9 and 0 <= y <= 9
-    
-    if is_valid:
-        message = f"Position ({x}, {y}) is valid! You can move here safely."
-    else:
-        message = f"Position ({x}, {y}) is outside the grid! Stay within 0-9 for both x and y."
-    
-    return {"content": [{"type": "text", "text": message}]}
-
-
-@tool("move_forward", "Move the agent forward in the direction it is currently facing on the 10x10 grid. The agent will move the specified number of steps (default 1) if the path is clear and within bounds.", {"steps": "int"})
-async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
-    steps = args.get('steps', 1)
-    
-    # Validate steps is positive
-    if steps < 1:
-        return {"content": [{"type": "text", "text": "Cannot move forward with less than 1 step. Please choose a positive number!"}]}
-    
-    # Check if steps exceed grid size (10x10)
-    if steps > 10:
-        return {"content": [{"type": "text", "text": f"That's too far! The grid is only 10x10. Try moving {min(steps, 10)} or fewer steps."}]}
-    
-    # Success message
-    step_word = "step" if steps == 1 else "steps"
-    return {"content": [{"type": "text", "text": f"Moving forward {steps} {step_word}! 🚀"}]}
 
 
 @tool(
@@ -361,83 +103,30 @@ World Size: {width}x{height}
 {grid_view}
 
 Legend:
-. = empty
-# = boundary/obstacle
+. = empty/path
+# = boundary/obstacle/wall
+W = water
+T = treasure
+G = grass
 A = your position
 """
 
     return {"content": [{"type": "text", "text": result_text}]}
 
 
-@tool("check_position", "Check if a specific position on the 10x10 grid is valid and get information about it. Returns whether the position exists on the grid and its coordinates.", {"x": "int", "y": "int"})
-async def check_position(args: dict[str, Any]) -> dict[str, Any]:
-    x = args.get('x', 0)
-    y = args.get('y', 0)
-    
-    # Check if position is within the 10x10 grid (0-9 for both x and y)
-    is_valid = 0 <= x <= 9 and 0 <= y <= 9
-    
-    if is_valid:
-        # Calculate distance from center (4.5, 4.5)
-        distance_from_center = round(((x - 4.5) ** 2 + (y - 4.5) ** 2) ** 0.5, 2)
-        result = f"Position ({x}, {y}) is valid! It's {distance_from_center} units from the center of the grid."
-    else:
-        result = f"Position ({x}, {y}) is outside the grid! The grid only goes from (0, 0) to (9, 9)."
-    
-    return {"content": [{"type": "text", "text": result}]}
-
-
-@tool("move_forward", "Move the agent forward in the direction it is currently facing on the 10x10 grid. The agent will move the specified number of steps (default 1) unless it reaches a boundary. Returns the new position and whether the move was successful.", {"steps": "int"})
-async def move_forward(args: dict[str, Any]) -> dict[str, Any]:
-    steps = args.get('steps', 1)
-    
-    # Validate steps parameter
-    if not isinstance(steps, int) or steps < 1:
-        return {"content": [{"type": "text", "text": "Error: Steps must be a positive integer"}]}
-    
-    if steps > 10:
-        return {"content": [{"type": "text", "text": "Error: Cannot move more than 10 steps at once on a 10x10 grid"}]}
-    
-    # Simulate moving forward (in a real implementation, this would update actual agent state)
-    # Assuming the agent tracks its position and direction
-    success_message = f"Successfully moved forward {steps} step{'s' if steps > 1 else ''}!"
-    
-    return {"content": [{"type": "text", "text": success_message}]}
-
-
 @tool("move_in_s_shape", "Move Pixelmon in an S-shaped pattern on the grid. The S shape goes: right, down-right, down, down-left, left. Perfect for exploring in a curvy snake pattern!", {"size": "int"})
 async def move_in_s_shape(args: dict[str, Any]) -> dict[str, Any]:
     size = args.get('size', 2)
-    
+
     # Validate size
     if size < 1:
         size = 1
     elif size > 3:
         size = 3
-    
-    # S-shape pattern: right, down-right diagonal (right then down), down, down-left diagonal (left then down), left
-    # We'll break diagonals into separate moves and create a sequence
-    moves = []
-    
-    # Top curve of S: move right
-    moves.append({"action_id": "move", "parameters": {"direction": "east", "steps": size}})
-    
-    # Diagonal down-right: move down
-    moves.append({"action_id": "move", "parameters": {"direction": "south", "steps": size}})
-    
-    # Middle of S: move down
-    moves.append({"action_id": "move", "parameters": {"direction": "south", "steps": size}})
-    
-    # Bottom curve of S: move left
-    moves.append({"action_id": "move", "parameters": {"direction": "west", "steps": size}})
-    
-    # For the first move, we return the eastward movement
-    # Note: In a real implementation, you'd need to handle the sequence of moves
-    # For this single-action return, we'll do the first move (right)
-    
+
     total_distance = size * 4
     message = f"🐍 Pixelmon is moving in a cool S-shape! Starting by going right {size} steps. The S pattern will cover about {total_distance} spaces total!"
-    
+
     return {
         "content": [{"type": "text", "text": message}],
         "action": {"action_id": "move", "parameters": {"direction": "east", "steps": size}}
@@ -447,7 +136,7 @@ async def move_in_s_shape(args: dict[str, Any]) -> dict[str, Any]:
 @tool("pixelmon_smiley_dance", "Makes Pixelmon dance in a smiley face pattern! Pixelmon will move around to trace a happy face shape on the grid.", {})
 async def pixelmon_smiley_dance(args: dict[str, Any]) -> dict[str, Any]:
     import random
-    
+
     dance_moves = [
         "north",
         "east",
@@ -458,21 +147,21 @@ async def pixelmon_smiley_dance(args: dict[str, Any]) -> dict[str, Any]:
         "west",
         "north"
     ]
-    
+
     direction = random.choice(dance_moves)
-    
+
     emojis = ["😊", "😄", "🎉", "✨", "💃", "🕺"]
     random_emoji = random.choice(emojis)
-    
+
     messages = [
         f"Pixelmon is dancing in a smiley face pattern! {random_emoji}",
         f"Watch Pixelmon groove and move! Dancing {direction}! {random_emoji}",
         f"Pixelmon's happy dance continues! Spinning {direction}! {random_emoji}",
         f"Pixelmon dances joyfully in a smile shape! Moving {direction}! {random_emoji}"
     ]
-    
+
     message = random.choice(messages)
-    
+
     return {
         "content": [{"type": "text", "text": message}],
         "action": {"action_id": "move", "parameters": {"direction": direction, "steps": 1}}
