@@ -18,19 +18,19 @@ const DEFAULT_WORLDS = [
     description: "A peaceful starter town with grassy fields and a small pond. Perfect for new trainers!",
     width: 10,
     height: 10,
-    game_type: "grid",
+    game_type: "grid_navigation",
     agent_position: [4, 4],
     grid: [
-      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
-      ["G", "T", "T", "G", "G", "G", "G", "T", "T", "G"],
-      ["G", "T", "T", "G", "G", "G", "G", "T", "T", "G"],
-      ["G", "G", "G", "G", "P", "P", "G", "G", "G", "G"],
-      ["G", "G", "G", "G", "P", "P", "G", "G", "G", "G"],
-      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
-      ["G", "W", "W", "G", "G", "G", "G", "W", "W", "G"],
-      ["G", "W", "W", "G", "G", "G", "G", "W", "W", "G"],
-      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
-      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"]
+      ["grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass"],
+      ["grass", "wall", "wall", "grass", "grass", "grass", "grass", "wall", "wall", "grass"],
+      ["grass", "wall", "wall", "grass", "grass", "grass", "grass", "wall", "wall", "grass"],
+      ["grass", "grass", "grass", "grass", "path", "path", "grass", "grass", "grass", "grass"],
+      ["grass", "grass", "grass", "grass", "path", "path", "grass", "grass", "grass", "grass"],
+      ["grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass"],
+      ["grass", "water", "water", "grass", "grass", "grass", "grass", "water", "water", "grass"],
+      ["grass", "water", "water", "grass", "grass", "grass", "grass", "water", "water", "grass"],
+      ["grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass"],
+      ["grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass"]
     ]
   },
   {
@@ -39,19 +39,19 @@ const DEFAULT_WORLDS = [
     description: "A dense forest filled with tall trees and hidden paths. Great for exploration!",
     width: 10,
     height: 10,
-    game_type: "grid",
+    game_type: "grid_navigation",
     agent_position: [0, 0],
     grid: [
-      ["P", "T", "T", "T", "T", "T", "T", "T", "T", "T"],
-      ["G", "G", "T", "T", "G", "G", "T", "T", "T", "T"],
-      ["T", "G", "G", "T", "T", "G", "G", "T", "T", "T"],
-      ["T", "T", "G", "G", "T", "T", "G", "G", "T", "T"],
-      ["T", "T", "T", "G", "G", "T", "T", "G", "G", "T"],
-      ["T", "T", "T", "T", "G", "G", "T", "T", "G", "G"],
-      ["T", "T", "T", "T", "T", "G", "G", "T", "T", "G"],
-      ["T", "T", "T", "T", "T", "T", "G", "G", "T", "T"],
-      ["T", "T", "T", "T", "T", "T", "T", "G", "G", "T"],
-      ["T", "T", "T", "T", "T", "T", "T", "T", "G", "G"]
+      ["path", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+      ["grass", "grass", "wall", "wall", "grass", "grass", "wall", "wall", "wall", "wall"],
+      ["wall", "grass", "grass", "wall", "wall", "grass", "grass", "wall", "wall", "wall"],
+      ["wall", "wall", "grass", "grass", "wall", "wall", "grass", "grass", "wall", "wall"],
+      ["wall", "wall", "wall", "grass", "grass", "wall", "wall", "grass", "grass", "wall"],
+      ["wall", "wall", "wall", "wall", "grass", "grass", "wall", "wall", "grass", "grass"],
+      ["wall", "wall", "wall", "wall", "wall", "grass", "grass", "wall", "wall", "grass"],
+      ["wall", "wall", "wall", "wall", "wall", "wall", "grass", "grass", "wall", "wall"],
+      ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "grass", "grass", "wall"],
+      ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "grass", "grass"]
     ]
   },
   {
@@ -60,19 +60,19 @@ const DEFAULT_WORLDS = [
     description: "A mysterious cave with winding rock passages and hidden chambers. For brave trainers!",
     width: 10,
     height: 10,
-    game_type: "grid",
+    game_type: "grid_navigation",
     agent_position: [1, 1],
     grid: [
-      ["R", "R", "R", "R", "R", "R", "R", "R", "R", "R"],
-      ["R", "P", "P", "R", "R", "R", "P", "P", "P", "R"],
-      ["R", "P", "P", "P", "R", "R", "P", "R", "P", "R"],
-      ["R", "R", "P", "P", "P", "P", "P", "R", "P", "R"],
-      ["R", "R", "R", "P", "R", "R", "P", "R", "P", "R"],
-      ["R", "P", "P", "P", "R", "R", "P", "P", "P", "R"],
-      ["R", "P", "R", "R", "R", "R", "R", "R", "P", "R"],
-      ["R", "P", "P", "P", "P", "P", "P", "P", "P", "R"],
-      ["R", "R", "R", "R", "R", "R", "R", "P", "R", "R"],
-      ["R", "R", "R", "R", "R", "R", "R", "R", "R", "R"]
+      ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"],
+      ["wall", "path", "path", "wall", "wall", "wall", "path", "path", "path", "wall"],
+      ["wall", "path", "path", "path", "wall", "wall", "path", "wall", "path", "wall"],
+      ["wall", "wall", "path", "path", "path", "path", "path", "wall", "path", "wall"],
+      ["wall", "wall", "wall", "path", "wall", "wall", "path", "wall", "path", "wall"],
+      ["wall", "path", "path", "path", "wall", "wall", "path", "path", "path", "wall"],
+      ["wall", "path", "wall", "wall", "wall", "wall", "wall", "wall", "path", "wall"],
+      ["wall", "path", "path", "path", "path", "path", "path", "path", "path", "wall"],
+      ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "path", "wall", "wall"],
+      ["wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall", "wall"]
     ]
   }
 ]
