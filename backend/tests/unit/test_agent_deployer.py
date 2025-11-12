@@ -505,3 +505,115 @@ async def test_load_tools_from_actual_tools_py():
     tool_names = {t.name for t in tools}
     assert "observe_world" in tool_names, "Should find observe_world tool"
     assert "move_direction" in tool_names, "Should find move_direction tool"
+
+
+# ============================================================================
+# Cycle 3: Official SDK Pattern (ClaudeSDKClient)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_deploy_agent_uses_claude_sdk_client():
+    """Test that deployment uses ClaudeSDKClient instead of standalone query().
+
+    The official SDK pattern is:
+    async with ClaudeSDKClient(options) as client:
+        await client.query(prompt)
+        async for message in client.receive_response():
+            ...
+
+    NOT the deprecated standalone query(prompt, options) pattern.
+    """
+    # Arrange
+    mock_world_service = MockWorldService()
+    mock_tool_service = MockToolService()
+    deployer = AgentDeployer(mock_tool_service, mock_world_service)
+
+    # Mock ClaudeSDKClient
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        # Create mock client instance
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
+
+        # Mock receive_response to yield a simple message
+        async def mock_receive():
+            msg = MagicMock()
+            msg.result = "test"
+            msg.stop_reason = "end_turn"
+            yield msg
+
+        mock_client.receive_response = mock_receive
+        mock_client_class.return_value = mock_client
+
+        # Act
+        events = []
+        async for event in deployer.deploy_agent("agent-1", "world-1", "test goal"):
+            events.append(event)
+
+        # Assert
+        # Should have created ClaudeSDKClient instance
+        assert mock_client_class.called, "Should create ClaudeSDKClient instance"
+
+        # Should have called client.query() with prompt
+        assert mock_client.query.called, "Should call client.query()"
+        query_call_args = mock_client.query.call_args
+        assert query_call_args is not None
+        # Check that prompt was passed
+        prompt_arg = query_call_args[0][0] if query_call_args[0] else query_call_args[1].get("prompt")
+        assert "test goal" in prompt_arg, "Should pass goal in prompt"
+
+
+@pytest.mark.asyncio
+async def test_deploy_agent_uses_create_sdk_mcp_server_with_tools():
+    """Test that deployment passes tools to create_sdk_mcp_server().
+
+    Should call create_sdk_mcp_server(name, version, tools=tool_list)
+    instead of creating empty server and manually routing.
+    """
+    # Arrange
+    mock_world_service = MockWorldService()
+    mock_tool_service = MockToolService()
+    deployer = AgentDeployer(mock_tool_service, mock_world_service)
+
+    # Mock create_sdk_mcp_server via claude_agent_sdk module
+    with patch("claude_agent_sdk.create_sdk_mcp_server") as mock_create_server:
+        # Mock server config
+        mock_server_config = MagicMock()
+        mock_create_server.return_value = mock_server_config
+
+        # Mock ClaudeSDKClient
+        with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client.query = AsyncMock()
+
+            async def mock_receive():
+                msg = MagicMock()
+                msg.stop_reason = "end_turn"
+                yield msg
+
+            mock_client.receive_response = mock_receive
+            mock_client_class.return_value = mock_client
+
+            # Act
+            events = []
+            async for event in deployer.deploy_agent("agent-1", "world-1", "test"):
+                events.append(event)
+
+            # Assert
+            # Should have called create_sdk_mcp_server with tools parameter
+            assert mock_create_server.called, "Should call create_sdk_mcp_server"
+            call_kwargs = mock_create_server.call_args[1]
+
+            # Check that tools were passed
+            assert "tools" in call_kwargs, "Should pass tools parameter"
+            tools_arg = call_kwargs["tools"]
+            assert tools_arg is not None, "Tools should not be None"
+            assert len(tools_arg) > 0, "Should pass at least some tools"
+
+            # Verify tools are SdkMcpTool instances
+            from claude_agent_sdk import SdkMcpTool
+            assert all(isinstance(t, SdkMcpTool) for t in tools_arg), "All tools should be SdkMcpTool"
