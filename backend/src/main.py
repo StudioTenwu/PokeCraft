@@ -86,9 +86,24 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 class AgentCreateRequest(BaseModel):
     description: str
 
+class AgentCreateFromDataRequest(BaseModel):
+    name: str
+    backstory: str
+    personality_traits: list[str]
+    avatar_url: str
+    id: str | None = None  # Optional - will generate UUID if not provided
+
 class WorldCreateRequest(BaseModel):
     agent_id: str
     description: str
+
+class WorldFromDataRequest(BaseModel):
+    """Request to create a world from pre-defined data (no LLM).
+
+    Similar to default agents - allows instant starter world creation.
+    """
+    agent_id: str
+    world_data: dict  # Contains name, grid, width, height, game_type, agent_position, description
 
 @app.get("/")
 async def root():
@@ -117,6 +132,22 @@ async def create_agent(request: AgentCreateRequest, req: Request):
         return agent
     except Exception as e:
         logger.error(f"Error creating agent: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agents")
+async def create_agent_from_data(request: AgentCreateFromDataRequest, req: Request):
+    """Create a new agent from pre-defined data (e.g., Pokémon templates)."""
+    try:
+        agent = await req.app.state.agent_service.create_agent_from_data(
+            name=request.name,
+            backstory=request.backstory,
+            personality_traits=request.personality_traits,
+            avatar_url=request.avatar_url,
+            agent_id=request.id
+        )
+        return agent
+    except Exception as e:
+        logger.error(f"Error creating agent from data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/agents/create/stream")
@@ -152,6 +183,46 @@ async def create_agent_stream(description: str, req: Request):
         },
     )
 
+# Deploy endpoint MUST come before /api/agents/{agent_id} to avoid route collision
+@app.get("/api/agents/deploy")
+async def deploy_agent(agent_id: str, world_id: str, goal: str, req: Request):
+    """Deploy an agent in a world with SSE streaming.
+
+    Args:
+        agent_id: UUID of the agent to deploy
+        world_id: UUID of the world to deploy in
+        goal: Mission goal for the agent
+    """
+
+    async def event_generator():
+        """Generator that yields SSE-formatted events."""
+        # Import here to avoid circular dependencies
+        from agent_deployer import AgentDeployer
+
+        deployer = AgentDeployer(
+            req.app.state.tool_service, req.app.state.world_service
+        )
+
+        async for event in deployer.deploy_agent(
+            agent_id, world_id, goal
+        ):
+            # Convert DeploymentEvent to SSE format
+            sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
+            yield sse_message
+
+            # Small delay to ensure client receives message
+            await asyncio.sleep(0.01)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @app.get("/api/agents/{agent_id}")
 async def get_agent(agent_id: str, req: Request):
     """Get agent by ID."""
@@ -173,6 +244,22 @@ async def create_world(request: WorldCreateRequest, req: Request):
         return world
     except Exception as e:
         logger.error(f"Error creating world: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/worlds/create-from-data")
+async def create_world_from_data(request: WorldFromDataRequest, req: Request):
+    """Create a world from pre-defined data (instant, no LLM generation).
+
+    Similar to default/starter Pokemon - allows creating starter worlds instantly.
+    """
+    try:
+        world = await req.app.state.world_service.create_world_from_data(
+            request.agent_id,
+            request.world_data
+        )
+        return world
+    except Exception as e:
+        logger.error(f"Error creating world from data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/actions/{world_id}")
@@ -275,45 +362,6 @@ async def delete_tool(tool_name: str, req: Request):
     except Exception as e:
         logger.error(f"Error deleting tool: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/agents/deploy")
-async def deploy_agent(agent_id: str, world_id: str, goal: str, req: Request):
-    """Deploy an agent in a world with SSE streaming.
-
-    Args:
-        agent_id: UUID of the agent to deploy
-        world_id: UUID of the world to deploy in
-        goal: Mission goal for the agent
-    """
-
-    async def event_generator():
-        """Generator that yields SSE-formatted events."""
-        # Import here to avoid circular dependencies
-        from agent_deployer import AgentDeployer
-
-        deployer = AgentDeployer(
-            req.app.state.tool_service, req.app.state.world_service
-        )
-
-        async for event in deployer.deploy_agent(
-            agent_id, world_id, goal
-        ):
-            # Convert DeploymentEvent to SSE format
-            sse_message = f"event: {event.event_type}\ndata: {json.dumps(event.data)}\n\n"
-            yield sse_message
-
-            # Small delay to ensure client receives message
-            await asyncio.sleep(0.01)
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
 
 if __name__ == "__main__":
     import uvicorn

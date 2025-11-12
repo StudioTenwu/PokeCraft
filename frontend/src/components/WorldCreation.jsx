@@ -10,6 +10,73 @@ const EXAMPLE_WORLDS = [
   "An enchanted forest with creatures to help, glowing mushrooms, hidden paths, and magical springs"
 ]
 
+// Default starter worlds (instant, no LLM generation needed)
+const DEFAULT_WORLDS = [
+  {
+    id: "pallet-town",
+    name: "Pallet Town",
+    description: "A peaceful starter town with grassy fields and a small pond. Perfect for new trainers!",
+    width: 10,
+    height: 10,
+    game_type: "grid",
+    agent_position: [4, 4],
+    grid: [
+      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
+      ["G", "T", "T", "G", "G", "G", "G", "T", "T", "G"],
+      ["G", "T", "T", "G", "G", "G", "G", "T", "T", "G"],
+      ["G", "G", "G", "G", "P", "P", "G", "G", "G", "G"],
+      ["G", "G", "G", "G", "P", "P", "G", "G", "G", "G"],
+      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
+      ["G", "W", "W", "G", "G", "G", "G", "W", "W", "G"],
+      ["G", "W", "W", "G", "G", "G", "G", "W", "W", "G"],
+      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"],
+      ["G", "G", "G", "G", "G", "G", "G", "G", "G", "G"]
+    ]
+  },
+  {
+    id: "viridian-forest",
+    name: "Viridian Forest",
+    description: "A dense forest filled with tall trees and hidden paths. Great for exploration!",
+    width: 10,
+    height: 10,
+    game_type: "grid",
+    agent_position: [0, 0],
+    grid: [
+      ["P", "T", "T", "T", "T", "T", "T", "T", "T", "T"],
+      ["G", "G", "T", "T", "G", "G", "T", "T", "T", "T"],
+      ["T", "G", "G", "T", "T", "G", "G", "T", "T", "T"],
+      ["T", "T", "G", "G", "T", "T", "G", "G", "T", "T"],
+      ["T", "T", "T", "G", "G", "T", "T", "G", "G", "T"],
+      ["T", "T", "T", "T", "G", "G", "T", "T", "G", "G"],
+      ["T", "T", "T", "T", "T", "G", "G", "T", "T", "G"],
+      ["T", "T", "T", "T", "T", "T", "G", "G", "T", "T"],
+      ["T", "T", "T", "T", "T", "T", "T", "G", "G", "T"],
+      ["T", "T", "T", "T", "T", "T", "T", "T", "G", "G"]
+    ]
+  },
+  {
+    id: "cerulean-cave",
+    name: "Cerulean Cave",
+    description: "A mysterious cave with winding rock passages and hidden chambers. For brave trainers!",
+    width: 10,
+    height: 10,
+    game_type: "grid",
+    agent_position: [1, 1],
+    grid: [
+      ["R", "R", "R", "R", "R", "R", "R", "R", "R", "R"],
+      ["R", "P", "P", "R", "R", "R", "P", "P", "P", "R"],
+      ["R", "P", "P", "P", "R", "R", "P", "R", "P", "R"],
+      ["R", "R", "P", "P", "P", "P", "P", "R", "P", "R"],
+      ["R", "R", "R", "P", "R", "R", "P", "R", "P", "R"],
+      ["R", "P", "P", "P", "R", "R", "P", "P", "P", "R"],
+      ["R", "P", "R", "R", "R", "R", "R", "R", "P", "R"],
+      ["R", "P", "P", "P", "P", "P", "P", "P", "P", "R"],
+      ["R", "R", "R", "R", "R", "R", "R", "P", "R", "R"],
+      ["R", "R", "R", "R", "R", "R", "R", "R", "R", "R"]
+    ]
+  }
+]
+
 export default function WorldCreation({ agent, onWorldCreated }) {
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,6 +113,41 @@ export default function WorldCreation({ agent, onWorldCreated }) {
 
     setDescription(example)
     setError(null)
+  }
+
+  const handleLoadDefaultWorld = async (defaultWorld) => {
+    if (!agent?.id) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Create world from pre-defined data (instant, no LLM)
+      const { id, ...worldData } = defaultWorld // Remove id before sending
+      const response = await fetch('http://localhost:8000/api/worlds/create-from-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_id: agent.id,
+          world_data: worldData
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to load default world')
+
+      const createdWorld = await response.json()
+      setWorld(createdWorld)
+
+      // Call callback if provided
+      if (onWorldCreated) {
+        onWorldCreated(createdWorld)
+      }
+    } catch (err) {
+      setError('Failed to load default world. Make sure the backend is running!')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // If world was created, show it
@@ -108,11 +210,37 @@ export default function WorldCreation({ agent, onWorldCreated }) {
         </button>
       </form>
 
+      {/* Default starter worlds */}
+      <div className="mt-8 p-6 bg-pokemon-gold/20 border-2 border-pokemon-gold rounded"
+           role="region" aria-label="Starter worlds">
+        <p className="font-pixel text-sm text-pokemon-gold mb-4 text-center">
+          🏠 Starter Worlds - Instant Setup! (No Generation)
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {DEFAULT_WORLDS.map((world) => (
+            <button
+              key={world.id}
+              type="button"
+              onClick={() => handleLoadDefaultWorld(world)}
+              className="text-left px-4 py-3 hover:bg-pokemon-cream hover:scale-105
+                       text-xs border-2 border-pokemon-gold transition-all
+                       font-pixel rounded"
+              style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+              disabled={loading}
+              aria-label={`Load starter world: ${world.name}`}
+            >
+              <div className="font-bold mb-1">{world.name}</div>
+              <div className="text-xs opacity-80">{world.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Example worlds */}
-      <div className="mt-12 p-6 bg-pokemon-green/20 border-2 border-pokemon-green rounded"
+      <div className="mt-8 p-6 bg-pokemon-green/20 border-2 border-pokemon-green rounded"
            role="region" aria-label="Example world descriptions">
         <p className="font-pixel text-sm text-pokemon-green mb-4 text-center">
-          ✨ Example Worlds - Click to try!
+          ✨ Custom Worlds - Describe & Generate!
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {EXAMPLE_WORLDS.map((example, i) => (

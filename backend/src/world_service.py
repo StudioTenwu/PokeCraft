@@ -33,6 +33,73 @@ class WorldService:
         logger.info(f"Initializing world database schema at {self.db_path}")
         logger.info("Database schema creation delegated to database.init_db()")
 
+    async def create_world_from_data(
+        self,
+        agent_id: str,
+        world_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Create a world from pre-defined data (no LLM generation).
+
+        Similar to how default agents work - allows creating starter worlds
+        instantly without LLM generation overhead.
+
+        Args:
+            agent_id: ID of the agent this world belongs to
+            world_data: Pre-defined world data with name, grid, etc.
+
+        Returns:
+            dict: Complete world data including generated id
+        """
+        logger.info(f"Creating default world '{world_data.get('name')}' for agent {agent_id}")
+
+        # Generate unique ID
+        world_id = str(uuid.uuid4())
+
+        # Extract data with defaults
+        name = world_data.get("name", "Unnamed World")
+        description = world_data.get("description", "")
+        grid = world_data.get("grid", [["G"] * 10 for _ in range(10)])
+        width = world_data.get("width", 10)
+        height = world_data.get("height", 10)
+        game_type = world_data.get("game_type", "grid")
+        agent_position = world_data.get("agent_position", [0, 0])
+
+        # Serialize grid data to JSON
+        grid_json = json.dumps(grid)
+
+        # Store in database using SQLAlchemy
+        async with async_session_factory() as session:
+            db_world = WorldDB(
+                id=world_id,
+                agent_id=agent_id,
+                name=name,
+                description=description,
+                grid_data=grid_json,
+                agent_position_x=agent_position[0],
+                agent_position_y=agent_position[1],
+                width=width,
+                height=height,
+                game_type=game_type
+            )
+            session.add(db_world)
+            await session.commit()
+
+        logger.debug(f"Created default world {world_id} without LLM generation")
+
+        # Return complete world data
+        return {
+            "id": world_id,
+            "agent_id": agent_id,
+            "name": name,
+            "description": description,
+            "grid": grid,
+            "width": width,
+            "height": height,
+            "game_type": game_type,
+            "agent_position": agent_position,
+            "created_at": datetime.now().isoformat()
+        }
+
     async def create_world(self, agent_id: str, description: str) -> dict[str, Any]:
         """Create a new world for an agent.
 
