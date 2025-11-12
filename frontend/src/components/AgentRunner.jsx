@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import PokemonButton from './PokemonButton'
 import GameWorldView from './GameWorldView'
 import EventLogSidebar from './EventLogSidebar'
+import ThinkingPanel from './ThinkingPanel'
 import { getWorld } from '../api'
 
 /**
@@ -15,6 +16,7 @@ import { getWorld } from '../api'
 export default function AgentRunner({ agentId, worldId, avatarUrl }) {
   const [goal, setGoal] = useState('')
   const [events, setEvents] = useState([])
+  const [thinkingEvents, setThinkingEvents] = useState([])
   const [deploying, setDeploying] = useState(false)
   const [error, setError] = useState(null)
   const [worldState, setWorldState] = useState(null)
@@ -81,11 +83,29 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
     setDeploying(true)
     setError(null)
     setEvents([])
+    setThinkingEvents([])
 
     const url = `http://localhost:8000/api/agents/deploy?agent_id=${encodeURIComponent(agentId)}&world_id=${encodeURIComponent(worldId)}&goal=${encodeURIComponent(goal)}`
     const eventSource = new EventSource(url)
     eventSourceRef.current = eventSource
 
+    // NEW EVENT TYPES: system, text, thinking
+    eventSource.addEventListener('system', (e) => {
+      const data = JSON.parse(e.data)
+      setThinkingEvents(prev => [...prev, { type: 'system', ...data }])
+    })
+
+    eventSource.addEventListener('text', (e) => {
+      const data = JSON.parse(e.data)
+      setThinkingEvents(prev => [...prev, { type: 'text', ...data }])
+    })
+
+    eventSource.addEventListener('thinking', (e) => {
+      const data = JSON.parse(e.data)
+      setThinkingEvents(prev => [...prev, { type: 'thinking', ...data }])
+    })
+
+    // EXISTING EVENT TYPES (kept for EventLogSidebar compatibility)
     eventSource.addEventListener('reasoning', (e) => {
       const data = JSON.parse(e.data)
       setEvents(prev => [...prev, { type: 'reasoning', ...data }])
@@ -94,11 +114,13 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
     eventSource.addEventListener('tool_call', (e) => {
       const data = JSON.parse(e.data)
       setEvents(prev => [...prev, { type: 'tool_call', ...data }])
+      setThinkingEvents(prev => [...prev, { type: 'tool_call', ...data }])
     })
 
     eventSource.addEventListener('tool_result', (e) => {
       const data = JSON.parse(e.data)
       setEvents(prev => [...prev, { type: 'tool_result', ...data }])
+      setThinkingEvents(prev => [...prev, { type: 'tool_result', ...data }])
     })
 
     eventSource.addEventListener('world_update', (e) => {
@@ -113,16 +135,19 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
       }
 
       setEvents(prev => [...prev, { type: 'world_update', ...data }])
+      setThinkingEvents(prev => [...prev, { type: 'world_update', ...data }])
     })
 
     eventSource.addEventListener('error', (e) => {
       const data = JSON.parse(e.data)
       setEvents(prev => [...prev, { type: 'error', ...data }])
+      setThinkingEvents(prev => [...prev, { type: 'error', ...data }])
     })
 
     eventSource.addEventListener('complete', (e) => {
       const data = JSON.parse(e.data)
       setEvents(prev => [...prev, { type: 'complete', ...data }])
+      setThinkingEvents(prev => [...prev, { type: 'complete', ...data }])
       eventSource.close()
       eventSourceRef.current = null
       setDeploying(false)
@@ -152,6 +177,7 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
 
   const clearStream = () => {
     setEvents([])
+    setThinkingEvents([])
     setError(null)
   }
 
@@ -230,10 +256,18 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
         </div>
       )}
 
-      {/* Two-column layout: Game World (left 65%) + Event Log (right 35%) */}
+      {/* Three-column layout: ThinkingPanel (left 30%) + GameWorldView (center 45%) + EventLogSidebar (right 25%) */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left: Game World (65%) */}
-        <div className="lg:w-2/3">
+        {/* Left: ThinkingPanel (30%) */}
+        <div className="lg:w-[30%]">
+          <ThinkingPanel
+            events={thinkingEvents}
+            isActive={deploying}
+          />
+        </div>
+
+        {/* Center: Game World (45%) */}
+        <div className="lg:w-[45%]">
           <GameWorldView
             worldState={worldState}
             events={events}
@@ -242,8 +276,8 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
           />
         </div>
 
-        {/* Right: Event Log (35%) */}
-        <div className="lg:w-1/3">
+        {/* Right: Event Log (25%) */}
+        <div className="lg:w-[25%]">
           <EventLogSidebar
             events={events}
             deploying={deploying}
