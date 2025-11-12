@@ -63,15 +63,27 @@ async def test_deploy_agent_yields_reasoning_event():
     mock_tool_service = MockToolService()
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
-    # Mock the Claude Agent SDK
-    with patch("src.agent_deployer.query") as mock_query:
+    # Mock ClaudeSDKClient
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
+
         # Simulate Claude streaming a thinking message
         async def mock_stream():
             mock_msg = MagicMock()
             mock_msg.result = "I need to move forward to explore the area"
+            mock_msg.stop_reason = None
             yield mock_msg
+            # Send stop message
+            stop_msg = MagicMock()
+            stop_msg.stop_reason = "end_turn"
+            stop_msg.result = None
+            yield stop_msg
 
-        mock_query.return_value = mock_stream()
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act
         events = []
@@ -96,8 +108,12 @@ async def test_deploy_agent_yields_tool_call_events():
     mock_tool_service = MockToolService()
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
-    # Mock the Claude Agent SDK with tool use
-    with patch("src.agent_deployer.query") as mock_query:
+    # Mock ClaudeSDKClient with tool use
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
 
         async def mock_stream():
             # Simulate tool use message
@@ -105,9 +121,15 @@ async def test_deploy_agent_yields_tool_call_events():
             mock_msg.tool_use = MagicMock()
             mock_msg.tool_use.tool_name = "move_forward"
             mock_msg.tool_use.parameters = {"steps": 1}
+            mock_msg.stop_reason = None
             yield mock_msg
+            # Stop message
+            stop_msg = MagicMock()
+            stop_msg.stop_reason = "end_turn"
+            yield stop_msg
 
-        mock_query.return_value = mock_stream()
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act
         events = []
@@ -136,7 +158,11 @@ async def test_deploy_agent_handles_tool_errors_with_retry():
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
     # Mock tool execution that fails
-    with patch("src.agent_deployer.query") as mock_query:
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
 
         async def mock_stream():
             # First: tool call
@@ -144,19 +170,28 @@ async def test_deploy_agent_handles_tool_errors_with_retry():
             msg1.tool_use = MagicMock()
             msg1.tool_use.tool_name = "move_forward"
             msg1.tool_use.parameters = {}
+            msg1.stop_reason = None
             yield msg1
 
             # Second: simulated error
             msg2 = MagicMock()
             msg2.error = "Tool execution failed: wall detected"
+            msg2.stop_reason = None
             yield msg2
 
             # Third: retry with different approach
             msg3 = MagicMock()
             msg3.result = "I'll try a different direction"
+            msg3.stop_reason = None
             yield msg3
 
-        mock_query.return_value = mock_stream()
+            # Stop message
+            stop_msg = MagicMock()
+            stop_msg.stop_reason = "end_turn"
+            yield stop_msg
+
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act
         events = []
@@ -190,16 +225,26 @@ async def test_world_update_events_use_deltas():
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
     # Mock a tool that changes agent position
-    with patch("src.agent_deployer.query") as mock_query:
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
 
         async def mock_stream():
             # Tool result that moves agent
             msg = MagicMock()
             msg.tool_result = MagicMock()
             msg.tool_result.result = {"new_position": [1, 0]}
+            msg.stop_reason = None
             yield msg
+            # Stop message
+            stop_msg = MagicMock()
+            stop_msg.stop_reason = "end_turn"
+            yield stop_msg
 
-        mock_query.return_value = mock_stream()
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act
         events = []
@@ -234,7 +279,11 @@ async def test_deploy_agent_yields_complete_event():
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
     # Mock successful completion
-    with patch("src.agent_deployer.query") as mock_query:
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
 
         async def mock_stream():
             # Final result
@@ -243,7 +292,8 @@ async def test_deploy_agent_yields_complete_event():
             msg.stop_reason = "end_turn"
             yield msg
 
-        mock_query.return_value = mock_stream()
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act
         events = []
@@ -283,14 +333,24 @@ async def test_deploy_agent_loads_world_state():
     mock_tool_service = MockToolService()
     deployer = AgentDeployer(mock_tool_service, mock_world_service)
 
-    with patch("src.agent_deployer.query") as mock_query:
+    with patch("src.agent_deployer.ClaudeSDKClient") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
 
         async def mock_stream():
             msg = MagicMock()
             msg.result = "Loaded world"
+            msg.stop_reason = None
             yield msg
+            # Stop message
+            stop_msg = MagicMock()
+            stop_msg.stop_reason = "end_turn"
+            yield stop_msg
 
-        mock_query.return_value = mock_stream()
+        mock_client.receive_response = mock_stream
+        mock_client_class.return_value = mock_client
 
         # Act - should not raise even if world doesn't exist
         events_list = []
