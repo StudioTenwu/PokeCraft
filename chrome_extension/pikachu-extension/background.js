@@ -1,7 +1,7 @@
-// Background service worker for AICraft Companion extension
-// This script initializes multiple Pokemon agents and manages the side panel
+// Background service worker for PokéCraft Companion extension
+// This script initializes multiple Pokémon agents and manages the side panel
 
-// Define 4 default Pokemon agents
+// Define 4 default Pokémon agents
 const DEFAULT_AGENTS = {
   pikachu: {
     id: "pikachu",
@@ -35,10 +35,10 @@ const DEFAULT_AGENTS = {
 
 // Initialize extension on install or update
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('AICraft Companion extension event:', details.reason);
+  console.log('PokéCraft Companion extension event:', details.reason);
 
   if (details.reason === 'install') {
-    // Fresh install - initialize with 4 Pokemon agents
+    // Fresh install - initialize with 4 Pokémon agents
     await chrome.storage.local.set({
       agents: DEFAULT_AGENTS,
       activeAgentId: 'pikachu',
@@ -49,7 +49,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         squirtle: []
       }
     });
-    console.log('Initialized 4 Pokemon agents');
+    console.log('Initialized 4 Pokémon agents');
 
   } else if (details.reason === 'update') {
     // Extension update - migrate existing data if needed
@@ -87,7 +87,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
           squirtle: []
         }
       });
-      console.log('Initialized 4 Pokemon agents (no previous data)');
+      console.log('Initialized 4 Pokémon agents (no previous data)');
     } else {
       console.log('Multi-agent system already initialized');
     }

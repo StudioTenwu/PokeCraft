@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AICraft Companion: Pikachu",
+  "name": "PokéCraft Companion",
   "version": "1.0.0",
-  "description": "I am Pikachu, an Electric-type Pokémon known for my lightning bolt-shaped tail and adorable cheeks that store electri...",
+  "description": "Your Pokémon AI companion creator - chat with custom Pokémon agents you create in PokéCraft!",
   "permissions": ["sidePanel", "storage"],
   "host_permissions": [
     "http://localhost:8000/*",
@@ -21,6 +21,6 @@
     "128": "assets/icon128.png"
   },
   "action": {
-    "default_title": "Chat with Pikachu"
+    "default_title": "Open PokéCraft Companion"
   }
 }

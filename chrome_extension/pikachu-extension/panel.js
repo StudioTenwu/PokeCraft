@@ -50,7 +50,6 @@ async function initPanel() {
   const messageInput = document.getElementById('message-input');
   const clearHistoryButton = document.getElementById('clear-history-button');
   const loadAgentsButton = document.getElementById('load-agents-button');
-  const fetchAgentButton = document.getElementById('fetch-agent-button');
   const importJsonButton = document.getElementById('import-json-button');
   const jsonFileInput = document.getElementById('json-file-input');
   const agentSelector = document.getElementById('agent-selector');
@@ -63,7 +62,6 @@ async function initPanel() {
   });
   clearHistoryButton.addEventListener('click', handleClearHistory);
   loadAgentsButton.addEventListener('click', checkForNewAgents);
-  fetchAgentButton.addEventListener('click', handleFetchAgentById);
   importJsonButton.addEventListener('click', () => jsonFileInput.click());
   jsonFileInput.addEventListener('change', handleJsonImport);
   agentSelector.addEventListener('click', toggleAgentDropdown);
@@ -429,71 +427,6 @@ async function handleJsonImport(event) {
   } finally {
     // Reset file input
     event.target.value = '';
-  }
-}
-
-// Handle fetch agent by ID from main backend server
-async function handleFetchAgentById() {
-  // Prompt user for agent ID
-  const agentId = prompt('Enter agent ID to fetch from AICraft server:');
-  if (!agentId || agentId.trim() === '') {
-    return;
-  }
-
-  try {
-    addSystemMessage(`Fetching agent ${agentId}...`);
-
-    // Fetch agent from main backend (port 8000)
-    const response = await fetch(`http://localhost:8000/api/agents/${agentId}/export`);
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        addSystemMessage(`❌ Agent not found: ${agentId}`);
-      } else {
-        addSystemMessage(`❌ Error fetching agent: ${response.status} ${response.statusText}`);
-      }
-      return;
-    }
-
-    const agentData = await response.json();
-
-    // Validate agent data schema
-    const validationError = validateAgentSchema(agentData);
-    if (validationError) {
-      addSystemMessage(`❌ Invalid agent data: ${validationError}`);
-      console.error('Validation error:', validationError);
-      return;
-    }
-
-    // Check for duplicate agent ID
-    if (allAgents[agentData.id]) {
-      const overwrite = confirm(`Agent "${agentData.name}" (ID: ${agentData.id}) already exists. Overwrite?`);
-      if (!overwrite) {
-        addSystemMessage('Fetch cancelled.');
-        return;
-      }
-    }
-
-    // Add to agents
-    allAgents[agentData.id] = agentData;
-    allChatHistories[agentData.id] = allChatHistories[agentData.id] || [];
-
-    // Save to storage
-    await chrome.storage.local.set({
-      agents: allAgents,
-      chatHistories: allChatHistories
-    });
-
-    // Switch to new agent
-    await handleAgentSwitch(agentData.id);
-
-    // Rebuild dropdown
-    buildAgentDropdown();
-
-    addSystemMessage(`✓ Fetched agent: ${agentData.name}!`);
-  } catch (error) {
-    console.error('Error fetching agent by ID:', error);
-    addSystemMessage('❌ Error connecting to AICraft server. Make sure the server is running on http://localhost:8000');
   }
 }
 
