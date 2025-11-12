@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PropTypes from 'prop-types'
+import PokemonButton from './PokemonButton'
 
 // Color palette for personality traits
 const TRAIT_COLORS = [
@@ -20,6 +21,57 @@ const TRAIT_COLORS = [
  */
 export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) {
   const [isBackstoryExpanded, setIsBackstoryExpanded] = useState(false)
+  const [exportStatus, setExportStatus] = useState(null) // null, 'loading', 'success', 'error'
+  const [exportMessage, setExportMessage] = useState('')
+
+  // Handle export to Chrome extension
+  const handleExportToExtension = async () => {
+    if (!agent) return
+
+    setExportStatus('loading')
+    setExportMessage('Sending to extension...')
+
+    try {
+      const response = await fetch('http://localhost:8080/agents/queue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: agent.id,
+          name: agent.name,
+          avatar_url: agent.avatar_url,
+          backstory: agent.backstory,
+          personality_traits: agent.personality_traits
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setExportStatus('success')
+        setExportMessage(`✓ ${agent.name} queued! Open extension to load.`)
+
+        // Clear success message after 4 seconds
+        setTimeout(() => {
+          setExportStatus(null)
+          setExportMessage('')
+        }, 4000)
+      } else {
+        throw new Error(`Server returned ${response.status}`)
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      setExportStatus('error')
+      setExportMessage('❌ Extension server not running. Start it with: python chrome_extension/backend_server.py')
+
+      // Clear error message after 6 seconds
+      setTimeout(() => {
+        setExportStatus(null)
+        setExportMessage('')
+      }, 6000)
+    }
+  }
+
   if (!agent) {
     return (
       <div className="pokemon-container h-full flex items-center justify-center">
@@ -101,6 +153,30 @@ export default function AgentPanel({ agent, equippedTools = [], onToolRemove }) 
           </div>
         </div>
       )}
+
+      {/* Export to Extension */}
+      <div className="mb-4">
+        <PokemonButton
+          onClick={handleExportToExtension}
+          disabled={exportStatus === 'loading'}
+          className="w-full"
+        >
+          {exportStatus === 'loading' ? '📤 Exporting...' : '📤 Export to Extension'}
+        </PokemonButton>
+
+        {exportMessage && (
+          <p
+            className="font-pixel text-xs mt-2 text-center"
+            style={{
+              color: exportStatus === 'success' ? '#4CAF50' : exportStatus === 'error' ? '#f44336' : 'var(--text-primary)',
+              fontSize: '0.65rem',
+              lineHeight: '1.4'
+            }}
+          >
+            {exportMessage}
+          </p>
+        )}
+      </div>
 
       {/* Equipped Tools */}
       <div className="mb-4 flex-1">
