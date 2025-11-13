@@ -139,9 +139,16 @@ export default function AgentRunner({ agentId, worldId, avatarUrl }) {
     })
 
     eventSource.addEventListener('error', (e) => {
-      const data = JSON.parse(e.data)
-      setEvents(prev => [...prev, { type: 'error', ...data }])
-      setThinkingEvents(prev => [...prev, { type: 'error', ...data }])
+      try {
+        // Only parse if data exists (actual error event from backend)
+        if (e.data) {
+          const data = JSON.parse(e.data)
+          setEvents(prev => [...prev, { type: 'error', ...data }])
+          setThinkingEvents(prev => [...prev, { type: 'error', ...data }])
+        }
+      } catch (err) {
+        console.error('Failed to parse error event:', err)
+      }
     })
 
     eventSource.addEventListener('complete', (e) => {

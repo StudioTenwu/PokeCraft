@@ -7,6 +7,7 @@ import ToolWorkshop from './components/ToolWorkshop'
 import AgentRunner from './components/AgentRunner'
 import WorldCanvas from './components/WorldCanvas'
 import PokemonButton from './components/PokemonButton'
+import PersonalityTestScreen from './components/PersonalityTestScreen'
 
 function App() {
   const [agents, setAgents] = useState([])
@@ -16,6 +17,7 @@ function App() {
   const [showAgentCreation, setShowAgentCreation] = useState(false)
   const [showDeployment, setShowDeployment] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const [showPersonalityTest, setShowPersonalityTest] = useState(false)
 
   const handleAgentCreated = (newAgent) => {
     setAgents([...agents, newAgent])
@@ -55,12 +57,26 @@ function App() {
     setShowDeployment(true)
   }
 
+  const handlePersonalityTest = () => {
+    setShowPersonalityTest(true)
+  }
+
   const selectedWorld = selectedAgent ? worlds[selectedAgent.id] : null
   const selectedTools = selectedAgent ? (tools[selectedAgent.id] || []) : []
 
   // Determine what to show in the main content area
   const showWelcome = agents.length === 0 && !showAgentCreation
   const showCreationForm = showAgentCreation || agents.length === 0
+
+  // Show personality test screen if requested
+  if (showPersonalityTest && selectedAgent) {
+    return (
+      <PersonalityTestScreen
+        agent={selectedAgent}
+        onClose={() => setShowPersonalityTest(false)}
+      />
+    )
+  }
 
   return (
     <div
@@ -195,8 +211,14 @@ function App() {
 
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto">
-        {/* Deployment View */}
-        {showDeployment && selectedAgent && selectedWorld ? (
+        {/* Personality Test View */}
+        {showPersonalityTest && selectedAgent ? (
+          <PersonalityTestScreen
+            agent={selectedAgent}
+            onClose={() => setShowPersonalityTest(false)}
+          />
+        ) : showDeployment && selectedAgent && selectedWorld ? (
+          /* Deployment View */
           <div className="max-w-[1600px] mx-auto">
             <div className="pokemon-container">
               <div className="flex justify-between items-center mb-4">
@@ -238,6 +260,7 @@ function App() {
                 agent={selectedAgent}
                 equippedTools={selectedTools}
                 onToolRemove={handleToolRemove}
+                onPersonalityTest={handlePersonalityTest}
               />
             </div>
 

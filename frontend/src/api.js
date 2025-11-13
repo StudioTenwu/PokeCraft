@@ -100,6 +100,52 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/worlds/agent/${agentId}`)
     if (!res.ok) throw new Error('Failed to get worlds')
     return res.json()
+  },
+
+  /**
+   * Deploy agent with streaming updates using EventSource.
+   * @param {string} agentId - Agent ID to deploy
+   * @param {string} worldId - World ID to deploy in
+   * @param {string} goal - Mission goal for the agent
+   * @param {Object} callbacks - Event callbacks for deployment events
+   * @returns {Function} Cleanup function to close the stream
+   */
+  deployAgent(agentId, worldId, goal, callbacks = {}) {
+    // Build URL with query parameters
+    const url = `${API_BASE}/api/agents/deploy?agent_id=${encodeURIComponent(agentId)}&world_id=${encodeURIComponent(worldId)}&goal=${encodeURIComponent(goal)}`
+
+    console.log('SSE connecting to:', url)
+
+    // Create EventSource for SSE
+    const eventSource = new EventSource(url)
+
+    // Register listeners for deployment event types
+    const deploymentEvents = ['system', 'thinking', 'text', 'tool_call', 'tool_result', 'world_update', 'error', 'complete']
+
+    deploymentEvents.forEach(eventName => {
+      eventSource.addEventListener(eventName, (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log(`SSE event: ${eventName}`, data)
+
+          // Call the appropriate callback
+          const callbackName = `on${eventName.charAt(0).toUpperCase() + eventName.slice(1).replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())}`
+          callbacks[callbackName]?.(data)
+        } catch (e) {
+          console.error(`Failed to parse event data for ${eventName}:`, e)
+        }
+      })
+    })
+
+    // Handle connection errors
+    eventSource.onerror = (err) => {
+      console.error('EventSource error:', err)
+      callbacks.onError?.(new Error('Stream connection failed'))
+      eventSource.close()
+    }
+
+    // Return cleanup function
+    return () => eventSource.close()
   }
 }
 
@@ -110,3 +156,4 @@ export const getAgent = api.getAgent.bind(api)
 export const createWorld = api.createWorld.bind(api)
 export const getWorld = api.getWorld.bind(api)
 export const getWorldsByAgent = api.getWorldsByAgent.bind(api)
+export const deployAgent = api.deployAgent.bind(api)
