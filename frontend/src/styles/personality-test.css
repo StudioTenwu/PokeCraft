@@ -1,0 +1,564 @@
+/* Pokémon Personality Test - Game Boy Color Theme */
+
+:root {
+  /* Game Boy Color Palette */
+  --gameboy-dark: #0f380f;
+  --gameboy-medium: #306230;
+  --gameboy-light: #8bac0f;
+  --gameboy-lightest: #9bbc0f;
+
+  /* Big Five Dimension Colors */
+  --extraversion-color: #ff7f27;
+  --agreeableness-color: #92d050;
+  --conscientiousness-color: #5b9bd5;
+  --neuroticism-color: #c55a11;
+  --emotional-stability-color: #5bc0de;
+  --openness-color: #7030a0;
+}
+
+/* Main Screen Container */
+.personality-test-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--gameboy-dark) 0%, var(--gameboy-medium) 100%);
+  padding: 20px;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+}
+
+/* Header */
+.test-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+  background: var(--gameboy-lightest);
+  border: 4px solid var(--gameboy-dark);
+  box-shadow: 0 4px 0 var(--gameboy-dark);
+}
+
+.back-button {
+  background: var(--gameboy-medium);
+  color: white;
+  border: 2px solid var(--gameboy-dark);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: transform 0.1s;
+}
+
+.back-button:hover {
+  transform: translateY(-2px);
+}
+
+.back-button:active {
+  transform: translateY(0);
+}
+
+.test-title {
+  font-size: 18px;
+  color: var(--gameboy-dark);
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.agent-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--gameboy-dark);
+}
+
+.agent-name {
+  font-size: 14px;
+  color: var(--gameboy-dark);
+}
+
+/* Game Boy Screen Style */
+.gameboy-screen {
+  background: var(--gameboy-lightest);
+  border: 4px solid var(--gameboy-dark);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 6px 0 var(--gameboy-dark);
+}
+
+/* Setup Phase */
+.setup-phase {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pokemon-portrait {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.avatar-large {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid var(--gameboy-dark);
+  margin-bottom: 16px;
+  box-shadow: 0 4px 0 var(--gameboy-medium);
+}
+
+.agent-name-large {
+  font-size: 24px;
+  color: var(--gameboy-dark);
+  margin: 12px 0 8px;
+}
+
+.agent-description {
+  font-size: 12px;
+  color: var(--gameboy-medium);
+  margin: 0;
+}
+
+/* Test Selection */
+.gameboy-menu {
+  background: white;
+  border: 3px solid var(--gameboy-dark);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.gameboy-menu h3 {
+  font-size: 16px;
+  color: var(--gameboy-dark);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.test-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--gameboy-lightest);
+  border: 3px solid var(--gameboy-medium);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.test-option:hover {
+  transform: translateX(4px);
+  border-color: var(--gameboy-dark);
+}
+
+.test-option.selected {
+  background: var(--gameboy-light);
+  border-color: var(--gameboy-dark);
+  border-width: 4px;
+  box-shadow: 0 4px 0 var(--gameboy-dark);
+}
+
+.option-icon {
+  font-size: 32px;
+  width: 48px;
+  text-align: center;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-content h4 {
+  font-size: 14px;
+  color: var(--gameboy-dark);
+  margin: 0 0 8px 0;
+}
+
+.option-content p {
+  font-size: 10px;
+  color: var(--gameboy-medium);
+  margin: 0 0 8px 0;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--gameboy-dark);
+  color: var(--gameboy-lightest);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: bold;
+}
+
+/* Lunette Toggle */
+.lunette-toggle {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.lunette-toggle label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--gameboy-dark);
+}
+
+.lunette-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* Testing Phase */
+.testing-phase {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Progress Bar - HP Style */
+.progress-section {
+  margin-bottom: 24px;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: var(--gameboy-dark);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.pokemon-hp-bar {
+  width: 100%;
+  height: 24px;
+  background: white;
+  border: 3px solid var(--gameboy-dark);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #92d050 0%, #5bc0de 50%, #7030a0 100%);
+  transition: width 0.5s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Question Display */
+.gameboy-dialogue-box {
+  background: white;
+  border: 4px solid var(--gameboy-dark);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  min-height: 100px;
+}
+
+.instruction {
+  font-size: 11px;
+  color: var(--gameboy-medium);
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+}
+
+.question-number {
+  font-size: 14px;
+  color: var(--gameboy-dark);
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Thinking Panel */
+.gameboy-panel {
+  background: var(--gameboy-light);
+  border: 3px solid var(--gameboy-dark);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.thinking-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--gameboy-dark);
+}
+
+.thinking-label {
+  font-size: 12px;
+  color: var(--gameboy-dark);
+}
+
+.thinking-panel.active {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.thinking-animation {
+  text-align: center;
+  font-size: 24px;
+  color: var(--gameboy-dark);
+}
+
+.thinking-animation .dot {
+  animation: dot 1.4s infinite;
+}
+
+.thinking-animation .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-animation .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot {
+  0%, 60%, 100% { opacity: 0; }
+  30% { opacity: 1; }
+}
+
+/* Dimension Tracker */
+.gameboy-stats {
+  background: white;
+  border: 3px solid var(--gameboy-dark);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.gameboy-stats h4 {
+  font-size: 12px;
+  color: var(--gameboy-dark);
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.dimension-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dimension-name {
+  font-size: 9px;
+  color: var(--gameboy-dark);
+}
+
+.dimension-bar-container {
+  height: 16px;
+  background: var(--gameboy-lightest);
+  border: 2px solid var(--gameboy-medium);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dimension-bar {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.dimension-score {
+  font-size: 10px;
+  color: var(--gameboy-dark);
+  text-align: right;
+}
+
+/* Results Phase */
+.results-phase {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* MBTI Reveal */
+.mbti-reveal {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 32px;
+  background: white;
+  border: 4px solid var(--gameboy-dark);
+  border-radius: 12px;
+  animation: reveal 0.6s ease-out;
+}
+
+@keyframes reveal {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.mbti-badge-large {
+  font-size: 48px;
+  color: var(--gameboy-dark);
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-shadow: 3px 3px 0 var(--gameboy-light);
+}
+
+.mbti-title {
+  font-size: 16px;
+  color: var(--gameboy-medium);
+  margin-bottom: 16px;
+}
+
+.confidence-badge {
+  display: inline-block;
+  background: var(--gameboy-dark);
+  color: var(--gameboy-lightest);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+/* Big Five Stats Display */
+.pokemon-stats-display {
+  background: white;
+  border: 4px solid var(--gameboy-dark);
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.pokemon-stats-display h3 {
+  font-size: 14px;
+  color: var(--gameboy-dark);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 80px 100px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.stat-name {
+  font-size: 10px;
+  color: var(--gameboy-dark);
+  font-weight: bold;
+}
+
+.stat-bar-container {
+  height: 20px;
+  background: var(--gameboy-lightest);
+  border: 2px solid var(--gameboy-dark);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  transition: width 0.8s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.stat-value {
+  font-size: 10px;
+  color: var(--gameboy-dark);
+  text-align: right;
+}
+
+.stat-percentile {
+  font-size: 8px;
+  color: var(--gameboy-medium);
+  text-align: right;
+}
+
+/* Test Info */
+.test-info {
+  background: var(--gameboy-light);
+  border: 3px solid var(--gameboy-dark);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 10px;
+  color: var(--gameboy-dark);
+  line-height: 1.8;
+}
+
+.test-info p {
+  margin: 8px 0;
+}
+
+.lunette-info {
+  color: var(--openness-color);
+  font-weight: bold;
+}
+
+/* Actions */
+.results-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Error Message */
+.error-message {
+  background: #ff6b6b;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 3px solid var(--gameboy-dark);
+  margin: 16px 0;
+  font-size: 10px;
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .personality-test-screen {
+    padding: 12px;
+  }
+
+  .test-title {
+    font-size: 14px;
+  }
+
+  .stat-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dimension-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .mbti-badge-large {
+    font-size: 36px;
+  }
+
+  .results-actions {
+    flex-direction: column;
+  }
+}
