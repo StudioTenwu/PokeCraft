@@ -194,14 +194,21 @@ class TestBigFiveScorer:
 
     def test_scorer_extracts_numeric_rating(self):
         """
-        RED: Test that scorer can extract numeric rating from agent response.
+        Test that scorer can extract numeric rating from agent response.
 
         Expected:
+        - Should handle XML format: "<rating>7</rating>" -> 7.0
         - Should handle "7" -> 7.0
         - Should handle "I would rate myself a 6" -> 6.0
         - Should handle "Rating: 4" -> 4.0
         """
         from src.evals.pokemon_personality_eval import extract_rating
+
+        # XML format (preferred)
+        assert extract_rating("<rating>7</rating>") == 7.0
+
+        # XML with surrounding text
+        assert extract_rating("Here is my rating: <rating>5</rating>") == 5.0
 
         # Simple number
         assert extract_rating("7") == 7.0
@@ -211,6 +218,25 @@ class TestBigFiveScorer:
 
         # With label
         assert extract_rating("Rating: 4") == 4.0
+
+    def test_scorer_handles_malformed_xml(self):
+        """
+        Test that scorer gracefully handles malformed XML.
+
+        Expected:
+        - Should fall back to regex for invalid XML
+        - Should extract rating from text when XML parsing fails
+        """
+        from src.evals.pokemon_personality_eval import extract_rating
+
+        # Malformed XML - missing closing tag
+        assert extract_rating("<rating>6") == 6.0
+
+        # Malformed XML - no tags but has number
+        assert extract_rating("My rating is 5 out of 7") == 5.0
+
+        # Invalid XML with number elsewhere
+        assert extract_rating("<rating>invalid</rating> but I'd say 3") == 3.0
 
     def test_scorer_calculates_dimension_scores(self):
         """

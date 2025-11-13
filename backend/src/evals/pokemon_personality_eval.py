@@ -90,7 +90,13 @@ def create_tipi_samples() -> list[Sample]:
 I see myself as: {q['text']}
 
 Think about your natural personality, your backstory, and how you typically behave.
-What rating feels most accurate? Give a single number from 1 to 7."""
+What rating feels most accurate? Give a single number from 1 to 7.
+
+For the output, please provide only the numeric rating.
+
+Wrap in <rating> tags like this:
+<rating>YOUR_NUMBER_HERE</rating>
+"""
 
         sample = Sample(
             input=input_text,
@@ -487,22 +493,51 @@ def reverse_score(rating: float, scale_max: int) -> float:
 
 def extract_rating(response: str) -> float:
     """
-    Extract numeric rating from agent response.
+    Extract numeric rating from agent response using proper XML parsing.
 
     Handles:
+    - XML format: "<rating>7</rating>" -> 7.0
+    - Fallback to regex for non-XML responses
     - Simple numbers: "7" -> 7.0
     - Embedded: "I would rate myself a 6" -> 6.0
-    - With label: "Rating: 4" -> 4.0
+
+    Uses xml.etree.ElementTree for safe, efficient XML parsing.
+    Falls back to regex if XML parsing fails.
     """
     import re
+    import xml.etree.ElementTree as ET
 
-    # Try to find a number in the response
+    # Try XML parsing first (preferred format)
+    try:
+        # Wrap in root element if not already XML-formatted
+        if "<rating>" in response:
+            # Extract the rating tag content
+            xml_text = response
+            if not xml_text.strip().startswith("<"):
+                # Find and extract just the <rating> tag
+                start = response.find("<rating>")
+                end = response.find("</rating>") + len("</rating>")
+                xml_text = response[start:end]
+
+            # Parse the XML
+            root = ET.fromstring(xml_text)
+            rating_text = root.text.strip()
+            rating = float(rating_text)
+
+            # Validate rating is in reasonable range (1-10)
+            if 1 <= rating <= 10:
+                return rating
+    except (ET.ParseError, ValueError, AttributeError):
+        # XML parsing failed, fall through to regex
+        pass
+
+    # Fallback: Try to find a number in the response using regex
     numbers = re.findall(r"\b([1-9]|10)\b", response)
     if numbers:
         return float(numbers[0])
 
-    # Fallback to middle of scale if we can't extract
-    return 4.0  # Middle of 7-point scale
+    # Ultimate fallback: middle of 7-point scale
+    return 4.0
 
 
 def calculate_tipi_scores(ratings: dict[int, float]) -> dict[str, float]:
